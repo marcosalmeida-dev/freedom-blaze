@@ -1,0 +1,46 @@
+﻿@using FreedomBlaze.Enums
+@using FreedomBlaze.Helpers
+@using QRCoder
+
+@if (!string.IsNullOrEmpty(Data))
+{
+    <div class="tab-pane payment-box" id="link-tab" role="tabpanel">
+        <div class="qr-container" data-clipboard="12">
+            <img style="image-rendering:pixelated;image-rendering:-moz-crisp-edges;min-width:@(Size)px;min-height:@(Size)px" src="@GetQRCodeData(Data, Amount)" class="qr-code" />
+            <img src="/img/@addressTypeIcon" class="qr-icon" alt="address-type-icon" />
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string Data { get; set; }
+
+    [Parameter]
+    public int Size { get; set; } = 256;
+
+    [Parameter]
+    public BtcAddressType BtcAddressType { get; set; } = BtcAddressType.BitcoinOnChain;
+
+    [Parameter]
+    public decimal? Amount { get; set; }
+
+    private string addressTypeIcon = "bitcoin.svg";
+
+    private string GetQRCodeData(string data, decimal? amount)
+    {
+        addressTypeIcon = BtcAddressType == BtcAddressType.BitcoinOnChain ? "bitcoin.svg" : "bitcoin-lightning.svg";
+
+        string dataWithAmount = data;
+        if (amount.HasValue && BtcAddressType == BtcAddressType.BitcoinOnChain)
+        {
+            dataWithAmount = $"{data}?amount={amount.Value / CurrencyConverterHelper.SatoshiPerBitcoin}";
+        }
+
+        var qrGenerator = new QRCodeGenerator();
+        var qrCodeData = qrGenerator.CreateQrCode(dataWithAmount, QRCodeGenerator.ECCLevel.Q);
+        var qrCode = new PngByteQRCode(qrCodeData);
+        var bytes = qrCode.GetGraphic(5, new byte[] { 0, 0, 0, 255 }, new byte[] { 0xf5, 0xf5, 0xf7, 255 });
+        return $"data:image/png;base64,{Convert.ToBase64String(bytes)}";
+    }
+}

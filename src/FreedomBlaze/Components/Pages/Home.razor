@@ -1,0 +1,23 @@
+﻿@page "/"
+
+<PageTitle>Home</PageTitle>
+
+<h1>Hello!</h1>
+
+<h2>Welcome to your freedom blaze app. Have fun!</h2>
+
+@inject NavigationManager NavManager
+
+@code {
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var returnUrl = "/" + NavManager?.ToBaseRelativePath(NavManager.Uri);
+
+            NavManager?.NavigateTo($"/satsconverter", false);
+        }
+
+        return Task.CompletedTask;
+    }
+}

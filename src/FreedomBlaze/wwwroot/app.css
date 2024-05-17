@@ -1,0 +1,115 @@
+/*
+	This CSS file matches the color scheme from MudBlazor to Bootstrap when utilized for authentication.
+	The file remains available at all times for demonstration purposes,
+	but it is exclusively employed in the 'App.razor' component when authentication is enabled.
+*/
+
+:root {
+    --btcpay-white: #ffffff;
+    --btcpay-white-rgb: 255, 255, 255;
+}
+
+.btn-primary {
+    text-transform: uppercase;
+    --bs-btn-bg: var(--mud-palette-primary) !important;
+    --bs-btn-hover-bg: var(--mud-palette-primary-darken) !important;
+}
+
+.nav-pills {
+    --bs-nav-pills-link-active-bg: var(--mud-palette-primary) !important;
+}
+
+.nav {
+    --bs-nav-link-color: var(--mud-palette-primary) !important;
+    --bs-nav-link-hover-color: var(--mud-palette-primary-darken) !important;
+}
+
+/* Payment Box */
+.payment-box {
+    --qr-size: 256px;
+    --icon-size: 64px;
+    --icon-border-size: var(--btcpay-space-xs);
+    --icon-border-color: var(--btcpay-white);
+    max-width: 320px;
+    min-width: var(--qr-size);
+    margin: 0 auto;
+    text-align: center;
+}
+
+    .payment-box .qr-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        min-height: var(--qr-size);
+    }
+
+        .payment-box .qr-container svg,
+        .payment-box .qr-container img.qr-code {
+            border-radius: var(--btcpay-border-radius);
+            background: var(--btcpay-white);
+            width: 100%;
+        }
+
+        .payment-box .qr-container svg {
+            padding: var(--btcpay-space-s);
+        }
+
+        .payment-box .qr-container img.qr-icon {
+            box-sizing: content-box;
+            position: absolute;
+            width: var(--icon-size);
+            border-radius: 50%;
+            padding: var(--icon-border-size);
+            background: var(--icon-border-color);
+        }
+
+        .payment-box .qr-container small {
+            display: none;
+        }
+
+    .payment-box .input-group {
+        align-items: flex-end;
+    }
+
+        .payment-box .input-group .form-control-plaintext {
+            padding-left: 3px;
+            padding-bottom: 0;
+            font-weight: var(--btcpay-font-weight-semibold);
+        }
+
+        .payment-box .input-group label {
+            padding-left: 0;
+            text-transform: uppercase;
+            letter-spacing: .1rem;
+            font-weight: var(--btcpay-font-weight-semibold);
+        }
+
+        .payment-box .input-group button {
+            padding: 0 0 var(--btcpay-space-xs) 0;
+            font-weight: var(--btcpay-font-weight-semibold);
+        }
+
+/* QR Code Styles */
+.qr-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .qr-container svg {
+        width: 256px;
+        height: 256px;
+    }
+
+.qr-icon {
+    height: 64px;
+    width: 64px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+}
