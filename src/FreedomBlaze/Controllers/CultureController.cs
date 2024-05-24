@@ -14,6 +14,9 @@ public class CultureController : Controller
             HttpContext.Response.Cookies.Append(
                 CookieRequestCultureProvider.DefaultCookieName,
                 CookieRequestCultureProvider.MakeCookieValue(requestCulture));
+
+            // Manually update the RequestCulture in the current HttpContext
+            HttpContext.Features.Set<IRequestCultureFeature>(new RequestCultureFeature(requestCulture, new CookieRequestCultureProvider()));
         }
 
         return LocalRedirect(redirectUri);

@@ -1,5 +1,6 @@
-﻿# FreedomBlaze
+﻿# Freedom Blaze
 
+Easily convert major world currencies to Bitcoin's smallest unit, Satoshi, with our intuitive app. Stay updated with real-time exchange rates and perform quick conversions to manage your crypto investments effortlessly. Perfect for both beginners and seasoned crypto enthusiasts!
 A blaze of freedom in a tyrant world.
 
 ## Build

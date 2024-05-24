@@ -5,17 +5,12 @@ using FreedomBlaze.Logging;
 using FreedomBlaze.Models;
 using FreedomBlaze.WebClients.BitcoinExchanges;
 using FreedomBlaze.WebClients.CurrencyExchanges;
-using FreedomBlaze.WebClients.CurrencyExchanges.ExchangeRateApi;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
-using Microsoft.JSInterop;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
-using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHttpClient();
-builder.Services.AddScoped<HttpClient>();
 
 builder.Services.AddSingleton<IConfiguration>(provider => builder.Configuration);
 builder.Services.AddMemoryCache();

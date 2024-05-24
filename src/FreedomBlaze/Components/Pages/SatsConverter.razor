@@ -1,5 +1,5 @@
 ﻿@page "/satsconverter"
-@rendermode InteractiveServer
+@rendermode InteractiveAuto
 
 @using System.Net.Http;
 @using System.Text.Json;
@@ -17,8 +17,8 @@
 <MudContainer Class="mt-8">
     <MudGrid>
         <MudItem xs="12" sm="6" md="10">
-            <MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true">Currency to Satoshi Converter</MudText>
-            <MudText Align="Align.Center">Easily convert major world currencies to Bitcoin's smallest unit, Satoshi, with our intuitive app. Stay updated with real-time exchange rates and perform quick conversions to manage your crypto investments effortlessly. Perfect for both beginners and seasoned crypto enthusiasts!</MudText>
+            <MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true">Bitcoin sats Converter</MudText>
+            <MudText Align="Align.Center">Select your currency and add the value you want to convert to bitcoin satoshis units</MudText>
         </MudItem>
     </MudGrid>
     <MudGrid Class="mt-8">
@@ -41,6 +41,10 @@
                     <MudCardContent>
                         <MudGrid>
                             <MudItem xs="6">
+                                @* <MudButton Color="Color.Primary" Variant="Variant.Filled" @onclick="@(e => CultureHandler.SetCulture("fr-FR"))">Switch to French</MudButton>
+                                <MudButton Color="Color.Secondary" Variant="Variant.Filled" @onclick="@(e => CultureHandler.SetCulture("en-US"))">Switch to English</MudButton>
+                                <MudButton Color="Color.Default" Variant="Variant.Filled" @onclick="@(e => CultureHandler.SetCulture("es-ES"))">Switch to Spanish</MudButton>
+                                *@
                                 <MudSelect id="currency" Label="Currency" Variant="Variant.Outlined" @bind-Value="CurrencyCultureName" AdornmentColor="Color.Primary">
                                     @foreach (var currency in CurrencyModel.Currencies)
                                     {
@@ -76,10 +80,11 @@
 
                         <MudText Align="Align.Center">
 
-                            <MudButton @onclick="SetShowBtcLndAddress" 
-                                        Variant="Variant.Outlined"
+                            <MudButton @onclick="SetShowBtcLndAddress"
+                                       Variant="Variant.Outlined"
                                        StartIcon="@Icons.Material.Filled.AddCard"
-                                       IconColor="Color.Primary" Size="Size.Large">Add public key
+                                       IconColor="Color.Primary" Size="Size.Large">
+                                Add public key
                             </MudButton>
                         </MudText>
                         <br />
@@ -111,7 +116,6 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject IHttpContextAccessor ContextAccessor
-@inject HttpClient Http
 @inject IExchangeRateProvider ExchangeRateProvider
 @inject ISnackbar Snackbar
 
@@ -119,6 +123,9 @@
 
 @code {
     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
+    private bool hasError;
+    private bool isLoading;
 
     private CurrencyModel currencyModel = new CurrencyModel();
 
@@ -134,8 +141,7 @@
     private string addressLink;
     private BtcAddressType btcAddressType = BtcAddressType.Unknown;
 
-    private bool hasError;
-    private bool isLoading;
+    bool firstRenderAll = false;
 
     private string _currencyCultureName;
     private string CurrencyCultureName
@@ -146,27 +152,53 @@
         }
         set
         {
-            if (_currencyCultureName != value)
+            if (CurrencyCultureName != value)
             {
-                var uri = new Uri(Navigation.Uri)
-                    .GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
-                var uriEscaped = Uri.EscapeDataString(uri);
+                _currencyCultureName = value;
 
-                _currencyCultureName = CurrencyModel.Currencies.Where(w => w.CultureName.ToLower().Contains(value.ToLower())).FirstOrDefault().CultureName;
-                Navigation.NavigateTo(
-                    $"Culture/Set?culture={value}&redirectUri={uriEscaped}",
-                    forceLoad: true);
+                if (firstRenderAll == false)
+                {
+                    var uri = new Uri(Navigation.Uri).GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
+                    var uriEscaped = Uri.EscapeDataString(uri);
+
+                    firstRenderAll = true;
+                    Navigation.NavigateTo(
+                        $"Culture/Set?culture={value}&redirectUri={uriEscaped}",
+                        forceLoad: true);
+                }
             }
         }
     }
 
     protected override async Task OnInitializedAsync()
     {
-        await HandleCultureInfo();
-
         var btcPrice = await ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token).ConfigureAwait(false);
-
         btcPriceValue = btcPrice?.Rate;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        firstRenderAll = firstRender;
+        if (firstRender)
+        {
+            HandleCultureInfo();
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    void HandleCultureInfo()
+    {
+        //var localizationValue = ContextAccessor.HttpContext.Request.Cookies[CookieRequestCultureProvider.DefaultCookieName];
+        var localizationValue = ContextAccessor.HttpContext.Features.Get<IRequestCultureFeature>().RequestCulture.Culture.Name;
+        if (localizationValue != null)
+        {
+            currencyValue = 0;
+            CurrentCulture = new CultureInfo(localizationValue);
+            CurrencyCultureName = CurrentCulture.Name;
+
+            StateHasChanged();
+        }
     }
 
     async Task ConvertToBitcoin()
@@ -209,18 +241,6 @@
         showBtcLndAddress = !showBtcLndAddress;
     }
 
-    async Task HandleCultureInfo()
-    {
-        var cookieValue = ContextAccessor.HttpContext.Request.Cookies[CookieRequestCultureProvider.DefaultCookieName] ?? "en-US";
-        var providerCultureResult = CookieRequestCultureProvider.ParseCookieValue(cookieValue);
-        if (providerCultureResult != null)
-        {
-            _currencyCultureName = providerCultureResult.Cultures[0].Value;
-            currencyValue = 0;
-            CurrentCulture = new CultureInfo(_currencyCultureName);
-        }
-    }
-
     void HandleValidateBtcAddress(string address)
     {
         btcAddressType = BtcAddressHelper.ValidateBtcAddress(address);
@@ -239,17 +259,17 @@
         }
     }
 
-    ValueTask WriteTextAsync(string text)
-    {
-        return JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
-    }
-
     void SnackMessage(string message, string position, Severity severity)
     {
         Snackbar.Clear();
         Snackbar.Configuration.SnackbarVariant = Variant.Text;
         Snackbar.Configuration.PositionClass = position;
         Snackbar.Add(message, severity);
+    }
+
+    ValueTask WriteTextAsync(string text)
+    {
+        return JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
     }
 
     public void Dispose()
