@@ -42,7 +42,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddLocalization();
 
 Logger.InitializeDefaults(Path.Combine(AppContext.BaseDirectory, "Logs", "Logs.txt"));
-Logger.LogSoftwareStarted("DCA Manager");
+Logger.LogSoftwareStarted("Freedom Blaze App");
 
 var app = builder.Build();
 
@@ -60,11 +60,8 @@ else
 if (builder.Environment.IsProduction())
 {
     builder.Configuration.AddAzureKeyVault(
-    new Uri($"https://{builder.Configuration["KeyVaultName"]}.vault.azure.net/"),
-    new DefaultAzureCredential(new DefaultAzureCredentialOptions
-    {
-        ManagedIdentityClientId = builder.Configuration["AzureADManagedIdentityClientId"]
-    }));
+        new Uri($"https://{builder.Configuration["KeyVaultName"]}.vault.azure.net/"),
+        new DefaultAzureCredential());
 }
 
 app.UseHttpsRedirection();
@@ -73,7 +70,7 @@ app.UseStaticFiles();
 app.UseAntiforgery();
 
 var localizationOptions = new RequestLocalizationOptions()
-    .SetDefaultCulture(supportedCultures[0])
+    .SetDefaultCulture(supportedCultures[0]) 
     .AddSupportedCultures(supportedCultures)
     .AddSupportedUICultures(supportedCultures);
 
