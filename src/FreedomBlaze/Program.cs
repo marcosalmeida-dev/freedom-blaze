@@ -41,6 +41,8 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddLocalization();
 
+builder.Services.AddApplicationInsightsTelemetry();
+
 Logger.InitializeDefaults(Path.Combine(AppContext.BaseDirectory, "Logs", "Logs.txt"));
 Logger.LogSoftwareStarted("Freedom Blaze App");
 

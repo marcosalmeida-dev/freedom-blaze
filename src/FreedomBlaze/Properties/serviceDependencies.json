@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "appInsights1": {
+      "type": "appInsights",
+      "dynamicId": null
+    },
+    "secrets1": {
+      "type": "secrets",
+      "connectionId": "VaultUri",
+      "dynamicId": null
+    }
+  }
+}
