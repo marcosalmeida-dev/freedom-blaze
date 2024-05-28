@@ -5,9 +5,14 @@
       "dynamicId": null
     },
     "secrets1": {
+      "ignored": "true",
       "type": "secrets",
       "connectionId": "VaultUri",
       "dynamicId": null
+    },
+    "secrets2": {
+      "ignored": "true",
+      "type": "secrets.keyVault"
     }
   }
 }
