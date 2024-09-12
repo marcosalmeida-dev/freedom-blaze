@@ -3,13 +3,14 @@
 <MudThemeProvider @rendermode="InteractiveServer" @bind-IsDarkMode="@_isDarkMode" Theme="_theme" />
 <MudDialogProvider @rendermode="InteractiveServer" />
 <MudSnackbarProvider @rendermode="InteractiveServer" />
+<MudPopoverProvider @rendermode="InteractiveServer" />
 
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
         <MudText Typo="Typo.h5" Class="ml-3">Freedom Blaze</MudText>
         <MudSpacer />
-        <MudSwitch @bind-Value="@_isDarkMode" UnCheckedColor="Color.Primary" Color="Color.Primary" Class="ma-4" T="bool" Label="Toggle Light/Dark Mode" />
+        <MudSwitch @bind-Value="@_isDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" Class="ma-4" T="bool" Label="Toggle Light/Dark Mode" />
     </MudAppBar>
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
         <NavMenu />
@@ -26,10 +27,10 @@
     //private MudTheme _theme = new();
     MudTheme _theme = new MudTheme()
     {
-        Palette = new PaletteLight()
+        PaletteLight = new PaletteLight()
         {
             Primary = Colors.Orange.Default,
-            Secondary = Colors.BlueGrey.Darken1,
+            Secondary = Colors.BlueGray.Darken1,
             AppbarBackground = Colors.Shades.Black,
         },
         PaletteDark = new PaletteDark()
