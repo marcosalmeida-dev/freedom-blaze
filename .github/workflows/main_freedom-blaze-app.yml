@@ -34,33 +34,33 @@ jobs:
           name: .net-app
           path: ${{env.DOTNET_ROOT}}/myapp
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    permissions:
-      id-token: write #This is required for requesting the JWT
+  # deploy:
+  #   runs-on: ubuntu-latest
+  #   needs: build
+  #   environment:
+  #     name: 'Production'
+  #     url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+  #   permissions:
+  #     id-token: write #This is required for requesting the JWT
 
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v3
-        with:
-          name: .net-app
+  #   steps:
+  #     - name: Download artifact from build job
+  #       uses: actions/download-artifact@v3
+  #       with:
+  #         name: .net-app
       
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_46E53D1BC462440CAAB1B64C442CAC50 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_42C04D0E18D8483CBAE00DAD250DAAEE }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_61CB34CA8DA54C449DAB8920F484D1D0 }}
+  #     - name: Login to Azure
+  #       uses: azure/login@v1
+  #       with:
+  #         client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_46E53D1BC462440CAAB1B64C442CAC50 }}
+  #         tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_42C04D0E18D8483CBAE00DAD250DAAEE }}
+  #         subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_61CB34CA8DA54C449DAB8920F484D1D0 }}
 
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: 'freedom-blaze-app'
-          slot-name: 'Production'
-          package: .
+  #     - name: Deploy to Azure Web App
+  #       id: deploy-to-webapp
+  #       uses: azure/webapps-deploy@v2
+  #       with:
+  #         app-name: 'freedom-blaze-app'
+  #         slot-name: 'Production'
+  #         package: .
           
