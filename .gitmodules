@@ -1,0 +1,3 @@
+[submodule "src/submodules/phoenixd.NET"]
+	path = src/submodules/phoenixd.NET
+	url = https://github.com/marcosalmeida-dev/phoenixd.NET
