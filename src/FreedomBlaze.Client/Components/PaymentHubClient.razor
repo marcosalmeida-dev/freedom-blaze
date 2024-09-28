@@ -1,0 +1,161 @@
+﻿@page "/paymenthubclient"
+@implements IAsyncDisposable
+@rendermode @(new InteractiveServerRenderMode(prerender:false))
+
+@using FreedomBlaze.Client.Helpers
+@using FreedomBlaze.Client.Models
+@using Microsoft.AspNetCore.SignalR.Client;
+
+@* <ReceiveLightningPaymentForm ConnectionId="@connectionId" /> *@
+
+<MudCard>
+    <MudCardContent>
+        <MudText Typo="Typo.h5">Connection status: @statusMessage</MudText>
+
+        <MudTextField @bind-Value="messageToSend" Label="Type message" Variant="Variant.Outlined"></MudTextField>
+        <MudButton @onclick="SendMessage" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Mail" Color="Color.Primary" Size="Size.Large" ButtonType="ButtonType.Submit">Send</MudButton>
+
+        <MudText Typo="Typo.h5">Message List</MudText>
+        <MudDivider />
+        @if (receivedMessages?.Count == 0)
+        {
+            <MudText Typo="Typo.h6" Color="Color.Error">Empty</MudText>
+        }
+        <MudPaper Width="300px" Square="true">
+            <MudList T="string">
+                @foreach (var message in receivedMessages)
+                {
+                    <MudListItem>
+                        <MudText Typo="Typo.h6" Color="Color.Success">@message</MudText>
+                    </MudListItem>
+                    <MudDivider />
+                }
+            </MudList>
+        </MudPaper>
+    </MudCardContent>
+</MudCard>
+
+<MudDivider />
+
+<MudButton @onclick="OpenDialogAsync" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ElectricBolt">
+    Donate
+</MudButton>
+
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+@code {
+    private HubConnection _hubConnection;
+
+    private bool isConnected = false;
+    private string connectionId = string.Empty;
+    private string statusMessage = "Not connected";
+    private string messageToSend = string.Empty;
+    private List<string> receivedMessages = new List<string>();
+
+    private IDialogReference paymentDialogReference;
+
+    private async Task OpenDialogAsync()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+        var parameters = new DialogParameters<ReceiveLightningPaymentForm> { { x => x.ConnectionId, connectionId } };
+        paymentDialogReference = await DialogService.ShowAsync<ReceiveLightningPaymentForm>("Lightning Dialog", parameters);
+
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initialize the SignalR connection
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/paymentHub")) // Adjust the URL to match your server setup
+            .WithAutomaticReconnect() // Automatically reconnect if connection is lost
+            .Build();
+
+        _hubConnection.On<string>("ReceiveConnectionId", (id) =>
+        {
+            connectionId = id;
+            statusMessage = $"Connected with ID: {id}";
+            InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<string>("ReceiveMessage", (message) =>
+        {
+            receivedMessages.Add($"Message: {message} - {DateTime.Now.ToShortTimeString()}");
+            InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<PaymentReceivedModel>("ReceivePayment", async (payment) =>
+        {
+            if (payment.PaymentHash != null && paymentDialogReference != null)
+            {
+                await InvokeAsync(() =>
+                {
+                    paymentDialogReference.Close();
+                    Snackbar.SnackMessage("Payment received!", Defaults.Classes.Position.TopCenter, Severity.Success);
+                    StateHasChanged();
+                }); 
+            }
+        });
+
+        // Handle connection closed event
+        _hubConnection.Closed += async (error) =>
+        {
+            isConnected = false;
+            statusMessage = "Connection closed. Reconnecting...";
+            await InvokeAsync(StateHasChanged);
+        };
+
+        if (!isConnected)
+        {
+            await ConnectToHub();
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    private async Task ConnectToHub()
+    {
+        try
+        {
+            await _hubConnection.StartAsync();
+            isConnected = true;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Error connecting: {ex.Message}";
+            isConnected = false;
+        }
+        StateHasChanged();
+    }
+
+    private async Task SendMessage()
+    {
+        if (_hubConnection.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                await _hubConnection.InvokeAsync("SendMessageToAll", messageToSend);
+                messageToSend = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                statusMessage = $"Error sending message: {ex.Message}";
+            }
+        }
+        else
+        {
+            statusMessage = "Not connected.";
+        }
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+            Console.WriteLine("Hub connection disposed"); // Log to console
+        }
+    }
+}

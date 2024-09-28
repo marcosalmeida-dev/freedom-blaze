@@ -5,116 +5,113 @@
 @using System.Text.Json;
 @using System.Threading.Tasks;
 @using System.Collections.Generic;
-@using System.Text.Json.Serialization
-@using FreedomBlaze.Enums
-@using FreedomBlaze.Helpers
+@using FreedomBlaze.Client.Helpers;
 @using FreedomBlaze.Interfaces
-@using FreedomBlaze.Models
-@using FreedomBlaze.Components.Shared.QRCode
-@using System.Globalization
+@using FreedomBlaze.Models;
+@using System.Globalization;
 @using Microsoft.AspNetCore.Localization
+@using Microsoft.Extensions.Localization
 
-<MudContainer Class="mt-8">
+<MudContainer Class="mt-1">
     <MudGrid>
         <MudItem xs="12" sm="6" md="10">
-            <MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true">Bitcoin sats Converter</MudText>
-            <MudText Align="Align.Center">Select your currency and add the value you want to convert to bitcoin satoshis units</MudText>
+            <MudPaper Class="d-flex justify-center flex-grow-1 gap-4" Elevation="0">
+                <MudImage Src="/img/freedom-blaze-logo-3-4-small.png" Height="183" Width="137" Alt="Freedom Blaze image" Elevation="0" />
+            </MudPaper>
+            <MudText Typo="Typo.h4" Align="Align.Center" GutterBottom="true">@Localizer["SatsConverter.Title"]</MudText>
+            <MudText Align="Align.Center">@Localizer["SatsConverter.Body1"]</MudText> 
+            <MudText Align="Align.Center">@Localizer["SatsConverter.Body2"]</MudText> 
         </MudItem>
     </MudGrid>
-    <MudGrid Class="mt-8">
+    <MudGrid Class="mt-2">
         <MudItem xs="12" sm="6" md="10" class="d-flex justify-center">
-            <MudCard Elevation="25" Class="rounded-lg pb-4">
-                <EditForm Model="currencyModel">
-                    <MudCardHeader>
-                        <CardHeaderContent>
-                            <MudText Typo="Typo.h4" Align="Align.Center">Bitcoin price</MudText>
-                            @if (btcPriceValue.HasValue)
-                            {
-                                <MudText Typo="Typo.h5" Align="Align.Center" Color="Color.Primary">@btcPriceValue?.ToString("C", CurrentCulture)</MudText>
-                            }
-                            else
-                            {
-                                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-5" />
-                            }
-                        </CardHeaderContent>
-                    </MudCardHeader>
-                    <MudCardContent>
-                        <MudGrid>
-                            <MudItem xs="6">
-                                @* <MudButton Color="Color.Primary" Variant="Variant.Filled" @onclick="@(e => CultureHandler.SetCulture("fr-FR"))">Switch to French</MudButton>
-                                <MudButton Color="Color.Secondary" Variant="Variant.Filled" @onclick="@(e => CultureHandler.SetCulture("en-US"))">Switch to English</MudButton>
-                                <MudButton Color="Color.Default" Variant="Variant.Filled" @onclick="@(e => CultureHandler.SetCulture("es-ES"))">Switch to Spanish</MudButton>
-                                *@
-                                <MudSelect id="currency" Label="Currency" Variant="Variant.Outlined" @bind-Value="CurrencyCultureName" AdornmentColor="Color.Primary">
-                                    @foreach (var currency in CurrencyModel.Currencies)
-                                    {
-                                        <MudSelectItem Value="@currency.CultureName">@currency.Value (@currency.Symbol)</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudItem>
-                            <MudItem xs="6">
-                                <MudNumericField Label="Value" HideSpinButtons="true" Variant="Variant.Outlined" Immediate="false" Culture="@CurrentCulture" Format="N2" Step=".2M" T="decimal?" @bind-Value="currencyValue" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.AttachMoney" AdornmentColor="Color.Warning" />
-                            </MudItem>
-                        </MudGrid>
-                    </MudCardContent>
-                    <MudCardActions Class="d-flex justify-center">
-                        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary" Size="Size.Large" ButtonType="ButtonType.Submit" @onclick="ConvertToBitcoin">Convert</MudButton>
-                    </MudCardActions>
-                </EditForm>
-            </MudCard>
+            <MudStack>
+                <MudSelect id="currency" Label="Currency" Variant="Variant.Outlined" @bind-Value="CurrencyCultureName" AdornmentColor="Color.Primary">
+                    @foreach (var currency in CurrencyModel.CurrencyListStatic)
+                    {
+                        <MudSelectItem Value="@currency.CultureName" @key="@currency.CultureName">
+                            <img src="@currency.FlagSvgPath" height="14" class="mr-1" />
+                            @currency.Value (@currency.Symbol)
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
+                                 OnBlur="ConvertToBitcoin" Culture="@CurrentCulture" Format="N2" T="double?"
+                                 HideSpinButtons="true" Variant="Variant.Outlined" Immediate="false"
+                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy"
+                                 AdornmentAriaLabel="Copy" AdornmentColor="Color.Warning"
+                                 OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
+
+                <MudNumericField @bind-Value="satsValue" Label="SATS" MaxLength="9"
+                                 OnBlur="ConvertToCurrency"
+                                 HideSpinButtons="true" Variant="Variant.Outlined" Immediate="false"
+                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy"
+                                 AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Warning"
+                                 OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
+
+                <MudButton @onclick="ConvertToBitcoin"
+                           StartIcon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary"
+                           Size="Size.Large"
+                           Variant="Variant.Filled"
+                           ButtonType="ButtonType.Button">
+                    Convert
+                </MudButton>
+            </MudStack>
         </MudItem>
         <MudItem xs="12" sm="6" md="10" class="d-flex justify-center">
-            @if (isLoading)
-            {
-                <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
-            }
-            @if (currencyValue != null && satsValue != null && !isLoading)
-            {
-                <MudCard Elevation="25" Class="rounded-lg pb-4">
-                    <MudCardContent>
-                        <MudText Typo="Typo.h4" Align="Align.Center">
-                            @currencyValue?.ToString("C", CurrentCulture) = <b> @satsValue SATS </b>
-                            <MudIconButton Title="Copy" aria-label="copy-text" Size="Size.Medium" Icon="@Icons.Material.Filled.FileCopy" Color="Color.Primary" OnClick="@(() => WriteTextAsync(satsValue))"></MudIconButton>
-                        </MudText>
-                        <br />
-
-                        <MudText Align="Align.Center">
-
-                            <MudButton @onclick="SetShowBtcLndAddress"
-                                       Variant="Variant.Outlined"
-                                       StartIcon="@Icons.Material.Filled.AddCard"
-                                       IconColor="Color.Primary" Size="Size.Large">
-                                Add public key
-                            </MudButton>
-                        </MudText>
-                        <br />
-                        @if (showBtcLndAddress)
-                        {
-                            <MudTextField DebounceInterval="100" OnDebounceIntervalElapsed="HandleValidateBtcAddress" Label="Public Key (Bitcoin or Lightning)" Variant="Variant.Outlined" @bind-Value="addressValue" Adornment="Adornment.End" AdornmentIcon="@addressIcon" AdornmentColor="Color.Warning" />
-
-                            if (btcAddressType != Enums.BtcAddressType.Unknown)
-                            {
-                                <br />
-                                <QRCode Data="@addressValue" Amount="@addressAmountValue" BtcAddressType="@btcAddressType"></QRCode>
-
-                                <MudText Align="Align.Center">
-                                    <MudButton Href="@addressLink" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Smartphone" IconColor="Color.Primary" Size="Size.Large">Open wallet</MudButton>
-                                </MudText>
-                            }
-                        }
-                    </MudCardContent>
-                </MudCard>
-            }
-            @if (hasError)
-            {
-                <MudAlert Severity="Severity.Error">Ops, something failed during the conversion process...</MudAlert>
-            }
+            <MudPaper>
+                <MudDataGrid T="Currency" Items="@CurrencyList" RowStyleFunc="@_rowStyleFunc" Hover="true">
+                    <Columns>
+                        <TemplateColumn>
+                            <CellTemplate>
+                                <MudTooltip Text="@context.Item.Name">
+                                    <MudAvatar>
+                                        <MudImage Src="@context.Item.FlagSvgPath"></MudImage>
+                                    </MudAvatar>
+                                </MudTooltip>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="BTC Price">
+                            <CellTemplate>
+                                @if (context.Item.BitcoinPrice == 0)
+                                {
+                                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="COPY">
+                                        <MudLink Color="Color.Secondary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", @context.Item.CultureInfo)</MudLink>
+                                    </MudTooltip>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="@currencyValueInCurrency">
+                            <CellTemplate>
+                                @if (context.Item.CurrencyValueInCurrency == 0)
+                                {
+                                    <MudText>--</MudText>
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="COPY">
+                                        <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", @context.Item.CultureInfo)</MudLink>
+                                    </MudTooltip>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+            </MudPaper>
         </MudItem>
     </MudGrid>
 </MudContainer>
 
+<SatsInfo />
+
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject IStringLocalizer<Resources.Localization> Localizer
 @inject IHttpContextAccessor ContextAccessor
 @inject IExchangeRateProvider ExchangeRateProvider
 @inject ISnackbar Snackbar
@@ -125,38 +122,31 @@
     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
     private bool hasError;
-    private bool isLoading;
 
-    private CurrencyModel currencyModel = new CurrencyModel();
-
+    private List<Currency> CurrencyList = new List<Currency>();
     private CultureInfo CurrentCulture;
+    private Task<BitcoinExchangeRateModel> currencyRatesTask;
 
-    private decimal? currencyValue;
-    private decimal? btcPriceValue;
-    private string? satsValue;
-    private string? addressValue;
-    private decimal? addressAmountValue;
-    private string addressIcon = Icons.Material.Filled.CurrencyBitcoin;
-    private bool showBtcLndAddress;
-    private string addressLink;
-    private BtcAddressType btcAddressType = BtcAddressType.Unknown;
+    private double? currencyValue;
+    private string currencyValueLabelName = "USD Value";
+    private string currencyValueInCurrency = "Value in Currency";
+    private const string CurrencyCookieName = "currencyValueCookie";
+
+    private double? satsValue;
 
     bool firstRenderAll = false;
 
     private string _currencyCultureName;
     private string CurrencyCultureName
     {
-        get
-        {
-            return _currencyCultureName;
-        }
+        get => _currencyCultureName;
         set
         {
-            if (CurrencyCultureName != value)
+            if (_currencyCultureName != value)
             {
                 _currencyCultureName = value;
 
-                if (firstRenderAll == false)
+                if (!firstRenderAll)
                 {
                     var uri = new Uri(Navigation.Uri).GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
                     var uriEscaped = Uri.EscapeDataString(uri);
@@ -172,8 +162,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var btcPrice = await ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token).ConfigureAwait(false);
-        btcPriceValue = btcPrice?.Rate;
+        try
+        {
+            currencyRatesTask = ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
+        }
+        catch (Exception ex)
+        {
+            SnackMessage($"Error loading exchange rates: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -181,24 +177,62 @@
         firstRenderAll = firstRender;
         if (firstRender)
         {
-            HandleCultureInfo();
+            await HandleCultureInfo();
         }
 
         await base.OnAfterRenderAsync(firstRender);
     }
 
-    void HandleCultureInfo()
+    async Task HandleCultureInfo()
     {
-        //var localizationValue = ContextAccessor.HttpContext.Request.Cookies[CookieRequestCultureProvider.DefaultCookieName];
         var localizationValue = ContextAccessor.HttpContext.Features.Get<IRequestCultureFeature>().RequestCulture.Culture.Name;
-        if (localizationValue != null)
+        if (!string.IsNullOrEmpty(localizationValue))
         {
             currencyValue = 0;
             CurrentCulture = new CultureInfo(localizationValue);
             CurrencyCultureName = CurrentCulture.Name;
 
-            StateHasChanged();
+            await GetCurrencyValueFromCookie();
         }
+
+        var currencyRatesResult = await currencyRatesTask;
+
+        HandleCurrencyList(currencyRatesResult, CurrencyCultureName);
+
+        StateHasChanged();
+    }
+
+    void HandleCurrencyList(BitcoinExchangeRateModel currencyRatesResult, string currencyCultureName)
+    {
+        CurrencyList = CurrencyModel.BuildCurrencyList(currencyCultureName);
+
+        var currentCurrency = CurrencyList.FirstOrDefault(f => f.CultureName == currencyCultureName);
+
+        foreach (var currency in CurrencyList)
+        {
+            // Update each currency's exchange rate to USD
+            currency.CurrencyRateInUSD = currencyRatesResult.CurrencyExchangeRate[currency.Value].Rate;
+
+            // Update Bitcoin price in this currency based on its exchange rate to USD
+            currency.BitcoinPrice = currency.CurrencyRateInUSD * currencyRatesResult.BitcoinRateInUSD;
+
+            // Calculate currency values and satoshis based on the provided currency value
+            if (currencyValue.HasValue && currencyValue.Value != 0 && currentCurrency.CurrencyRateInUSD != 0)
+            {
+                // Calculate the currency value in USD based on the current exchange rate
+                var currencyValueInUSD = currencyValue.Value / currentCurrency.CurrencyRateInUSD;
+
+                // Calculate the equivalent currency value in the target currency using the USD rate
+                currency.CurrencyValueInCurrency = currencyValueInUSD * currency.CurrencyRateInUSD;
+            }
+        }
+
+        satsValue = CurrencyConverterHelper.ConvertToSats(currentCurrency.CurrencyValueInCurrency, currentCurrency.BitcoinPrice);
+
+        var currentCultureCurrencyValue = currencyValue?.ToString("C", CurrentCulture);
+
+        currencyValueLabelName = $"{currentCurrency.Value}";
+        currencyValueInCurrency = $"{currentCultureCurrencyValue} in Currency";
     }
 
     async Task ConvertToBitcoin()
@@ -209,57 +243,31 @@
             return;
         }
 
-        isLoading = true;
-
         try
         {
-            // Get exchanges rates
-            var exchangeRateAvg = await ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token).ConfigureAwait(false);
+            // Get exchange rates
+            var exchangeRateAvg = await ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
+            HandleCurrencyList(exchangeRateAvg, CurrencyCultureName);
 
-            if (exchangeRateAvg != null)
-            {
-                btcPriceValue = exchangeRateAvg.Rate;
-                satsValue = CurrencyConverterHelper.ConvertToSats(currencyValue.Value, exchangeRateAvg.Rate).ToString("N0");
-            }
-            else
-            {
-                hasError = true;
-            }
+            await SetCurrencyValueCookie();
         }
         catch (Exception ex)
         {
-            SnackMessage($"Error converting to Bitcoin: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
-        }
-        finally
-        {
-            isLoading = false;
+            SnackMessage($"Exception occurred converting to Bitcoin: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
         }
     }
 
-    void SetShowBtcLndAddress()
+    async Task ConvertToCurrency()
     {
-        showBtcLndAddress = !showBtcLndAddress;
-    }
-
-    void HandleValidateBtcAddress(string address)
-    {
-        btcAddressType = BtcAddressHelper.ValidateBtcAddress(address);
-        if (btcAddressType == Enums.BtcAddressType.Unknown)
+        if(satsValue.HasValue && satsValue.Value > 0)
         {
-            SnackMessage($"Address is invalid! It should be BTC OnChain or Lightning valid address.", Defaults.Classes.Position.BottomCenter, Severity.Error);
-            addressIcon = Icons.Material.Filled.ErrorOutline;
-            return;
-        }
-
-        addressIcon = btcAddressType == Enums.BtcAddressType.BitcoinOnChain ? Icons.Material.Filled.CurrencyBitcoin : Icons.Material.Filled.ElectricBolt;
-        addressLink = btcAddressType == Enums.BtcAddressType.BitcoinOnChain ? $"bitcoin:{address}" : $"lightning:{address}";
-        if (!string.IsNullOrEmpty(satsValue))
-        {
-            addressAmountValue = decimal.Parse(satsValue);
+            var btcPrice = CurrencyList.FirstOrDefault(f => f.BitcoinPrice > 0)?.BitcoinPrice;
+            currencyValue = CurrencyConverterHelper.ConvertSatsToCurrency(satsValue.Value, btcPrice.Value);
+            await ConvertToBitcoin();
         }
     }
 
-    void SnackMessage(string message, string position, Severity severity)
+    void SnackMessage(string message, string position = Defaults.Classes.Position.TopCenter, Severity severity = Severity.Info)
     {
         Snackbar.Clear();
         Snackbar.Configuration.SnackbarVariant = Variant.Text;
@@ -267,14 +275,53 @@
         Snackbar.Add(message, severity);
     }
 
-    ValueTask WriteTextAsync(string text)
+    async Task WriteTextAsync(string text)
     {
-        return JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            SnackMessage("Copied to clipboard!");
+        }
+        catch (Exception ex)
+        {
+            SnackMessage($"Error copying text: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
+        }
     }
+
+    async Task GetCurrencyValueFromCookie()
+    {
+        var cookieValue = await JS.InvokeAsync<string>("cookieHelper.getCookie", CurrencyCookieName);
+        if (!string.IsNullOrEmpty(cookieValue))
+        {
+            if (double.TryParse(cookieValue, out var valueFromCookie))
+            {
+                currencyValue = valueFromCookie;
+            }
+        }
+    }
+
+    async Task SetCurrencyValueCookie()
+    {
+        if (currencyValue.HasValue)
+        {
+            await JS.InvokeVoidAsync("cookieHelper.setCookie", CurrencyCookieName, currencyValue.Value, 1); // Store for 1 day(s)
+        }
+    }
+
+    Func<Currency, int, string> _rowStyleFunc => (x, i) =>
+    {
+        if (x.CultureName == CurrencyCultureName)
+            return "background-color:#e8e8e8";
+
+        return "";
+    };
 
     public void Dispose()
     {
-        cancellationTokenSource.Cancel();
-        cancellationTokenSource.Dispose();
+        if (cancellationTokenSource != null && !cancellationTokenSource.IsCancellationRequested)
+        {
+            cancellationTokenSource.Cancel();
+            cancellationTokenSource.Dispose();
+        }
     }
 }

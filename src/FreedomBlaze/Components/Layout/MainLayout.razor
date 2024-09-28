@@ -1,16 +1,21 @@
 ﻿@inherits LayoutComponentBase
 
 <MudThemeProvider @rendermode="InteractiveServer" @bind-IsDarkMode="@_isDarkMode" Theme="_theme" />
-<MudDialogProvider @rendermode="InteractiveServer" />
 <MudSnackbarProvider @rendermode="InteractiveServer" />
 <MudPopoverProvider @rendermode="InteractiveServer" />
+<MudDialogProvider @rendermode="InteractiveServer"
+                   FullWidth="true"
+                   CloseButton="true"
+                   CloseOnEscapeKey="true"
+                   MaxWidth="MaxWidth.ExtraSmall"
+                   Position="DialogPosition.Center" />
 
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
         <MudText Typo="Typo.h5" Class="ml-3">Freedom Blaze</MudText>
         <MudSpacer />
-        <MudSwitch @bind-Value="@_isDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" Class="ma-4" T="bool" Label="Toggle Light/Dark Mode" />
+        <MudSwitch @bind-Value="@IsDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" Class="ma-4" T="bool" Label="Toggle Light/Dark Mode" />
     </MudAppBar>
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
         <NavMenu />
@@ -23,32 +28,68 @@
 </MudLayout>
 
 
+@inject IJSRuntime JS
+
 @code {
-    //private MudTheme _theme = new();
     MudTheme _theme = new MudTheme()
-    {
-        PaletteLight = new PaletteLight()
         {
-            Primary = Colors.Orange.Default,
-            Secondary = Colors.BlueGray.Darken1,
-            AppbarBackground = Colors.Shades.Black,
-        },
-        PaletteDark = new PaletteDark()
-        {
-            Primary = Colors.Orange.Default
-        },
+            PaletteLight = new PaletteLight()
+            {
+                Primary = Colors.Orange.Default,
+                Secondary = Colors.BlueGray.Darken1,
+                AppbarBackground = Colors.Shades.Black,
+            },
+            PaletteDark = new PaletteDark()
+            {
+                Primary = Colors.Orange.Default
+            },
 
-        LayoutProperties = new LayoutProperties()
-        {
-            DrawerWidthLeft = "260px",
-            DrawerWidthRight = "300px"
-        }
-    };
+            LayoutProperties = new LayoutProperties()
+            {
+                DrawerWidthLeft = "260px",
+                DrawerWidthRight = "300px"
+            }
+        };
+
+    private string DarkModeCookieName = "darkModeCookie";
+
+    private bool _drawerOpen = true;
+
     private bool _isDarkMode;
+    private bool IsDarkMode
+    {
+        get => _isDarkMode;
+        set
+        {
+            if (_isDarkMode != value)
+            {
+                _isDarkMode = value;
+                OnDarkModeChanged();
+            }
+        }
+    }
 
-    bool _drawerOpen = true;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var savedDarkMode = await JS.InvokeAsync<string>("cookieHelper.getCookie", DarkModeCookieName);
+            if (!string.IsNullOrEmpty(savedDarkMode))
+            {
+                IsDarkMode = bool.Parse(savedDarkMode);
+                StateHasChanged();
+            }
+        }
+    }
+
     void DrawerToggle()
     {
         _drawerOpen = !_drawerOpen;
     }
+
+    private async Task OnDarkModeChanged()
+    {
+        await JS.InvokeVoidAsync("cookieHelper.setCookie", DarkModeCookieName, _isDarkMode.ToString(), 365);
+    }
+
 }

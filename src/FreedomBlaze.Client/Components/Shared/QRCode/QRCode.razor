@@ -1,5 +1,5 @@
-﻿@using FreedomBlaze.Enums
-@using FreedomBlaze.Helpers
+﻿@using FreedomBlaze.Client.Enums
+@using FreedomBlaze.Client.Helpers
 @using QRCoder
 
 @if (!string.IsNullOrEmpty(Data))
@@ -17,13 +17,13 @@
     public string Data { get; set; }
 
     [Parameter]
+    public decimal? Amount { get; set; }
+
+    [Parameter]
     public int Size { get; set; } = 256;
 
     [Parameter]
-    public BtcAddressType BtcAddressType { get; set; } = BtcAddressType.BitcoinOnChain;
-
-    [Parameter]
-    public decimal? Amount { get; set; }
+    public BtcAddressType BtcAddressType { get; set; } = BtcAddressType.BitcoinLightning;
 
     private string addressTypeIcon = "bitcoin.svg";
 
@@ -32,10 +32,10 @@
         addressTypeIcon = BtcAddressType == BtcAddressType.BitcoinOnChain ? "bitcoin.svg" : "bitcoin-lightning.svg";
 
         string dataWithAmount = data;
-        if (amount.HasValue && BtcAddressType == BtcAddressType.BitcoinOnChain)
-        {
-            dataWithAmount = $"{data}?amount={amount.Value / CurrencyConverterHelper.SatoshiPerBitcoin}";
-        }
+        // if (amount.HasValue && BtcAddressType == BtcAddressType.BitcoinOnChain)
+        // {
+        //     dataWithAmount = $"{data}?amount={amount.Value / CurrencyConverterHelper.SatoshiPerBitcoin}";
+        // }
 
         var qrGenerator = new QRCodeGenerator();
         var qrCodeData = qrGenerator.CreateQrCode(dataWithAmount, QRCodeGenerator.ECCLevel.Q);

@@ -25,7 +25,7 @@ public class GeminiExchangeRateProvider : IExchangeRateProvider
             using var content = response.Content;
             var data = await content.ReadAsJsonAsync<GeminiExchangeRateInfo>().ConfigureAwait(false);
 
-            return new BitcoinExchangeRateModel { Rate = decimal.Parse(data.Bid.ToRemoveDecimalCase()), Ticker = "USD" };
+            return new BitcoinExchangeRateModel { BitcoinRateInUSD = double.Parse(data.Bid.ToRemoveDecimalCase()) };
         }
         catch
         {

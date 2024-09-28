@@ -23,7 +23,7 @@ public class CoingateExchangeRateProvider : IExchangeRateProvider
             var response = await httpClient.GetStringAsync("/v2/rates/merchant/BTC/USD", cancellationToken)
                 .ConfigureAwait(false);
 
-            return new BitcoinExchangeRateModel { Rate = decimal.Parse(response.ToRemoveDecimalCase()), Ticker = "USD" };
+            return new BitcoinExchangeRateModel { BitcoinRateInUSD = double.Parse(response.ToRemoveDecimalCase()) };
         }
         catch
         {
