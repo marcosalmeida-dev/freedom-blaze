@@ -21,7 +21,7 @@ public class BitstampExchangeRateProvider : IExchangeRateProvider
             using var content = response.Content;
             var rate = await content.ReadAsJsonAsync<BitstampExchangeRate>().ConfigureAwait(false);
 
-            return new BitcoinExchangeRateModel { Rate = decimal.Parse(rate.Rate), Ticker = "USD" };
+            return new BitcoinExchangeRateModel { BitcoinRateInUSD = double.Parse(rate.Rate) };
         }
         catch
         {

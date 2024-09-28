@@ -1,7 +1,7 @@
 ﻿using System.Text.RegularExpressions;
-using FreedomBlaze.Enums;
+using FreedomBlaze.Client.Enums;
 
-namespace FreedomBlaze.Helpers;
+namespace FreedomBlaze.Client.Helpers;
 
 public class BtcAddressHelper
 {

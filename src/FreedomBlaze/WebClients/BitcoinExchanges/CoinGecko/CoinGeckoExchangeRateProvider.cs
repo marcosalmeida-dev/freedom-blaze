@@ -23,7 +23,7 @@ public class CoinGeckoExchangeRateProvider : IExchangeRateProvider
             using var content = response.Content;
             var rates = await content.ReadAsJsonAsync<CoinGeckoExchangeRate[]>().ConfigureAwait(false);
 
-            return new BitcoinExchangeRateModel { Rate = rates[0].Rate, Ticker = "USD" };
+            return new BitcoinExchangeRateModel { BitcoinRateInUSD = rates[0].Rate };
         }
         catch
         {
@@ -35,5 +35,5 @@ public class CoinGeckoExchangeRateProvider : IExchangeRateProvider
 public class CoinGeckoExchangeRate
 {
     [JsonPropertyName("current_price")]
-    public decimal Rate { get; set; }
+    public double Rate { get; set; }
 }

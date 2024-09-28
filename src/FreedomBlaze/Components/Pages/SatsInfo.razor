@@ -1,0 +1,81 @@
+﻿@rendermode InteractiveServer
+
+@using Microsoft.Extensions.Localization
+
+@inject IStringLocalizer<Resources.Localization> Localizer
+
+<MudContainer Class="mt-8">
+
+    <MudText Typo="Typo.h4" Align="Align.Center" GutterBottom="true">
+        @Localizer["SatsInfo.Title"]
+    </MudText>
+    <MudText Typo="Typo.body1" Align="Align.Left" Class="mt-3"> 
+        @Localizer["SatsInfo.Body1"]
+    </MudText>
+    <MudText Typo="Typo.body1" Align="Align.Left" Class="mt-3">
+        @Localizer["SatsInfo.Body2"]
+    </MudText>
+
+    <MudPaper Class="mt-6" Elevation="1">
+        <MudSimpleTable Style="overflow-x: auto;">
+            <thead>
+                <tr>
+                    <th>Sats</th>
+                    <th>Bitcoin</th>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1 Satoshi</td>
+                    <td>0.00000001 BTC</td>
+                    <td>1 Satoshi (sat)</td>
+                </tr>
+                <tr>
+                    <td>10 Satoshi</td>
+                    <td>0.00000010 BTC</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td>100 Satoshi</td>
+                    <td>0.00000100 BTC</td>
+                    <td>1 Bit</td>
+                </tr>
+                <tr>
+                    <td>1,000 Satoshi</td>
+                    <td>0.00001000 BTC</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td>10,000 Satoshi</td>
+                    <td>0.00010000 BTC</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td>100,000 Satoshi</td>
+                    <td>0.00100000 BTC</td>
+                    <td>1mBTC</td>
+                </tr>
+                <tr>
+                    <td>1,000,000 Satoshi</td>
+                    <td>0.01000000 BTC</td>
+                    <td>1cBTC</td>
+                </tr>
+                <tr>
+                    <td>10,000,000 Satoshi</td>
+                    <td>0.10000000 BTC</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td>100,000,000 Satoshi</td>
+                    <td>1.00000000 BTC</td>
+                    <td>1 Bitcoin (BTC)</td>
+                </tr>
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+</MudContainer>
+
+@code {
+
+}

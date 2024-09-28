@@ -42,13 +42,12 @@ public class ExchangeRateProvider : IExchangeRateProvider
         {
             e.SetOptions(new MemoryCacheEntryOptions
             {
-                AbsoluteExpirationRelativeToNow =
-                     TimeSpan.FromSeconds(30)
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
             });
 
             var cacheKey = nameof(GetExchangeRateAsync);
 
-            if (!_cache.TryGetValue(cacheKey, out decimal? exchangeRateAvgResult))
+            if (!_cache.TryGetValue(cacheKey, out double? exchangeRateAvgResult))
             {
                 var tasks = new List<Task<BitcoinExchangeRateModel>>();
 
@@ -61,7 +60,7 @@ public class ExchangeRateProvider : IExchangeRateProvider
 
                 if (exchangeRates != null)
                 {
-                    exchangeRateAvgResult = exchangeRates.Where(w => w.IsSuccess && w.Result != null && w.Result.Rate > 0).Average(a => a.Result.Rate);
+                    exchangeRateAvgResult = exchangeRates.Where(w => w.IsSuccess && w.Result != null && w.Result.BitcoinRateInUSD > 0).Average(a => a.Result.BitcoinRateInUSD);
                     var cacheEntryOptions = new MemoryCacheEntryOptions()
                         .SetAbsoluteExpiration(TimeSpan.FromMinutes(1));
 
@@ -82,7 +81,12 @@ public class ExchangeRateProvider : IExchangeRateProvider
                 var currentCurrency = CurrencyModel.CurrentAppCurrency.Value;
                 CurrencyExchangeRateModel currencyRatesResult = await _currencyExchangeProvider.GetCurrencyRate(cancellationToken);
 
-                exchangeRateModelResult = new BitcoinExchangeRateModel() { Ticker = currentCurrency, Rate = decimal.Truncate(currencyRatesResult[currentCurrency].Rate * exchangeRateAvgResult.Value) };
+                exchangeRateModelResult = new BitcoinExchangeRateModel()
+                {
+                    //BitcoinRateInUSD = double.Truncate(currencyRatesResult[currentCurrency].Rate * exchangeRateAvgResult.Value),
+                    BitcoinRateInUSD = exchangeRateAvgResult.Value,
+                    CurrencyExchangeRate = currencyRatesResult
+                };
             }
 
             return exchangeRateModelResult;

@@ -1,4 +1,4 @@
-﻿namespace FreedomBlaze.Enums;
+﻿namespace FreedomBlaze.Client.Enums;
 
 public enum BtcAddressType
 {

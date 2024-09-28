@@ -23,7 +23,7 @@ public class BlockchainInfoExchangeRateProvider : IExchangeRateProvider
             using var content = response.Content;
             var rates = await content.ReadAsJsonAsync<BlockchainInfoExchangeRates>().ConfigureAwait(false);
 
-            return new BitcoinExchangeRateModel { Rate = (decimal)Math.Round(rates.USD.Sell, 0), Ticker = "USD" };
+            return new BitcoinExchangeRateModel { BitcoinRateInUSD = Math.Round(rates.USD.Sell, 0) };
         }
         catch
         {

@@ -1,0 +1,60 @@
+﻿@page "/contact"
+@rendermode InteractiveAuto
+
+@using System.ComponentModel.DataAnnotations
+@using FreedomBlaze.Client.Helpers
+
+<EditForm Model="@model" OnSubmit="OnSubmit">
+    <DataAnnotationsValidator />
+    <MudGrid>
+        <MudItem xs="12">
+            <MudCard>
+                <MudCardContent>
+                    <MudTextField Label="Title" HelperText="Max. 128 characters"
+                                  @bind-Value="model.Title" For="@(() => model.Title)" 
+                                  Variant="Variant.Outlined"
+                                  Clearable="true" />
+                    <MudTextField Label="Description" HelperText="Max. 1024 characters" Class="mt-3"
+                                  @bind-Value="model.Description" For="@(() => model.Description )"
+                                  Clearable="true" 
+                                  Variant="Variant.Outlined"
+                                  Lines="5" />
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Send</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</EditForm>
+
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+@code {
+    ContactForm model = new ContactForm();
+
+    private async Task OnSubmit()
+    {
+        var response = await Http.PostAsJsonAsync("api/contact/submit", model);
+        if (response.IsSuccessStatusCode)
+        {
+            Snackbar.SnackMessage("Message sent, thanks!", Defaults.Classes.Position.TopCenter, Severity.Success);
+        }
+        else
+        {
+            Snackbar.SnackMessage("Some error ocurred, sorry!", Defaults.Classes.Position.TopCenter, Severity.Error);
+        }
+    }
+
+    public class ContactForm
+    {
+        [Required]
+        [StringLength(128, MinimumLength = 3,  ErrorMessage = "Title length can't be more than 128, and minimum 3.")]
+        public string Title { get; set; }
+
+        [Required]
+        [StringLength(2048, MinimumLength = 3, ErrorMessage = "Title length can't be more than 2048, and minimum 3.")]
+        public string Description { get; set; }
+    }
+}

@@ -1,0 +1,144 @@
+﻿@page "/receive-payment"
+@using FreedomBlaze.Client.Components.Shared.QRCode
+@using FreedomBlaze.Client.Enums
+@using FreedomBlaze.Client.Models
+@using MudBlazor
+@using System.ComponentModel.DataAnnotations
+
+<MudDialog ClassActions="justify-center">
+    <TitleContent>
+        Donate in Lightgning
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudPaper Class="pa-4">
+                <MudStack Row="true">
+                    <MudAvatar Size="Size.Large">
+                        <MudImage Src="/img/mr-freedom-matrix-ai-theme-240.jpg" />
+                    </MudAvatar>
+                    <MudStack Justify="Justify.Center" Spacing="0">
+                        <MudText Typo="Typo.body1">Mr Freedom</MudText>
+                        <MudText Typo="Typo.body2">
+                            <MudLink OnClick="@(() => WriteTextAsync("mrfreedom@coinos.io"))">mrfreedom@coinos.io</MudLink>
+                        </MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+
+            <MudPaper Class="pa-4" Style="overflow:visible">
+
+                <EditForm Model="@model" OnValidSubmit="HandleValidSubmit">
+                    <MudStack Spacing="4">
+
+                        <DataAnnotationsValidator />
+                        <MudNumericField T="long" Label="Amount (Satoshis)" @bind-Value="model.AmountSat"
+                                         For="@(() => model.AmountSat)" />
+                        <MudTextField Label="Description (optional)" @bind-Value="model.Description"
+                                      For="@(() => model.Description)" />
+
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" StartIcon="@Icons.Material.Filled.QrCodeScanner">Donate</MudButton>
+                    </MudStack>
+                </EditForm>
+            </MudPaper>
+            <MudCollapse Expanded="_expanded">
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <MudText>Error: @errorMessage</MudText>
+                }
+                @if (!string.IsNullOrEmpty(addressValue))
+                {
+                    <MudStack>
+                        <QRCode Data="@addressValue" Amount="@addressAmountValue" BtcAddressType="@btcAddressType"></QRCode>
+
+                        <MudButton OnClick="@(() => WriteTextAsync(addressValue))" ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FileCopy">Copy</MudButton>
+                    </MudStack>
+                }
+            </MudCollapse>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .mud-dialog .mud-dialog-content {
+        overflow: visible !important;
+    }
+</style>
+
+@inject IJSRuntime JS
+@inject HttpClient Http
+
+@code {
+
+    [Parameter]
+    public string ConnectionId { get; set; }
+
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; }
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private ReceivePaymentFormModel model = new ReceivePaymentFormModel() { AmountSat = 1 };
+
+    private string addressValue;
+    private decimal? addressAmountValue;
+    private BtcAddressType btcAddressType = BtcAddressType.BitcoinLightning;
+
+    string errorMessage = string.Empty;
+    bool _expanded = false;
+
+    private void OnExpandCollapseClick()
+    {
+        _expanded = !_expanded;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            model.ExternalId = ConnectionId;
+
+            var response = await Http.PostAsJsonAsync("api/payment-manager/receive-payment", model);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var invoice = await response.Content.ReadFromJsonAsync<InvoiceModel>();
+                addressValue = invoice?.Serialized;
+                addressAmountValue = invoice?.AmountSat;
+
+                _expanded = true;
+            }
+            else
+            {
+                errorMessage = $"Error code: {response}";
+                _expanded = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Exception: {ex}";
+            _expanded = false;
+        }
+        StateHasChanged();
+    }
+
+    ValueTask WriteTextAsync(string text)
+    {
+        return JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+    }
+
+    public class ReceivePaymentFormModel
+    {
+        [Required(ErrorMessage = "Amount is required.")]
+        [Range(1, long.MaxValue, ErrorMessage = "Amount must be greater than 0.")]
+        public long AmountSat { get; set; }
+
+        public string Description { get; set; }
+
+        public string ExternalId { get; set; }
+    }
+}

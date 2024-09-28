@@ -2,7 +2,6 @@
 
 public class CurrencyExchangeRateModel
 {
-    public string Currency {  get; set; }
     public DateTime? Date { get; set; }
     public List<CurrencyRate> Rates { get; set; } = new List<CurrencyRate>();
 
@@ -27,5 +26,5 @@ public class CurrencyExchangeRateModel
 public class CurrencyRate
 {
     public string Currency { get; set; }
-    public decimal Rate { get; set; }
+    public double Rate { get; set; }
 }
