@@ -135,4 +135,10 @@
   <data name="SatsConverter.Body2" xml:space="preserve">
     <value>U kan die BTC en Sats resultate kopieer deur daarop te klik/raak.</value>
   </data>
+  <data name="About.Body1">
+    <value>Freedom Blaze is ’n revolusionêre app ontwerp om finansiële onafhanklikheid en persoonlike vryheid te bevorder deur middel van Bitcoin, die wêreld se eerste gedesentraliseerde digitale geldeenheid. Ons missie is om individue in staat te stel om volle beheer oor hul finansies te neem, vry van die beperkings van tradisionele bankwese en gesentraliseerde instellings.</value>
+  </data>
+  <data name="About.Title">
+    <value>Oor Freedom Blaze</value>
+  </data>
 </root>

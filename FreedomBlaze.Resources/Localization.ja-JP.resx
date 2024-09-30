@@ -135,4 +135,10 @@
   <data name="SatsConverter.Body2" xml:space="preserve">
     <value>結果をクリックして、BTCおよびSatsの値をコピーできます。</value>
   </data>
+  <data name="About.Body1">
+    <value>Freedom Blazeは、世界初の分散型デジタル通貨であるビットコインを使用して、経済的独立と個人の自由を促進するために設計された革新的なアプリです。私たちの使命は、伝統的な銀行や中央機関の制約から解放され、個人が自分の財務を完全に管理できるようにすることです。</value>
+  </data>
+  <data name="About.Title">
+    <value>Freedom Blazeについて</value>
+  </data>
 </root>
