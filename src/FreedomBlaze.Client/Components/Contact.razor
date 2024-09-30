@@ -4,29 +4,33 @@
 @using System.ComponentModel.DataAnnotations
 @using FreedomBlaze.Client.Helpers
 
-<EditForm Model="@model" OnSubmit="OnSubmit">
-    <DataAnnotationsValidator />
-    <MudGrid>
-        <MudItem xs="12">
-            <MudCard>
-                <MudCardContent>
-                    <MudTextField Label="Title" HelperText="Max. 128 characters"
-                                  @bind-Value="model.Title" For="@(() => model.Title)" 
-                                  Variant="Variant.Outlined"
-                                  Clearable="true" />
-                    <MudTextField Label="Description" HelperText="Max. 1024 characters" Class="mt-3"
-                                  @bind-Value="model.Description" For="@(() => model.Description )"
-                                  Clearable="true" 
-                                  Variant="Variant.Outlined"
-                                  Lines="5" />
-                </MudCardContent>
-                <MudCardActions>
-                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Send</MudButton>
-                </MudCardActions>
-            </MudCard>
-        </MudItem>
-    </MudGrid>
-</EditForm>
+<MudGrid Spacing="2" Justify="Justify.Center" Class="mt-8">
+    <MudItem xs="12" sm="6" md="6" Class="justify-center">
+        <MudStack>
+            <MudText Typo="Typo.h4" Align="Align.Center" GutterBottom="true">Contact</MudText>
+            <MudText Align="Align.Center" Typo="Typo.body2">Send us a message or suggestion</MudText>
+            <EditForm Model="@model" OnSubmit="OnSubmit">
+                <DataAnnotationsValidator />
+                <MudCard>
+                    <MudCardContent>
+                        <MudTextField Label="Title" HelperText="Max. 128 characters"
+                                      @bind-Value="model.Title" For="@(() => model.Title)"
+                                      Variant="Variant.Outlined"
+                                      Clearable="true" />
+                        <MudTextField Label="Description" HelperText="Max. 1024 characters" Class="mt-3"
+                                      @bind-Value="model.Description" For="@(() => model.Description )"
+                                      Clearable="true"
+                                      Variant="Variant.Outlined"
+                                      Lines="5" />
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Send</MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </EditForm>
+        </MudStack>
+    </MudItem>
+</MudGrid>
 
 @inject HttpClient Http
 @inject ISnackbar Snackbar
@@ -50,7 +54,7 @@
     public class ContactForm
     {
         [Required]
-        [StringLength(128, MinimumLength = 3,  ErrorMessage = "Title length can't be more than 128, and minimum 3.")]
+        [StringLength(128, MinimumLength = 3, ErrorMessage = "Title length can't be more than 128, and minimum 3.")]
         public string Title { get; set; }
 
         [Required]

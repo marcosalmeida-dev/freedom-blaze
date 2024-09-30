@@ -17,7 +17,7 @@
         <MudSpacer />
         <MudSwitch @bind-Value="@IsDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" Class="ma-4" T="bool" Label="Toggle Light/Dark Mode" />
     </MudAppBar>
-    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Temporary">
         <NavMenu />
     </MudDrawer>
     <MudMainContent>
@@ -53,7 +53,7 @@
 
     private string DarkModeCookieName = "darkModeCookie";
 
-    private bool _drawerOpen = true;
+    private bool _drawerOpen = false;
 
     private bool _isDarkMode;
     private bool IsDarkMode

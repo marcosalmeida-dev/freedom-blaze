@@ -14,7 +14,7 @@
 
 <MudContainer Class="mt-1">
     <MudGrid>
-        <MudItem xs="12" sm="6" md="10">
+        <MudItem xs="12" sm="6" md="12">
             <MudPaper Class="d-flex justify-center flex-grow-1 gap-4" Elevation="0">
                 <MudImage Src="/img/freedom-blaze-logo-3-4-small.png" Height="183" Width="137" Alt="Freedom Blaze image" Elevation="0" />
             </MudPaper>
@@ -24,7 +24,7 @@
         </MudItem>
     </MudGrid>
     <MudGrid Class="mt-2">
-        <MudItem xs="12" sm="6" md="10" class="d-flex justify-center">
+        <MudItem xs="12" sm="6" md="12" Class="d-flex justify-center">
             <MudStack>
                 <MudSelect id="currency" Label="Currency" Variant="Variant.Outlined" @bind-Value="CurrencyCultureName" AdornmentColor="Color.Primary">
                     @foreach (var currency in CurrencyModel.CurrencyListStatic)
@@ -59,7 +59,7 @@
                 </MudButton>
             </MudStack>
         </MudItem>
-        <MudItem xs="12" sm="6" md="10" class="d-flex justify-center">
+        <MudItem xs="12" sm="6" md="12" Class="d-flex justify-center">
             <MudPaper>
                 <MudDataGrid T="Currency" Items="@CurrencyList" RowStyleFunc="@_rowStyleFunc" Hover="true">
                     <Columns>

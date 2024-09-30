@@ -6,7 +6,7 @@ public static class CurrencyConverterHelper
 
     public static double ConvertToSats(double currencyAmount, double bitcoinPrice)
     {
-        if (currencyAmount <= 0)
+        if (currencyAmount < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(currencyAmount), "Currency Amount must be positive.");
         }
@@ -23,7 +23,7 @@ public static class CurrencyConverterHelper
 
     public static string ConvertToBtcFormat(double currencyAmount, double bitcoinPrice)
     {
-        if (currencyAmount <= 0)
+        if (currencyAmount < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(currencyAmount), "Currency Amount must be positive.");
         }
