@@ -6,6 +6,7 @@ using FreedomBlaze.Infrastructure;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Logging;
 using FreedomBlaze.Models;
+using FreedomBlaze.Services;
 using FreedomBlaze.WebClients.BitcoinExchanges;
 using FreedomBlaze.WebClients.CurrencyExchanges;
 using Microsoft.AspNetCore.Components;
@@ -34,6 +35,8 @@ builder.Services.AddMemoryCache();
 
 builder.Services.AddSingleton<IExchangeRateProvider, ExchangeRateProvider>();
 builder.Services.AddSingleton<ICurrencyExchangeProvider, CurrencyExchangeRateProviders>();
+
+builder.Services.AddScoped<CultureService>();
 
 builder.Services.AddExceptionHandler<CustomExceptionHandler>();
 

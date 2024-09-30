@@ -141,4 +141,16 @@
   <data name="About.Title">
     <value>Oor Freedom Blaze</value>
   </data>
+  <data name="Contact.SendButtonText">
+    <value>Stuur</value>
+  </data>
+  <data name="Contact.Description">
+    <value>Stuur vir ons 'n boodskap of voorstel</value>
+  </data>
+  <data name="Contact.Title">
+    <value>Kontak</value>
+  </data>
+  <data name="SatsConverter.ConvertButtonText">
+    <value>Omset</value>
+  </data>
 </root>

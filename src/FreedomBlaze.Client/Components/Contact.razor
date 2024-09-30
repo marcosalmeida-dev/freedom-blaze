@@ -3,28 +3,30 @@
 
 @using System.ComponentModel.DataAnnotations
 @using FreedomBlaze.Client.Helpers
+@using Microsoft.Extensions.Localization
 
-<MudGrid Spacing="2" Justify="Justify.Center" Class="mt-8">
+@inject IStringLocalizer<Resources.Localization> Localizer
+
+<MudGrid Spacing="1" Justify="Justify.Center" Class="mt-8">
     <MudItem xs="12" sm="6" md="6" Class="justify-center">
         <MudStack>
-            <MudText Typo="Typo.h4" Align="Align.Center" GutterBottom="true">Contact</MudText>
-            <MudText Align="Align.Center" Typo="Typo.body2">Send us a message or suggestion</MudText>
+            <MudText Align="Align.Center" Typo="Typo.h4">@Localizer["Contact.Title"]</MudText>
             <EditForm Model="@model" OnSubmit="OnSubmit">
                 <DataAnnotationsValidator />
                 <MudCard>
                     <MudCardContent>
-                        <MudTextField Label="Title" HelperText="Max. 128 characters"
+                        <MudTextField Label="@Localizer["Contact.Title"]" HelperText="Max. 128"
                                       @bind-Value="model.Title" For="@(() => model.Title)"
                                       Variant="Variant.Outlined"
                                       Clearable="true" />
-                        <MudTextField Label="Description" HelperText="Max. 1024 characters" Class="mt-3"
+                        <MudTextField Label="@Localizer["Contact.Description"]" HelperText="Max. 1024" Class="mt-3"
                                       @bind-Value="model.Description" For="@(() => model.Description )"
                                       Clearable="true"
                                       Variant="Variant.Outlined"
                                       Lines="5" />
                     </MudCardContent>
                     <MudCardActions>
-                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Send</MudButton>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">@Localizer["Contact.SendButtonText"]</MudButton>
                     </MudCardActions>
                 </MudCard>
             </EditForm>

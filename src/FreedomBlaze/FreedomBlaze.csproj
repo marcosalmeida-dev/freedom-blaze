@@ -29,7 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Utils\" />
     <Folder Include="Properties\ServiceDependencies\" />
     <Folder Include="wwwroot\img\country-flag\" />
   </ItemGroup>

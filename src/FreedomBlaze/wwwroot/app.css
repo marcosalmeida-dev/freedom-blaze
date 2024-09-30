@@ -24,6 +24,51 @@
     --bs-nav-link-hover-color: var(--mud-palette-primary-darken) !important;
 }
 
+/* MudAppBar */
+
+.select-container {
+    display: flex;
+    align-items: center;
+    min-width: calc(10% + 20px); /* Adjust based on your preference */
+}
+
+    .select-container select {
+        flex: 1;
+    }
+
+    .select-container .mud-select-input {
+        color: white !important;
+    }
+/* Custom switch label style for small screens */
+.toggle-switch .mud-switch-label {
+    content: "L/D"; /* Default text for smaller screens */
+}
+
+/* Hide app name and adjust layout for small screens */
+@media (max-width: 600px) {
+    .app-name {
+        display: none; /* Hide app name on small screens */
+    }
+
+    .app-icon {
+        display: inline-block; /* Show only the app logo */
+    }
+
+    /* Adjust switch label */
+    .toggle-switch .mud-switch-label {
+        content: "L/D"; /* Change label to 'L/D' on small screens */
+    }
+
+    /* Move switch under select */
+    .select-container {
+        flex-direction: column;
+    }
+
+    .toggle-switch {
+        margin-top: 10px;
+    }
+}
+
 /* Payment Box */
 .payment-box {
     --qr-size: 256px;
