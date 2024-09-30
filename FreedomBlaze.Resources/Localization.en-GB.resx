@@ -141,4 +141,16 @@
   <data name="About.Title">
     <value>About Freedom Blaze</value>
   </data>
+  <data name="Contact.SendButtonText">
+    <value>Send</value>
+  </data>
+  <data name="Contact.Description">
+    <value>Send us a message or suggestion</value>
+  </data>
+  <data name="Contact.Title">
+    <value>Contact</value>
+  </data>
+  <data name="SatsConverter.ConvertButtonText">
+    <value>Convert</value>
+  </data>
 </root>

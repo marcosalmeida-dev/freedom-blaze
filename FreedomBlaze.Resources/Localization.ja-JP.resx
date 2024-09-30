@@ -141,4 +141,16 @@
   <data name="About.Title">
     <value>Freedom Blazeについて</value>
   </data>
+  <data name="Contact.SendButtonText">
+    <value>送信</value>
+  </data>
+  <data name="Contact.Description">
+    <value>メッセージや提案をお送りください</value>
+  </data>
+  <data name="Contact.Title">
+    <value>コンタクト</value>
+  </data>
+  <data name="SatsConverter.ConvertButtonText">
+    <value>変換</value>
+  </data>
 </root>

@@ -141,4 +141,16 @@
   <data name="About.Title">
     <value>Sobre o Freedom Blaze</value>
   </data>
+  <data name="Contact.SendButtonText">
+    <value>Enviar</value>
+  </data>
+  <data name="Contact.Description">
+    <value>Envie-nos uma mensagem ou sugestão</value>
+  </data>
+  <data name="Contact.Title">
+    <value>Contato</value>
+  </data>
+  <data name="SatsConverter.ConvertButtonText">
+    <value>Converter</value>
+  </data>
 </root>

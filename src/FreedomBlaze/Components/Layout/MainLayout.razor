@@ -1,4 +1,8 @@
-﻿@inherits LayoutComponentBase
+﻿@using FreedomBlaze.Models
+@using FreedomBlaze.Services
+@using Microsoft.AspNetCore.Localization
+@using System.Globalization
+@inherits LayoutComponentBase
 
 <MudThemeProvider @rendermode="InteractiveServer" @bind-IsDarkMode="@_isDarkMode" Theme="_theme" />
 <MudSnackbarProvider @rendermode="InteractiveServer" />
@@ -13,9 +17,24 @@
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
-        <MudText Typo="Typo.h5" Class="ml-3">Freedom Blaze</MudText>
+        <MudImage Src="/img/freedom-blaze-logo-3-4-small.png" Class="app-icon" Alt="Freedom Blaze logo" Height="40" Width="30" />
+        <MudText Typo="Typo.h5" Class="app-name ml-3">Freedom Blaze</MudText>
         <MudSpacer />
-        <MudSwitch @bind-Value="@IsDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" Class="ma-4" T="bool" Label="Toggle Light/Dark Mode" />
+
+        <div class="select-container">
+            <MudSelect T="string" Label="" @bind-Value="CultureService.CurrencyCultureName"
+                       AdornmentColor="Color.Primary" AnchorOrigin="Origin.BottomCenter" AdornmentIcon="@Icons.Material.Filled.Flag"
+                       Variant="Variant.Outlined">
+                @foreach (var currency in CurrencyModel.CurrencyListStatic)
+                {
+                    <MudSelectItem Value="@currency.CultureName" @key="@currency.CultureName">
+                        <img src="@currency.FlagSvgPath" height="14" class="mr-1" />
+                        @currency.Value (@currency.Symbol)
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+        <MudSwitch @bind-Value="@IsDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" Class="toggle-switch ma-4" T="bool" Label="Light/Dark" />
     </MudAppBar>
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Temporary">
         <NavMenu />
@@ -27,8 +46,16 @@
     </MudMainContent>
 </MudLayout>
 
+<style>
+   
+
+        
+</style>
 
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor ContextAccessor
+@inject CultureService CultureService
 
 @code {
     MudTheme _theme = new MudTheme()
@@ -73,6 +100,8 @@
     {
         if (firstRender)
         {
+            CultureService.OnCurrencyCultureChanged += (sender, args) => OnCurrencyChanged();
+
             var savedDarkMode = await JS.InvokeAsync<string>("cookieHelper.getCookie", DarkModeCookieName);
             if (!string.IsNullOrEmpty(savedDarkMode))
             {
@@ -80,6 +109,18 @@
                 StateHasChanged();
             }
         }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void OnCurrencyChanged()
+    {
+        var uri = new Uri(Navigation.Uri).GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
+        var uriEscaped = Uri.EscapeDataString(uri);
+
+        Navigation.NavigateTo(
+            $"Culture/Set?culture={CultureService.CurrencyCultureName}&redirectUri={uriEscaped}",
+            forceLoad: true);
     }
 
     void DrawerToggle()
@@ -92,4 +133,8 @@
         await JS.InvokeVoidAsync("cookieHelper.setCookie", DarkModeCookieName, _isDarkMode.ToString(), 365);
     }
 
+    public void Dispose()
+    {
+        CultureService.OnCurrencyCultureChanged -= (sender, args) => OnCurrencyChanged();
+    }
 }
