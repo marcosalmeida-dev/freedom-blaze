@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FreedomBlaze.Resources\FreedomBlaze.Resources.csproj" />
+    <ProjectReference Include="..\FreedomBlaze.Resources\FreedomBlaze.Resources.csproj" />
   </ItemGroup>
 
 </Project>
