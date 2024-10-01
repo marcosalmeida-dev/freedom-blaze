@@ -21,7 +21,7 @@ services:
   # Phoenixd service
   freedomblaze-phoenixd:
     build:
-      context: ./src/FreedomBlaze/Service # Path to the 'Service' directory where the Dockerfile is located
+      context: ./src/submodules/phoenixd.NET/Phoenixd.NET/.docker/phoenixd
       dockerfile: Dockerfile
     ports:
       - "9741:9740"
