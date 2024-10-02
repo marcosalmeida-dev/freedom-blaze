@@ -7,8 +7,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
-      - "8081:8081"
+      - "80:80"
     environment:
       - CurrencyExchangeRateApi=362b90fce089784d1e47ec2fa26117c1
       - PhoenixConfig__Token=d577516c9a9e96b4fa95a8e8b7180c3c4d392175fb2e55b01f5e5bc629b5aa29
