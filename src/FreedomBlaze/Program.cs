@@ -26,7 +26,7 @@ builder.Services.AddScoped(sp =>
     //var navigationManager = sp.GetRequiredService<NavigationManager>();
     return new HttpClient
     {
-        BaseAddress = new Uri("https://localhost:44379/") 
+        BaseAddress = new Uri(builder.Configuration["BaseUrl"]) 
     };
 });
 
@@ -81,9 +81,13 @@ else
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 
-    //builder.Configuration.AddAzureKeyVault(
-    //    new Uri($"https://{builder.Configuration["KeyVaultName"]}.vault.azure.net/"),
-    //    new DefaultAzureCredential());
+    var useKeyVault = builder.Configuration.GetValue<bool?>("UseKeyVault");
+    if (useKeyVault.HasValue && useKeyVault == true)
+    {
+        builder.Configuration.AddAzureKeyVault(
+            new Uri($"https://{builder.Configuration["KeyVaultName"]}.vault.azure.net/"),
+            new DefaultAzureCredential());
+    }
 }
 
 app.UseHttpsRedirection();
