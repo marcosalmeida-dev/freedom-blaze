@@ -32,9 +32,6 @@ public class CurrencyModel
     public static List<Currency> BuildCurrencyList(string currentCultureName = null)
     {
         return new List<Currency>(CurrencyListStatic);
-        //var resultList = new List<Currency>(CurrencyListStatic);
-
-        //return resultList != null ? resultList.OrderByDescending(ob => ob.CultureName == currentCultureName).ThenBy(ob => ob.Name).ToList() : resultList;
     }
 }
 
