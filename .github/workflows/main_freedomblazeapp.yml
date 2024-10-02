@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repository with submodules
         uses: actions/checkout@v4
         with:
-          submodules: true # Ensure submodules are initialized and updated
+          submodules: true
 
       # Initialize submodules
       - name: Initialize submodules
@@ -35,23 +35,24 @@ jobs:
           docker compose -f docker-compose.yml build
           docker compose -f docker-compose.yml push
 
-      # Log in to Azure using client secret authentication
+      # Set up Python 64-bit
+      - name: Set up Python 64-bit
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          architecture: 'x64'
+
+      # Log in to Azure
       - name: Log in to Azure
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Deploy to Azure App Service using Docker Compose
-      - name: Deploy to Azure App Service using Docker Compose
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'freedomblazeapp'
-          slot-name: 'Production'
-          images: |
-            freedomblaze:${{ github.sha }}
-            phoenixd:${{ github.sha }}
-          docker-compose: ./docker-compose.yml
-          
-permissions:
-  id-token: write # This allows the workflow to request OIDC tokens for authentication
-  contents: read
+      # Deploy Docker Compose to Azure Web App for Containers using Azure CLI
+      - name: Deploy Docker Compose to Azure Web App
+        run: |
+          az webapp config container set \
+            --resource-group <your-resource-group> \
+            --name freedomblazeapp \
+            --multicontainer-config-type compose \
+            --multicontainer-config-file docker-compose.yml
