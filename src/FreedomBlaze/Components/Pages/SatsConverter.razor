@@ -161,7 +161,7 @@
 
     async Task HandleCultureInfo()
     {
-        var localizationValue = ContextAccessor.HttpContext.Features.Get<IRequestCultureFeature>().RequestCulture.Culture.Name;
+        var localizationValue = ContextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
         if (!string.IsNullOrEmpty(localizationValue))
         {
             currencyValue = 0;
