@@ -179,7 +179,7 @@
 
     void HandleCurrencyList(BitcoinExchangeRateModel currencyRatesResult, string currencyCultureName)
     {
-        CurrencyList = CurrencyModel.BuildCurrencyList(currencyCultureName);
+        CurrencyList = CurrencyModel.BuildCurrencyList();
 
         var currentCurrency = CurrencyList.FirstOrDefault(f => f.CultureName == currencyCultureName);
 

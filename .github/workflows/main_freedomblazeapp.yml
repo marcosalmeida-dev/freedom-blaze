@@ -1,4 +1,4 @@
-name: Build and deploy ASP.Net Core app to Azure Web App - freedomblazeapp
+name: Build and deploy Docker Compose to Azure
 
 on:
   push:
@@ -8,59 +8,42 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
+      # Checkout the repository
       - uses: actions/checkout@v4
-        with:
-          submodules: true # Ensure submodules are initialized
 
-      - name: Initialize submodules
-        run: git submodule update --init --recursive
+      # Log in to Docker Hub (if necessary for your Docker image)
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      - name: Set up .NET Core
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.x'
+      # Set up Docker Buildx for multi-platform builds (if necessary)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      # Build the Docker images and push to a container registry (Azure Container Registry or Docker Hub)
+      - name: Build and Push Docker Compose
+        run: |
+          docker compose -f docker-compose.yml build
+          docker compose -f docker-compose.yml push
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
-
-  deploy:
-    runs-on: windows-latest
-    needs: build
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    permissions:
-      id-token: write # This is required for requesting the JWT
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: .net-app
-      
-      - name: Login to Azure
+      # Log in to Azure using GitHub secrets for Azure credentials
+      - name: Log in to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_F46388D1DC474568B5F68D07194507E2 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_EA6068DD4F3E4F8B9CF888EB692E58CA }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_ED8103F48A7C45EF89E1300DB7455C25 }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
+      # Deploy to Azure App Service using Docker Compose
+      - name: Deploy to Azure App Service using Docker Compose
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'freedomblazeapp'
           slot-name: 'Production'
-          package: .
+          images: |
+            freedomblaze:${{ github.sha }}
+            phoenixd:${{ github.sha }}
+          docker-compose: ./docker-compose.yml
