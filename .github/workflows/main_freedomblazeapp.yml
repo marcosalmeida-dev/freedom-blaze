@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository including submodules
+      # Checkout repository including submodules
       - name: Checkout repository with submodules
         uses: actions/checkout@v4
         with:
           submodules: true # Ensure submodules are initialized and updated
 
-      # Initialize and update submodules
+      # Initialize submodules
       - name: Initialize submodules
         run: git submodule update --init --recursive
 
@@ -35,14 +35,11 @@ jobs:
           docker compose -f docker-compose.yml build
           docker compose -f docker-compose.yml push
 
-      # Log in to Azure
+      # Log in to Azure using client secret authentication
       - name: Log in to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # Deploy to Azure App Service using Docker Compose
       - name: Deploy to Azure App Service using Docker Compose
@@ -54,3 +51,7 @@ jobs:
             freedomblaze:${{ github.sha }}
             phoenixd:${{ github.sha }}
           docker-compose: ./docker-compose.yml
+          
+permissions:
+  id-token: write # This allows the workflow to request OIDC tokens for authentication
+  contents: read
