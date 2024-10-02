@@ -63,10 +63,10 @@ builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddApplicationInsightsTelemetry();
 
+builder.Services.ConfigurePhoenixdServices(builder.Configuration);
+
 Logger.InitializeDefaults(Path.Combine(AppContext.BaseDirectory, "Logs", "Logs.txt"));
 Logger.LogSoftwareStarted("Freedom Blaze App");
-
-//builder.Services.ConfigurePhoenixdServices(builder.Configuration);
 
 var app = builder.Build();
 
@@ -113,6 +113,6 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(FreedomBlaze.Client._Imports).Assembly);
 
-//app.MapHub<PaymentHub>("/paymentHub");
+app.MapHub<PaymentHub>("/paymentHub");
 
 app.Run();
