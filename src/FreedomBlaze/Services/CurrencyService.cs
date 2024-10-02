@@ -8,7 +8,7 @@ public class CultureService
     public CultureInfo CurrentCulture;
     public CultureService(IHttpContextAccessor contextAccessor)
     {
-        var localizationValue = contextAccessor.HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
+        var localizationValue = contextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
         if (!string.IsNullOrEmpty(localizationValue))
         {
             CurrentCulture = new CultureInfo(localizationValue);
