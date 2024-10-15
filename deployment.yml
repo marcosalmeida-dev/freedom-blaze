@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: freedomblaze-app
+spec:
+  serviceName: "freedomblaze-service"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: freedomblaze-app
+  template:
+    metadata:
+      labels:
+        app: freedomblaze-app
+    spec:
+      containers:
+      - name: freedomblaze
+        image: freedomblazecontainerregistry.azurecr.io/freedomblaze:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "500m"
+          limits:
+            memory: "256Mi"
+            cpu: "1000m"
+        env:
+        - name: CurrencyExchangeRateApi
+          value: "362b90fce089784d1e47ec2fa26117c1"
+        - name: PhoenixConfig__Token
+          value: "xxxxxx"
+        - name: PhoenixConfig__Host
+          value: "phoenixd-service:9740"
+        - name: PhoenixConfig__Username
+          value: "phoenix"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: phoenixd-app
+spec:
+  serviceName: "phoenixd-service"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: phoenixd-app
+  template:
+    metadata:
+      labels:
+        app: phoenixd-app
+    spec:
+      containers:
+      - name: phoenixd
+        image: freedomblazecontainerregistry.azurecr.io/phoenixd:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "500m"
+          limits:
+            memory: "256Mi"
+            cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: freedomblaze-service
+spec:
+  selector:
+    app: freedomblaze-app
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phoenixd-service
+spec:
+  selector:
+    app: phoenixd-app
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: LoadBalancer

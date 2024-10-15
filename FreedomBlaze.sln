@@ -29,6 +29,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Phoenixd.NET.Tests", "src\s
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FreedomBlaze.Resources", "src\FreedomBlaze.Resources\FreedomBlaze.Resources.csproj", "{D9C13D00-C431-4CD4-8F5E-0FFD086D3BFF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FreedomBlaze.AppHost", "src\FreedomBlaze.AppHost\FreedomBlaze.AppHost.csproj", "{F9F0EFCB-38F5-4E68-97E5-3E487FAAD2D9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FreedomBlaze.ServiceDefaults", "src\FreedomBlaze.ServiceDefaults\FreedomBlaze.ServiceDefaults.csproj", "{4F7B460C-ECEE-4EB8-BD61-8019064546DC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +59,14 @@ Global
 		{D9C13D00-C431-4CD4-8F5E-0FFD086D3BFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D9C13D00-C431-4CD4-8F5E-0FFD086D3BFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D9C13D00-C431-4CD4-8F5E-0FFD086D3BFF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9F0EFCB-38F5-4E68-97E5-3E487FAAD2D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9F0EFCB-38F5-4E68-97E5-3E487FAAD2D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9F0EFCB-38F5-4E68-97E5-3E487FAAD2D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9F0EFCB-38F5-4E68-97E5-3E487FAAD2D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4F7B460C-ECEE-4EB8-BD61-8019064546DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4F7B460C-ECEE-4EB8-BD61-8019064546DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4F7B460C-ECEE-4EB8-BD61-8019064546DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4F7B460C-ECEE-4EB8-BD61-8019064546DC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

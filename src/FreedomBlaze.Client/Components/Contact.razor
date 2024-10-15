@@ -3,6 +3,7 @@
 
 @using System.ComponentModel.DataAnnotations
 @using FreedomBlaze.Client.Helpers
+@using FreedomBlaze.Client.Services
 @using Microsoft.Extensions.Localization
 
 @inject IStringLocalizer<Resources.Localization> Localizer
@@ -36,13 +37,14 @@
 
 @inject HttpClient Http
 @inject ISnackbar Snackbar
+@inject ContactService ContactService
 
 @code {
     ContactForm model = new ContactForm();
 
     private async Task OnSubmit()
     {
-        var response = await Http.PostAsJsonAsync("api/contact/submit", model);
+        var response = await ContactService.AddCommentAsync(model);
         if (response.IsSuccessStatusCode)
         {
             Snackbar.SnackMessage("Message sent, thanks!", Defaults.Classes.Position.TopCenter, Severity.Success);
@@ -51,16 +53,5 @@
         {
             Snackbar.SnackMessage("Some error ocurred, sorry!", Defaults.Classes.Position.TopCenter, Severity.Error);
         }
-    }
-
-    public class ContactForm
-    {
-        [Required]
-        [StringLength(128, MinimumLength = 3, ErrorMessage = "Title length can't be more than 128, and minimum 3.")]
-        public string Title { get; set; }
-
-        [Required]
-        [StringLength(2048, MinimumLength = 3, ErrorMessage = "Title length can't be more than 2048, and minimum 3.")]
-        public string Description { get; set; }
     }
 }
