@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -121,22 +121,18 @@
     <value>Comprendiendo Satoshis (Sats) y Bitcoin</value>
   </data>
   <data name="SatsInfo.Body1" xml:space="preserve">
-    <value>Bitcoin es una moneda digital descentralizada, donde cada unidad se divide en fracciones más pequeñas llamadas Satoshis o 'Sats.' Un solo Satoshi, que lleva el nombre del enigmático creador de Bitcoin, Satoshi Nakamoto, es la unidad más pequeña de Bitcoin, equivalente a 0.00000001 BTC. Esto hace que 100 millones de Satoshis equivalgan a un Bitcoin.</value>
+    <value>Bitcoin es una moneda digital descentralizada, donde cada unidad se divide en fracciones m�s peque�as llamadas Satoshis o 'Sats.' Un solo Satoshi, que lleva el nombre del enigm�tico creador de Bitcoin, Satoshi Nakamoto, es la unidad m�s peque�a de Bitcoin, equivalente a 0.00000001 BTC. Esto hace que 100 millones de Satoshis equivalgan a un Bitcoin.</value>
   </data>
   <data name="SatsInfo.Body2" xml:space="preserve">
-    <value>Al dividir Bitcoin en estas pequeñas unidades, los usuarios pueden realizar microtransacciones y participar en la economía de Bitcoin con incluso las cantidades más pequeñas de valor.</value>
+    <value>Al dividir Bitcoin en estas peque�as unidades, los usuarios pueden realizar microtransacciones y participar en la econom�a de Bitcoin con incluso las cantidades m�s peque�as de valor.</value>
   </data>
   <data name="SatsConverter.Title" xml:space="preserve">
     <value>Convertidor de Bitcoin Satoshis (SATS)</value>
   </data>
-  <data name="SatsConverter.Body1" xml:space="preserve">
-    <value>Seleccione su moneda y agregue el valor que desea convertir a unidades de satoshis de bitcoin.</value>
-  </data>
-  <data name="SatsConverter.Body2" xml:space="preserve">
-    <value>Puedes copiar los resultados de BTC y Sats tocando/haciendo clic sobre ellos.</value>
-  </data>
+  
+  
   <data name="About.Body1">
-    <value>Freedom Blaze es una aplicación revolucionaria diseñada para promover la independencia financiera y la libertad personal mediante el uso de Bitcoin, la primera moneda digital descentralizada del mundo. Nuestra misión es empoderar a las personas para que tomen el control total de sus finanzas, libres de las restricciones de los bancos tradicionales e instituciones centralizadas.</value>
+    <value>Freedom Blaze es una aplicaci�n revolucionaria dise�ada para promover la independencia financiera y la libertad personal mediante el uso de Bitcoin, la primera moneda digital descentralizada del mundo. Nuestra misi�n es empoderar a las personas para que tomen el control total de sus finanzas, libres de las restricciones de los bancos tradicionales e instituciones centralizadas.</value>
   </data>
   <data name="About.Title">
     <value>Acerca de Freedom Blaze</value>
@@ -145,12 +141,18 @@
     <value>Enviar</value>
   </data>
   <data name="Contact.Description">
-    <value>Envíanos un mensaje o sugerencia</value>
+    <value>Env�anos un mensaje o sugerencia</value>
   </data>
   <data name="Contact.Title">
     <value>Contacto</value>
   </data>
   <data name="SatsConverter.ConvertButtonText">
     <value>Convertir</value>
+  </data>
+  <data name="SatsConverter.Body1" xml:space="preserve">
+    <value>Selecciona tu región monetaria. Convierte moneda a sats y sats a moneda.</value>
+  </data>
+  <data name="SatsConverter.Body2" xml:space="preserve">
+    <value>Puedes copiar el resultado de BTC Sats/Moneda tocando o haciendo clic en el icono de copia o en el resultado del elemento de la tabla.</value>
   </data>
 </root>
