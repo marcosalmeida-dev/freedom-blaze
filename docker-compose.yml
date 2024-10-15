@@ -27,7 +27,7 @@ services:
     ports:
       - "9741:9740"
     volumes:
-      - freedomblaze-phoenixd-config:/root/.phoenix
+      - freedomblaze-phoenixd-config:/phoenix/.phoenix
     networks:
       - freedom-blaze-network
 

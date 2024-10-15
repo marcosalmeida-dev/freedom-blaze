@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\FreedomBlaze.Client\FreedomBlaze.Client.csproj" />
     <ProjectReference Include="..\FreedomBlaze.Resources\FreedomBlaze.Resources.csproj" />
+    <ProjectReference Include="..\FreedomBlaze.ServiceDefaults\FreedomBlaze.ServiceDefaults.csproj" />
     <ProjectReference Include="..\submodules\phoenixd.NET\Phoenixd.NET\Phoenixd.NET.csproj" />
     <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.3.2" />
     <PackageReference Include="Azure.Identity" Version="1.12.0" />

@@ -1,6 +1,5 @@
-using System.Net.Http.Headers;
-using System.Text;
 using Azure.Identity;
+using FreedomBlaze.Client.Services;
 using FreedomBlaze.Components;
 using FreedomBlaze.Infrastructure;
 using FreedomBlaze.Interfaces;
@@ -9,25 +8,21 @@ using FreedomBlaze.Models;
 using FreedomBlaze.Services;
 using FreedomBlaze.WebClients.BitcoinExchanges;
 using FreedomBlaze.WebClients.CurrencyExchanges;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.AspNetCore.DataProtection;
 using MudBlazor.Services;
 using Phoenixd.NET;
 using Phoenixd.NET.Hubs;
-using Phoenixd.NET.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 builder.Services.AddHttpClient();
-// For Blazor Client: Use AddScoped to inject the HttpClient with a dynamically set base address.
-builder.Services.AddScoped(sp =>
+// For Blazor Client: Use AddHttpClient to inject the HttpClient with a dynamically set base address.
+builder.Services.AddHttpClient<ContactService>(c =>
 {
-    //var navigationManager = sp.GetRequiredService<NavigationManager>();
-    return new HttpClient
-    {
-        BaseAddress = new Uri(builder.Configuration["BaseUrl"]) 
-    };
+    // Configure HttpClient with NavigationManager to set the base address dynamically
+    c.BaseAddress = new Uri(builder.Configuration["BaseUrl"]);
 });
 
 builder.Services.AddSingleton<IConfiguration>(provider => builder.Configuration);
@@ -69,6 +64,8 @@ Logger.InitializeDefaults(Path.Combine(AppContext.BaseDirectory, "Logs", "Logs.t
 Logger.LogSoftwareStarted("Freedom Blaze App");
 
 var app = builder.Build();
+
+app.MapDefaultEndpoints();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
