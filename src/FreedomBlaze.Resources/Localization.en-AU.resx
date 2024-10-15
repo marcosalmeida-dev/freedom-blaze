@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -124,19 +124,15 @@
     <value>Bitcoin is a decentralized digital currency, where each unit is divisible into smaller fractions called Satoshis, or 'Sats.' A single Satoshi, named after Bitcoin's enigmatic creator, Satoshi Nakamoto, is the smallest unit of Bitcoin, equating to 0.00000001 BTC. This makes 100 million Satoshis equal to one Bitcoin.</value>
   </data>
   <data name="SatsInfo.Body2" xml:space="preserve">
-    <value>By breaking Bitcoin into these tiny units, users can make microtransactions and participate in Bitcoin’s economy with even the smallest amounts of value.</value>
+    <value>By breaking Bitcoin into these tiny units, users can make microtransactions and participate in Bitcoin�s economy with even the smallest amounts of value.</value>
   </data>
   <data name="SatsConverter.Title" xml:space="preserve">
     <value>Bitcoin Satoshis (SATS) Converter</value>
   </data>
-  <data name="SatsConverter.Body1" xml:space="preserve">
-    <value>Select your currency and add the value you want to convert to bitcoin satoshis units.</value>
-  </data>
-  <data name="SatsConverter.Body2" xml:space="preserve">
-    <value>You can copy the BTC and Sats results by touching/clicking over it.</value>
-  </data>
+  
+  
   <data name="About.Body1">
-    <value>Freedom Blaze is a revolutionary app designed to promote financial independence and personal liberty through the use of Bitcoin, the world’s first decentralized digital currency. Our mission is to empower individuals to take full control of their finances, free from the constraints of traditional banking and centralized institutions.</value>
+    <value>Freedom Blaze is a revolutionary app designed to promote financial independence and personal liberty through the use of Bitcoin, the world�s first decentralized digital currency. Our mission is to empower individuals to take full control of their finances, free from the constraints of traditional banking and centralized institutions.</value>
   </data>
   <data name="About.Title">
     <value>About Freedom Blaze</value>
@@ -153,4 +149,10 @@
   <data name="SatsConverter.ConvertButtonText">
     <value>Convert</value>
   </data>
+<data name="SatsConverter.Body1" xml:space="preserve">
+    <value>Select your Currency Region. Convert currency to sats and sats to currency.</value>
+</data>
+<data name="SatsConverter.Body2" xml:space="preserve">
+    <value>You can copy the BTC Sats/Currency result by touching/clicking on copy icon or table item result.</value>
+</data>
 </root>

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -129,14 +129,10 @@
   <data name="SatsConverter.Title" xml:space="preserve">
     <value>Bitcoin Satoshis (SATS) Omskakelaar</value>
   </data>
-  <data name="SatsConverter.Body1" xml:space="preserve">
-    <value>Kies jou geldeenheid en voeg die waarde by wat jy wil omskakel na bitcoin satoshi-eenhede.</value>
-  </data>
-  <data name="SatsConverter.Body2" xml:space="preserve">
-    <value>U kan die BTC en Sats resultate kopieer deur daarop te klik/raak.</value>
-  </data>
+
+
   <data name="About.Body1">
-    <value>Freedom Blaze is ’n revolusionêre app ontwerp om finansiële onafhanklikheid en persoonlike vryheid te bevorder deur middel van Bitcoin, die wêreld se eerste gedesentraliseerde digitale geldeenheid. Ons missie is om individue in staat te stel om volle beheer oor hul finansies te neem, vry van die beperkings van tradisionele bankwese en gesentraliseerde instellings.</value>
+    <value>Freedom Blaze is �n revolusion�re app ontwerp om finansi�le onafhanklikheid en persoonlike vryheid te bevorder deur middel van Bitcoin, die w�reld se eerste gedesentraliseerde digitale geldeenheid. Ons missie is om individue in staat te stel om volle beheer oor hul finansies te neem, vry van die beperkings van tradisionele bankwese en gesentraliseerde instellings.</value>
   </data>
   <data name="About.Title">
     <value>Oor Freedom Blaze</value>
@@ -152,5 +148,11 @@
   </data>
   <data name="SatsConverter.ConvertButtonText">
     <value>Omset</value>
+  </data>
+  <data name="SatsConverter.Body1" xml:space="preserve">
+    <value>Kies jou geldeenheidsstreek. Skakel geldeenheid na sats en sats na geldeenheid.</value>
+  </data>
+    <data name="SatsConverter.Body2" xml:space="preserve">
+      <value>Jy kan die BTC Sats/Geldeenheidresultaat kopieer deur op die kopieer-ikoon of tabelitemresultaat te tik/klik.</value>
   </data>
 </root>
