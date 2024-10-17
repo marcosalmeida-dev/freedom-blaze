@@ -479,3 +479,4 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 /src/FreedomBlaze/appsettings.Development.json
+/src/FreedomBlaze.AppHost/appsettings.Development.json
