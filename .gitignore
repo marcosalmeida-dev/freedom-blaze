@@ -483,3 +483,8 @@ $RECYCLE.BIN/
 /src/FreedomBlaze.AppHost/freedomblaze-phoenixd-config/phoenix.conf
 /src/FreedomBlaze.AppHost/freedomblaze-phoenixd-config/seed.dat
 /src/FreedomBlaze.AppHost/freedomblaze-phoenixd-config/phoenix.mainnet.022639.db
+/src/FreedomBlaze.AppHost/infra/freedomblaze-phoenixd.tmpl.yaml
+/src/FreedomBlaze.AppHost/infra/freedomblaze.tmpl.yaml
+/src/FreedomBlaze.AppHost/infra/main.bicep
+/src/FreedomBlaze.AppHost/infra/main.parameters.json
+/src/FreedomBlaze.AppHost/infra/resources.bicep
