@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 *.swp
 /src/FreedomBlaze/appsettings.Development.json
 /src/FreedomBlaze.AppHost/appsettings.Development.json
+/src/FreedomBlaze.AppHost/freedomblaze-phoenixd-config/phoenix.conf
+/src/FreedomBlaze.AppHost/freedomblaze-phoenixd-config/seed.dat
+/src/FreedomBlaze.AppHost/freedomblaze-phoenixd-config/phoenix.mainnet.022639.db
