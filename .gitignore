@@ -488,3 +488,5 @@ $RECYCLE.BIN/
 /src/FreedomBlaze.AppHost/infra/main.bicep
 /src/FreedomBlaze.AppHost/infra/main.parameters.json
 /src/FreedomBlaze.AppHost/infra/resources.bicep
+/src/FreedomBlaze.AppHost/aspire-manifest.json
+/src/FreedomBlaze.AppHost/azure.yaml
