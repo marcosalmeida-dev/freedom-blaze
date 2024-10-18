@@ -46,8 +46,6 @@ public class Currency
 
     public double CurrencyRateInUSD { get; set; }
     public double BitcoinPrice { get; set; }
-
-    //public string BitcoinInFiat { get; set; }
     public double CurrencyValueInCurrency { get; set; }
     public double SatoshisInFiat { get; set; }
 

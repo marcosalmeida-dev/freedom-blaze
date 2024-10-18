@@ -19,9 +19,9 @@ public class BlockchainInfoExchangeRateProvider : IExchangeRateProvider
             {
                 BaseAddress = new Uri("https://blockchain.info")
             };
-            using var response = await httpClient.GetAsync("/ticker", cancellationToken).ConfigureAwait(false);
+            using var response = await httpClient.GetAsync("/ticker", cancellationToken);
             using var content = response.Content;
-            var rates = await content.ReadAsJsonAsync<BlockchainInfoExchangeRates>().ConfigureAwait(false);
+            var rates = await content.ReadAsJsonAsync<BlockchainInfoExchangeRates>();
 
             return new BitcoinExchangeRateModel { BitcoinRateInUSD = Math.Round(rates.USD.Sell, 0) };
         }

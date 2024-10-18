@@ -46,7 +46,7 @@ public static class IoHelpers
 			}
 			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 			{
-				await Task.Delay(millisecondsDelay).ConfigureAwait(false);
+				await Task.Delay(millisecondsDelay);
 			}
 		}
 

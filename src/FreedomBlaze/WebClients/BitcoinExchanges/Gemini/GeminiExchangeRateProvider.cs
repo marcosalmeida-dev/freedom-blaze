@@ -21,9 +21,9 @@ public class GeminiExchangeRateProvider : IExchangeRateProvider
             {
                 BaseAddress = new Uri("https://api.gemini.com")
             };
-            using var response = await httpClient.GetAsync("/v1/pubticker/btcusd", cancellationToken).ConfigureAwait(false);
+            using var response = await httpClient.GetAsync("/v1/pubticker/btcusd", cancellationToken);
             using var content = response.Content;
-            var data = await content.ReadAsJsonAsync<GeminiExchangeRateInfo>().ConfigureAwait(false);
+            var data = await content.ReadAsJsonAsync<GeminiExchangeRateInfo>();
 
             return new BitcoinExchangeRateModel { BitcoinRateInUSD = double.Parse(data.Bid.ToRemoveDecimalCase()) };
         }
