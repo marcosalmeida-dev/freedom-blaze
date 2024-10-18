@@ -17,9 +17,9 @@ public class BitstampExchangeRateProvider : IExchangeRateProvider
             {
                 BaseAddress = new Uri("https://www.bitstamp.net")
             };
-            using var response = await httpClient.GetAsync("api/v2/ticker/btcusd", cancellationToken).ConfigureAwait(false);
+            using var response = await httpClient.GetAsync("api/v2/ticker/btcusd", cancellationToken);
             using var content = response.Content;
-            var rate = await content.ReadAsJsonAsync<BitstampExchangeRate>().ConfigureAwait(false);
+            var rate = await content.ReadAsJsonAsync<BitstampExchangeRate>();
 
             return new BitcoinExchangeRateModel { BitcoinRateInUSD = double.Parse(rate.Rate) };
         }

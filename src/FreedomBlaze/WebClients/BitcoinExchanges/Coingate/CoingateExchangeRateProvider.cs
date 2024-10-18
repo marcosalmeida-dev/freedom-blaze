@@ -21,7 +21,7 @@ public class CoingateExchangeRateProvider : IExchangeRateProvider
                 BaseAddress = new Uri("https://api.coingate.com")
             };
             var response = await httpClient.GetStringAsync("/v2/rates/merchant/BTC/USD", cancellationToken)
-                .ConfigureAwait(false);
+                ;
 
             return new BitcoinExchangeRateModel { BitcoinRateInUSD = double.Parse(response.ToRemoveDecimalCase()) };
         }

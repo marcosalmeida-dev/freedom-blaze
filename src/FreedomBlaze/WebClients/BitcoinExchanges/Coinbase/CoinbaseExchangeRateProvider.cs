@@ -22,9 +22,9 @@ public class CoinbaseExchangeRateProvider : IExchangeRateProvider
             {
                 BaseAddress = new Uri("https://api.coinbase.com")
             };
-            using var response = await httpClient.GetAsync("/v2/exchange-rates?currency=BTC", cancellationToken).ConfigureAwait(false);
+            using var response = await httpClient.GetAsync("/v2/exchange-rates?currency=BTC", cancellationToken);
             using var content = response.Content;
-            var wrapper = await content.ReadAsJsonAsync<DataWrapper>().ConfigureAwait(false);
+            var wrapper = await content.ReadAsJsonAsync<DataWrapper>();
 
             return new BitcoinExchangeRateModel { BitcoinRateInUSD = double.Parse(wrapper.Data.Rates.USD.ToRemoveDecimalCase()) };
         }

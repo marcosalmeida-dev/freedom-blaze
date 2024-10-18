@@ -1,6 +1,7 @@
 ﻿using FreedomBlaze.Http.Extensions;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
+using System.Net;
 using System.Text.Json.Serialization;
 
 namespace FreedomBlaze.WebClients.CurrencyExchanges.ExchangeRateApi
@@ -14,35 +15,23 @@ namespace FreedomBlaze.WebClients.CurrencyExchanges.ExchangeRateApi
         }
         public async Task<CurrencyExchangeRateModel> GetCurrencyRate(CancellationToken cancellationToken)
         {
-            //using var httpClient = new HttpClient
-            //{
-            //    BaseAddress = new Uri("http://api.exchangeratesapi.io")
-            //};
-            //using var response = await httpClient.GetAsync($"v1/latest?access_key={_apiKey}&symbols=USD,EUR,GBP,CHF,AUD,JPY,ZAR,ARS,BRL", cancellationToken).ConfigureAwait(false);
-            //using var content = response.Content;
-            //var currencyRates = await content.ReadAsJsonAsync<CurrencyExchangeApiModel>().ConfigureAwait(false);
-
-            //TODO: Remove this hardcoded response and implement the real API call after tests...
-            CurrencyExchangeApiModel currencyRates = new CurrencyExchangeApiModel()
+            if(_apiKey == null)
             {
-                Success = true,
-                Timestamp = 1620000000,
-                Base = "EUR",
-                Date = "2021-05-03",
-                Rates = new Rates()
-                {
-                    USD = 1.2m,
-                    EUR = 1,
-                    GBP = 0.8m,
-                    CHF = 1.1m,
-                    AUD = 1.5m,
-                    JPY = 130m,
-                    ZAR = 20m,
-                    ARS = 100m,
-                    BRL = 6.0m
-                }
-            };
+                throw new ArgumentNullException("CurrencyExchangeRateApi key is missing in the configuration file");
+            }
 
+            using var httpClient = new HttpClient
+            {
+                BaseAddress = new Uri("https://api.exchangeratesapi.io")
+            };
+            using var response = await httpClient.GetAsync($"v1/latest?access_key={_apiKey}&symbols=USD,EUR,GBP,CHF,AUD,JPY,ZAR,ARS,BRL", cancellationToken);
+            using var content = response.Content;
+            if(response.StatusCode != HttpStatusCode.OK)
+            {
+                throw new HttpRequestException($"Error getting currency exchange rates from the provider. API Key: {_apiKey}. Status code: {response.StatusCode}. Response content: {response.Content}");
+            }
+
+            var currencyRates = await content.ReadAsJsonAsync<CurrencyExchangeApiModel>();
             DateTime dateTime = DateTime.Now;
             DateTime.TryParse(currencyRates.Date, out dateTime);
             //The base rate for this provider is EUR, so we have to convert it to USD to calculate with the btc exchanges providers which default is USD

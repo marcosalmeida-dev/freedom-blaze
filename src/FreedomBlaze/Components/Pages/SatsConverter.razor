@@ -25,7 +25,7 @@
         </MudItem>
     </MudGrid>
     <MudGrid Class="mt-2">
-        <MudItem xs="12" sm="6" md="12" Class="d-flex justify-center">
+        <MudItem xs="12" sm="12" md="12" Class="d-flex justify-center">
             <MudStack>
                 <MudSelect id="currency" Label="Currency" Variant="Variant.Outlined" @bind-Value="CultureService.CurrencyCultureName" AdornmentColor="Color.Primary">
                     @foreach (var currency in CurrencyModel.CurrencyListStatic)
@@ -60,9 +60,9 @@
                 </MudButton>
             </MudStack>
         </MudItem>
-        <MudItem xs="12" sm="6" md="12" Class="d-flex justify-center">
+        <MudItem xs="12" sm="12" md="12" Class="d-flex justify-center">
             <MudPaper>
-                <MudDataGrid T="Currency" Items="@CurrencyList" RowStyleFunc="@_rowStyleFunc" Hover="true">
+                <MudDataGrid T="Currency" Items="@CurrencyList" RowStyleFunc="@_rowStyleFunc" ColumnResizeMode="ResizeMode.Column" Hover="true">
                     <Columns>
                         <PropertyColumn Title="Region" Property="x => x.Name">
                             <CellTemplate>
@@ -81,13 +81,13 @@
                                 }
                                 else
                                 {
-                                    <MudTooltip Text="COPY">
+                                    <MudTooltip Text="Copy BTC Price">
                                         <MudLink Color="Color.Secondary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", @context.Item.CultureInfo)</MudLink>
                                     </MudTooltip>
                                 }
                             </CellTemplate>
                         </PropertyColumn>
-                        <PropertyColumn Title="@currencyValueInCurrency" Property="x => x.CurrencyValueInCurrency">
+                        <PropertyColumn Title="@currencyValueInCurrencyLabel" Property="x => x.CurrencyValueInCurrency">
                             <CellTemplate>
                                 @if (context.Item.CurrencyValueInCurrency == 0)
                                 {
@@ -95,7 +95,7 @@
                                 }
                                 else
                                 {
-                                    <MudTooltip Text="COPY">
+                                    <MudTooltip Text="Copy Currency">
                                         <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", @context.Item.CultureInfo)</MudLink>
                                     </MudTooltip>
                                 }
@@ -123,18 +123,17 @@
 @code {
     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
-    private bool hasError;
-
     private List<Currency> CurrencyList = new List<Currency>();
     private Task<BitcoinExchangeRateModel> currencyRatesTask;
 
     public string currencyCultureName;
 
-    private double? currencyValue;
     private string currencyValueLabelName = "USD Value";
-    private string currencyValueInCurrency = "Value in Currency";
+    private string currencyValueInCurrencyLabel = "Value in Currency";
     private const string CurrencyCookieName = "currencyValueCookie";
 
+    private double? currencyValue;
+    private double? lastCurrencyValue;
     private double? satsValue;
 
     protected override async Task OnInitializedAsync()
@@ -204,12 +203,18 @@
 
         satsValue = CurrencyConverterHelper.ConvertToSats(currentCurrency.CurrencyValueInCurrency, currentCurrency.BitcoinPrice);
 
+        lastCurrencyValue = currencyValue;
         currencyValueLabelName = $"{currentCurrency.Value}";
-        currencyValueInCurrency = $"{currencyValue?.ToString("C", CultureService.CurrentCulture)} in Currency";
+        currencyValueInCurrencyLabel = $"{currencyValue?.ToString("C", CultureService.CurrentCulture)} in Currency";
     }
 
     async Task ConvertToBitcoin()
     {
+        if(currencyValue.HasValue && lastCurrencyValue.HasValue && currencyValue.Value == lastCurrencyValue.Value)
+        {
+            return;
+        }
+
         if (!currencyValue.HasValue || currencyValue.Value == 0)
         {
             SnackMessage("Insert a valid currency value!", Defaults.Classes.Position.BottomCenter, Severity.Warning);

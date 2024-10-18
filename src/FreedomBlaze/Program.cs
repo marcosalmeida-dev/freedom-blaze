@@ -60,8 +60,8 @@ builder.Services.AddApplicationInsightsTelemetry();
 
 builder.Services.ConfigurePhoenixdServices(builder.Configuration);
 
-Logger.InitializeDefaults(Path.Combine(AppContext.BaseDirectory, "Logs", "Logs.txt"));
-Logger.LogSoftwareStarted("Freedom Blaze App");
+//Logger.InitializeDefaults(Path.Combine(AppContext.BaseDirectory, "Logs", "Logs.txt"));
+//Logger.LogSoftwareStarted("Freedom Blaze App");
 
 var app = builder.Build();
 
