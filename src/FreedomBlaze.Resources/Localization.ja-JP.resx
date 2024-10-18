@@ -1,64 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-  <!-- 
-    Microsoft ResX Schema 
-    
-    Version 2.0
-    
-    The primary goals of this format is to allow a simple XML format 
-    that is mostly human readable. The generation and parsing of the 
-    various data types are done through the TypeConverter classes 
-    associated with the data types.
-    
-    Example:
-    
-    ... ado.net/XML headers & schema ...
-    <resheader name="resmimetype">text/microsoft-resx</resheader>
-    <resheader name="version">2.0</resheader>
-    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
-    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
-    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
-    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
-    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
-        <value>[base64 mime encoded serialized .NET Framework object]</value>
-    </data>
-    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
-        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
-        <comment>This is a comment</comment>
-    </data>
-                
-    There are any number of "resheader" rows that contain simple 
-    name/value pairs.
-    
-    Each data row contains a name, and value. The row also contains a 
-    type or mimetype. Type corresponds to a .NET class that support 
-    text/value conversion through the TypeConverter architecture. 
-    Classes that don't support this are serialized and stored with the 
-    mimetype set.
-    
-    The mimetype is used for serialized objects, and tells the 
-    ResXResourceReader how to depersist the object. This is currently not 
-    extensible. For a given mimetype the value must be set accordingly:
-    
-    Note - application/x-microsoft.net.object.binary.base64 is the format 
-    that the ResXResourceWriter will generate, however the reader can 
-    read any of the formats listed below.
-    
-    mimetype: application/x-microsoft.net.object.binary.base64
-    value   : The object must be serialized with 
-            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
-            : and then encoded with base64 encoding.
-    
-    mimetype: application/x-microsoft.net.object.soap.base64
-    value   : The object must be serialized with 
-            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
-            : and then encoded with base64 encoding.
-
-    mimetype: application/x-microsoft.net.object.bytearray.base64
-    value   : The object must be serialized into a byte array 
-            : using a System.ComponentModel.TypeConverter
-            : and then encoded with base64 encoding.
-    -->
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -117,42 +58,52 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  
   <data name="SatsInfo.Title" xml:space="preserve">
-    <value>???(Sats)??????????</value>
+    <value>サトシ (Sats) とビットコインの理解</value>
   </data>
+  
   <data name="SatsInfo.Body1" xml:space="preserve">
-    <value>???????????????Sats?????????????????????????????????????????????????????�????????????????????????????? 1 ???? 0.00000001 BTC ?????1 ??????? 1 ???????????</value>
+    <value>ビットコインは分散型デジタル通貨であり、各単位は「サトシ」または「Sats」と呼ばれる小さな分数に分割できます。 ビットコインの謎の創設者であるサトシ・ナカモトにちなんで名付けられた単一のサトシは、ビットコインの最小単位であり、0.00000001 BTC に相当します。 これにより、1億サトシは1ビットコインに相当します。</value>
   </data>
+  
   <data name="SatsInfo.Body2" xml:space="preserve">
-    <value>???????????????????????????????????????????????????????????????????</value>
+    <value>ビットコインをこれらの小さな単位に分割することで、ユーザーはマイクロトランザクションを行い、わずかな金額でもビットコインの経済に参加できます。</value>
   </data>
+  
   <data name="SatsConverter.Title" xml:space="preserve">
-    <value>?????????(SATS)??????</value>
+    <value>ビットコインサトシ (SATS) 変換ツール</value>
   </data>
-
 
   <data name="About.Body1">
-    <value>Freedom Blaze????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????</value>
+    <value>Freedom Blaze は、世界初の分散型デジタル通貨であるビットコインを使用して、経済的独立と個人的自由を促進するために設計された革命的なアプリです。 私たちの使命は、個人が従来の銀行や中央集権的な機関の制約から解放され、財務を完全に管理できるようにすることです。</value>
   </data>
+  
   <data name="About.Title">
-    <value>Freedom Blaze????</value>
+    <value>Freedom Blaze について</value>
   </data>
+  
   <data name="Contact.SendButtonText">
-    <value>??</value>
+    <value>送信</value>
   </data>
+  
   <data name="Contact.Description">
-    <value>????????????????</value>
+    <value>メッセージや提案をお送りください</value>
   </data>
+  
   <data name="Contact.Title">
-    <value>?????</value>
+    <value>お問い合わせ</value>
   </data>
+  
   <data name="SatsConverter.ConvertButtonText">
-    <value>??</value>
+    <value>変換</value>
   </data>
+
   <data name="SatsConverter.Body1" xml:space="preserve">
-      <value>通貨地域を選択してください。通貨をサトシに、サトシを通貨に変換します。</value>
+    <value>通貨地域を選択してください。 通貨をサトシに、またはサトシを通貨に変換します。</value>
   </data>
+  
   <data name="SatsConverter.Body2" xml:space="preserve">
-      <value>コピーアイコンやテーブルアイテムの結果をタッチ/クリックすることで、BTCサトシ/通貨の結果をコピーできます。</value>
+    <value>コピー アイコンまたはテーブル項目をタッチ/クリックして、BTC Sats/通貨の結果をコピーできます。</value>
   </data>
 </root>
