@@ -2,9 +2,7 @@
 <root>
   <!-- 
     Microsoft ResX Schema 
-    
     Version 2.0
-    
     The primary goals of this format is to allow a simple XML format 
     that is mostly human readable. The generation and parsing of the 
     various data types are done through the TypeConverter classes 
@@ -121,18 +119,16 @@
     <value>Compreendendo Satoshis (Sats) e Bitcoin</value>
   </data>
   <data name="SatsInfo.Body1" xml:space="preserve">
-    <value>Bitcoin � uma moeda digital descentralizada, onde cada unidade � divis�vel em fra��es menores chamadas Satoshis ou 'Sats.' Um �nico Satoshi, nomeado em homenagem ao criador enigm�tico do Bitcoin, Satoshi Nakamoto, � a menor unidade de Bitcoin, equivalente a 0.00000001 BTC. Isso faz com que 100 milh�es de Satoshis equivalham a um Bitcoin.</value>
+    <value>Bitcoin é uma moeda digital descentralizada, onde cada unidade é divisível em frações menores chamadas Satoshis ou 'Sats.' Um único Satoshi, nomeado em homenagem ao criador enigmático do Bitcoin, Satoshi Nakamoto, é a menor unidade de Bitcoin, equivalente a 0.00000001 BTC. Isso faz com que 100 milhões de Satoshis equivalham a um Bitcoin.</value>
   </data>
   <data name="SatsInfo.Body2" xml:space="preserve">
-    <value>Ao dividir o Bitcoin nessas pequenas unidades, os usu�rios podem fazer microtransa��es e participar da economia do Bitcoin, mesmo com pequenas quantidades de valor.</value>
+    <value>Ao dividir o Bitcoin nessas pequenas unidades, os usuários podem fazer microtransações e participar da economia do Bitcoin, mesmo com pequenas quantidades de valor.</value>
   </data>
   <data name="SatsConverter.Title" xml:space="preserve">
     <value>Conversor de Bitcoin Satoshis (SATS)</value>
   </data>
-  
-  
   <data name="About.Body1">
-    <value>Freedom Blaze � um aplicativo revolucion�rio projetado para promover a independ�ncia financeira e a liberdade pessoal atrav�s do uso do Bitcoin, a primeira moeda digital descentralizada do mundo. Nossa miss�o � capacitar os indiv�duos a terem controle total sobre suas finan�as, livres das restri��es dos bancos tradicionais e das institui��es centralizadas.</value>
+    <value>Freedom Blaze é um aplicativo revolucionário projetado para promover a independência financeira e a liberdade pessoal através do uso do Bitcoin, a primeira moeda digital descentralizada do mundo. Nossa missão é capacitar os indivíduos a terem controle total sobre suas finanças, livres das restrições dos bancos tradicionais e das instituições centralizadas.</value>
   </data>
   <data name="About.Title">
     <value>Sobre o Freedom Blaze</value>
@@ -141,7 +137,7 @@
     <value>Enviar</value>
   </data>
   <data name="Contact.Description">
-    <value>Envie-nos uma mensagem ou sugest�o</value>
+    <value>Envie-nos uma mensagem ou sugestão</value>
   </data>
   <data name="Contact.Title">
     <value>Contato</value>
@@ -149,10 +145,10 @@
   <data name="SatsConverter.ConvertButtonText">
     <value>Converter</value>
   </data>
-<data name="SatsConverter.Body1" xml:space="preserve">
+  <data name="SatsConverter.Body1" xml:space="preserve">
     <value>Selecione sua região monetária. Converta moeda para sats e sats para moeda.</value>
-</data>
-<data name="SatsConverter.Body2" xml:space="preserve">
+  </data>
+  <data name="SatsConverter.Body2" xml:space="preserve">
     <value>Você pode copiar o resultado de BTC Sats/Moeda tocando/clicando no ícone de cópia ou no item da tabela.</value>
-</data>
+  </data>
 </root>
