@@ -25,19 +25,21 @@
 }
 
 /* MudAppBar */
-
 .select-container {
     display: flex;
     align-items: center;
-    min-width: calc(10% + 20px); /* Adjust based on your preference */
+    min-width: calc(7% + 20px); /* Adjust based on your preference */
 }
-
     .select-container select {
         flex: 1;
     }
 
     .select-container .mud-select-input {
         color: white !important;
+    }
+
+    .select-container .mud-input.mud-input-outlined .mud-input-outlined-border {
+        border-color: black !important;
     }
 /* Custom switch label style for small screens */
 .toggle-switch .mud-switch-label {
