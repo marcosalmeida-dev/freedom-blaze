@@ -4,7 +4,11 @@
 
 @inject IStringLocalizer<Resources.Localization> Localizer
 
-<MudContainer Class="mt-18">
+<MudContainer Class="mt-12">
+
+    <MudPaper Class="d-flex justify-center flex-grow-1 gap-4 mt-6" Elevation="0">
+        <MudImage Src="/img/freedom-blaze-logo-3-4-small.png" Height="183" Width="137" Alt="Freedom Blaze image" Elevation="0" />
+    </MudPaper>
 
     <MudText Typo="Typo.h4" Align="Align.Center" GutterBottom="true">
         @Localizer["SatsInfo.Title"]

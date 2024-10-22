@@ -13,15 +13,12 @@
 @using Microsoft.AspNetCore.Localization
 @using Microsoft.Extensions.Localization
 
-<MudContainer Class="mt-1">
+<MudContainer Class="mt-8">
     <MudGrid>
         <MudItem xs="12" sm="6" md="12">
-            <MudPaper Class="d-flex justify-center flex-grow-1 gap-4" Elevation="0">
-                <MudImage Src="/img/freedom-blaze-logo-3-4-small.png" Height="183" Width="137" Alt="Freedom Blaze image" Elevation="0" />
-            </MudPaper>
             <MudText Typo="Typo.h4" Align="Align.Center" GutterBottom="true">@Localizer["SatsConverter.Title"]</MudText>
-            <MudText Align="Align.Center">@Localizer["SatsConverter.Body1"]</MudText> 
-            <MudText Align="Align.Center">@Localizer["SatsConverter.Body2"]</MudText> 
+            <MudText Align="Align.Center">@Localizer["SatsConverter.Body1"]</MudText>
+            <MudText Align="Align.Center">@Localizer["SatsConverter.Body2"]</MudText>
         </MudItem>
     </MudGrid>
     <MudGrid Class="mt-2">
@@ -166,12 +163,15 @@
             currencyValue = 0;
             currencyCultureName = CultureService.CurrentCulture.Name;
 
-            await GetCurrencyValueFromCookie();
+            if (!string.IsNullOrEmpty(currencyCultureName))
+            {
+                await GetCurrencyValueFromCookie();
+            }
         }
 
         var currencyRatesResult = await currencyRatesTask;
 
-        HandleCurrencyList(currencyRatesResult, currencyCultureName);
+        HandleCurrencyList(currencyRatesResult, currencyCultureName ?? "en-US");
 
         StateHasChanged();
     }
@@ -210,7 +210,7 @@
 
     async Task ConvertToBitcoin()
     {
-        if(currencyValue.HasValue && lastCurrencyValue.HasValue && currencyValue.Value == lastCurrencyValue.Value)
+        if (currencyValue.HasValue && lastCurrencyValue.HasValue && currencyValue.Value == lastCurrencyValue.Value)
         {
             return;
         }
@@ -237,7 +237,7 @@
 
     async Task ConvertToCurrency()
     {
-        if(satsValue.HasValue && satsValue.Value > 0)
+        if (satsValue.HasValue && satsValue.Value > 0)
         {
             var btcPrice = CurrencyList.FirstOrDefault(f => f.CultureName == currencyCultureName && f.BitcoinPrice > 0)?.BitcoinPrice;
             currencyValue = CurrencyConverterHelper.ConvertSatsToCurrency(satsValue.Value, btcPrice.Value);
@@ -269,12 +269,9 @@
     async Task GetCurrencyValueFromCookie()
     {
         var cookieValue = await JS.InvokeAsync<string>("cookieHelper.getCookie", CurrencyCookieName);
-        if (!string.IsNullOrEmpty(cookieValue))
+        if (!string.IsNullOrEmpty(cookieValue) && double.TryParse(cookieValue, out var valueFromCookie))
         {
-            if (double.TryParse(cookieValue, out var valueFromCookie))
-            {
-                currencyValue = valueFromCookie;
-            }
+            currencyValue = valueFromCookie;
         }
     }
 
