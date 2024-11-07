@@ -10,8 +10,11 @@
 @using FreedomBlaze.Models;
 @using System.Globalization;
 @using FreedomBlaze.Services
+@using Microsoft.ApplicationInsights
 @using Microsoft.AspNetCore.Localization
 @using Microsoft.Extensions.Localization
+
+<PageTitle>Freedom Blaze | Sats Converter</PageTitle>
 
 <MudContainer Class="mt-8">
     <MudGrid>
@@ -37,24 +40,24 @@
                 <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
                                  OnBlur="ConvertToBitcoin" Culture="@CultureService.CurrentCulture" Format="N2" T="double?"
                                  HideSpinButtons="true" Variant="Variant.Outlined" Immediate="false"
-                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy"
+                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
                                  AdornmentAriaLabel="Copy" AdornmentColor="Color.Warning"
                                  OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
 
                 <MudNumericField @bind-Value="satsValue" Label="SATS" MaxLength="9"
                                  OnBlur="ConvertToCurrency"
                                  HideSpinButtons="true" Variant="Variant.Outlined" Immediate="false"
-                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy"
+                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
                                  AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Warning"
                                  OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
 
-                <MudButton @onclick="ConvertToBitcoin"
-                           StartIcon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary"
-                           Size="Size.Large"
-                           Variant="Variant.Filled"
-                           ButtonType="ButtonType.Button">
-                    @Localizer["SatsConverter.ConvertButtonText"]
-                </MudButton>
+                @* <MudButton @onclick="ConvertToBitcoin"
+                StartIcon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary"
+                Size="Size.Large"
+                Variant="Variant.Filled"
+                ButtonType="ButtonType.Button">
+                @Localizer["SatsConverter.ConvertButtonText"]
+                </MudButton> *@
             </MudStack>
         </MudItem>
         <MudItem xs="12" sm="12" md="12" Class="d-flex justify-center">
@@ -111,6 +114,7 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Resources.Localization> Localizer
 @inject IHttpContextAccessor ContextAccessor
+@inject TelemetryClient Telemetry
 @inject IExchangeRateProvider ExchangeRateProvider
 @inject CultureService CultureService
 @inject ISnackbar Snackbar
@@ -132,6 +136,7 @@
     private double? currencyValue;
     private double? lastCurrencyValue;
     private double? satsValue;
+    private double? lastSatsValue;
 
     protected override async Task OnInitializedAsync()
     {
@@ -163,10 +168,7 @@
             currencyValue = 0;
             currencyCultureName = CultureService.CurrentCulture.Name;
 
-            if (!string.IsNullOrEmpty(currencyCultureName))
-            {
-                await GetCurrencyValueFromCookie();
-            }
+            await GetCurrencyValueFromCookie();
         }
 
         var currencyRatesResult = await currencyRatesTask;
@@ -204,25 +206,34 @@
         satsValue = CurrencyConverterHelper.ConvertToSats(currentCurrency.CurrencyValueInCurrency, currentCurrency.BitcoinPrice);
 
         lastCurrencyValue = currencyValue;
+        lastSatsValue = satsValue;
         currencyValueLabelName = $"{currentCurrency.Value}";
         currencyValueInCurrencyLabel = $"{currencyValue?.ToString("C", CultureService.CurrentCulture)} in Currency";
     }
 
     async Task ConvertToBitcoin()
     {
-        if (currencyValue.HasValue && lastCurrencyValue.HasValue && currencyValue.Value == lastCurrencyValue.Value)
-        {
-            return;
-        }
-
         if (!currencyValue.HasValue || currencyValue.Value == 0)
         {
             SnackMessage("Insert a valid currency value!", Defaults.Classes.Position.BottomCenter, Severity.Warning);
             return;
         }
 
+        if (currencyValue.HasValue && lastCurrencyValue.HasValue && currencyValue.Value == lastCurrencyValue.Value)
+        {
+            return;
+        }
+
         try
         {
+            // Track the custom event using TelemetryClient
+            var properties = new Dictionary<string, string>
+            {
+                { "currencyValue", currencyValue.Value.ToString() },
+                { "currencyCultureName", currencyCultureName }
+            };
+            Telemetry.TrackEvent("ConvertToBitcoin", properties);
+
             // Get exchange rates
             var exchangeRateAvg = await ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
             HandleCurrencyList(exchangeRateAvg, currencyCultureName);
@@ -237,8 +248,19 @@
 
     async Task ConvertToCurrency()
     {
+        if (satsValue.HasValue && lastSatsValue.HasValue && satsValue.Value == lastSatsValue.Value)
+        {
+            return;
+        }
         if (satsValue.HasValue && satsValue.Value > 0)
         {
+            // Track the custom event using TelemetryClient
+            var properties = new Dictionary<string, string>
+            {
+                { "satsValue", satsValue.Value.ToString() }
+            };
+            Telemetry.TrackEvent("ConvertToCurrency", properties);
+
             var btcPrice = CurrencyList.FirstOrDefault(f => f.CultureName == currencyCultureName && f.BitcoinPrice > 0)?.BitcoinPrice;
             currencyValue = CurrencyConverterHelper.ConvertSatsToCurrency(satsValue.Value, btcPrice.Value);
             await ConvertToBitcoin();

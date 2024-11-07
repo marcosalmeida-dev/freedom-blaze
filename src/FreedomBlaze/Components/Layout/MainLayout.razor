@@ -1,7 +1,9 @@
 ﻿@using FreedomBlaze.Models
 @using FreedomBlaze.Services
+@using Microsoft.ApplicationInsights
 @using Microsoft.AspNetCore.Localization
 @using System.Globalization
+
 @inherits LayoutComponentBase
 
 <MudThemeProvider @rendermode="InteractiveServer" @bind-IsDarkMode="@_isDarkMode" Theme="_theme" />
@@ -46,43 +48,38 @@
     </MudMainContent>
 </MudLayout>
 
-<style>
-   
-
-        
-</style>
-
 @inject IJSRuntime JS
+@inject TelemetryClient TelemetryClient
 @inject NavigationManager Navigation
+@inject IConfiguration Configuration
 @inject IHttpContextAccessor ContextAccessor
 @inject CultureService CultureService
 
 @code {
     MudTheme _theme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
         {
-            PaletteLight = new PaletteLight()
-            {
-                Primary = Colors.Orange.Default,
-                Secondary = Colors.BlueGray.Darken1,
-                AppbarBackground = Colors.Shades.Black,
-            },
-            PaletteDark = new PaletteDark()
-            {
-                Primary = Colors.Orange.Default
-            },
-
-            LayoutProperties = new LayoutProperties()
-            {
-                DrawerWidthLeft = "260px",
-                DrawerWidthRight = "300px"
-            }
-        };
+            Primary = Colors.Orange.Default,
+            Secondary = Colors.BlueGray.Darken1,
+            AppbarBackground = Colors.Shades.Black,
+        },
+        PaletteDark = new PaletteDark()
+        {
+            Primary = Colors.Orange.Default
+        },
+        LayoutProperties = new LayoutProperties()
+        {
+            DrawerWidthLeft = "260px",
+            DrawerWidthRight = "300px"
+        }
+    };
 
     private string DarkModeCookieName = "darkModeCookie";
-
     private bool _drawerOpen = false;
-
     private bool _isDarkMode;
+    private DateTime _navigationStartTime;
+
     private bool IsDarkMode
     {
         get => _isDarkMode;
@@ -108,6 +105,8 @@
                 IsDarkMode = bool.Parse(savedDarkMode);
                 StateHasChanged();
             }
+
+            await TrackEvents();
         }
 
         await base.OnAfterRenderAsync(firstRender);
@@ -123,7 +122,7 @@
             forceLoad: true);
     }
 
-    void DrawerToggle()
+    private void DrawerToggle()
     {
         _drawerOpen = !_drawerOpen;
     }
@@ -136,5 +135,39 @@
     public void Dispose()
     {
         CultureService.OnCurrencyCultureChanged -= (sender, args) => OnCurrencyChanged();
+    }
+
+    private async Task TrackEvents()
+    {
+        // Capture user environment data (language, platform, user agent)
+        var userEnvironment = await JS.InvokeAsync<UserEnvironment>("getUserEnvironment");
+
+        var properties = new Dictionary<string, string>
+        {
+            { "Language", userEnvironment.Language },
+            { "Platform", userEnvironment.Platform },
+            { "UserAgent", userEnvironment.UserAgent }
+        };
+
+        // Track Page View
+        var pageViewTelemetry = new Microsoft.ApplicationInsights.DataContracts.PageViewTelemetry
+        {
+            Name = Navigation.Uri,  // Page name based on the current URL
+            Url = new Uri(Navigation.Uri)  // The actual page URL
+        };
+
+        foreach (var property in properties)
+        {
+            pageViewTelemetry.Properties.Add(property.Key, property.Value);
+        }
+
+        TelemetryClient.TrackPageView(pageViewTelemetry);
+    }
+
+    private class UserEnvironment
+    {
+        public string Language { get; set; }
+        public string Platform { get; set; }
+        public string UserAgent { get; set; }
     }
 }
