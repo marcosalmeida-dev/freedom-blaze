@@ -21,16 +21,6 @@
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script>
-        Blazor.start({
-            reconnectionOptions: {
-                maxRetries: 1000, // Number of reconnection attempts
-                retryIntervalMilliseconds: 500 // Interval between attempts
-            }
-            }).then(() => {
-            Blazor.defaultReconnectionHandler._reconnectCallback = function () {
-                document.location.reload();
-            };
-        });
 
         window.blazorCulture = {
             get: () => window.localStorage['BlazorCulture'],

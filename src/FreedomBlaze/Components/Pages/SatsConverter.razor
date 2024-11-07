@@ -52,11 +52,11 @@
                                  OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
 
                 @* <MudButton @onclick="ConvertToBitcoin"
-                StartIcon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary"
-                Size="Size.Large"
-                Variant="Variant.Filled"
-                ButtonType="ButtonType.Button">
-                @Localizer["SatsConverter.ConvertButtonText"]
+                           StartIcon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary"
+                           Size="Size.Large"
+                           Variant="Variant.Filled"
+                           ButtonType="ButtonType.Button">
+                    @Localizer["SatsConverter.ConvertButtonText"]
                 </MudButton> *@
             </MudStack>
         </MudItem>
@@ -168,7 +168,10 @@
             currencyValue = 0;
             currencyCultureName = CultureService.CurrentCulture.Name;
 
-            await GetCurrencyValueFromCookie();
+            if (!string.IsNullOrEmpty(currencyCultureName))
+            {
+                await GetCurrencyValueFromCookie();
+            }
         }
 
         var currencyRatesResult = await currencyRatesTask;
@@ -255,7 +258,7 @@
         if (satsValue.HasValue && satsValue.Value > 0)
         {
             // Track the custom event using TelemetryClient
-            var properties = new Dictionary<string, string>
+            var properties = new Dictionary<string, string >
             {
                 { "satsValue", satsValue.Value.ToString() }
             };
@@ -290,10 +293,10 @@
 
     async Task GetCurrencyValueFromCookie()
     {
-        var cookieValue = await JS.InvokeAsync<string>("cookieHelper.getCookie", CurrencyCookieName);
-        if (!string.IsNullOrEmpty(cookieValue) && double.TryParse(cookieValue, out var valueFromCookie))
+        var currencyCookieValue = await JS.InvokeAsync<string>("cookieHelper.getCookie", CurrencyCookieName);
+        if (!string.IsNullOrEmpty(currencyCookieValue))
         {
-            currencyValue = valueFromCookie;
+            currencyValue = double.Parse(currencyCookieValue);
         }
     }
 
