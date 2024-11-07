@@ -3,19 +3,15 @@ using FreedomBlaze.Client.Services;
 using FreedomBlaze.Components;
 using FreedomBlaze.Infrastructure;
 using FreedomBlaze.Interfaces;
-using FreedomBlaze.Logging;
 using FreedomBlaze.Models;
 using FreedomBlaze.Services;
 using FreedomBlaze.WebClients.BitcoinExchanges;
 using FreedomBlaze.WebClients.CurrencyExchanges;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
-using Phoenixd.NET;
 using Phoenixd.NET.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
-
-builder.AddServiceDefaults();
 
 builder.Services.AddHttpClient();
 // For Blazor Client: Use AddHttpClient to inject the HttpClient with a dynamically set base address.
@@ -57,6 +53,8 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddApplicationInsightsTelemetry();
+
+builder.AddServiceDefaults();
 
 //builder.Services.ConfigurePhoenixdServices(builder.Configuration);
 
