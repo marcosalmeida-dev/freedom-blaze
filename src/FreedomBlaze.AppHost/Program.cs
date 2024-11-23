@@ -5,6 +5,6 @@ var builder = DistributedApplication.CreateBuilder(args);
 //                     .WithEndpoint(port: 9741, targetPort: 9740)
 //                     .PublishAsContainer();
 
-builder.AddProject<Projects.FreedomBlaze>("freedomblaze").WithExternalHttpEndpoints();
+builder.AddProject<Projects.FreedomBlaze>(nameof(Projects.FreedomBlaze).ToLower()).WithExternalHttpEndpoints();
 
 builder.Build().Run();

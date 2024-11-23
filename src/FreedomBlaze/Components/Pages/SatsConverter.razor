@@ -19,9 +19,8 @@
 <MudContainer Class="mt-8">
     <MudGrid>
         <MudItem xs="12" sm="6" md="12">
-            <MudText Typo="Typo.h4" Align="Align.Center" GutterBottom="true">@Localizer["SatsConverter.Title"]</MudText>
+            <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">@Localizer["SatsConverter.Title"]</MudText>
             <MudText Align="Align.Center">@Localizer["SatsConverter.Body1"]</MudText>
-            <MudText Align="Align.Center">@Localizer["SatsConverter.Body2"]</MudText>
         </MudItem>
     </MudGrid>
     <MudGrid Class="mt-2">
@@ -82,7 +81,7 @@
                                 else
                                 {
                                     <MudTooltip Text="Copy BTC Price">
-                                        <MudLink Color="Color.Secondary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", @context.Item.CultureInfo)</MudLink>
+                                        <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", @context.Item.CultureInfo)</MudLink>
                                     </MudTooltip>
                                 }
                             </CellTemplate>
@@ -96,7 +95,7 @@
                                 else
                                 {
                                     <MudTooltip Text="Copy Currency">
-                                        <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", @context.Item.CultureInfo)</MudLink>
+                                        <MudLink Color="Color.Secondary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", @context.Item.CultureInfo)</MudLink>
                                     </MudTooltip>
                                 }
                             </CellTemplate>
@@ -165,7 +164,7 @@
         var localizationValue = ContextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
         if (!string.IsNullOrEmpty(localizationValue))
         {
-            currencyValue = 0;
+            //currencyValue = 0;
             currencyCultureName = CultureService.CurrentCulture.Name;
 
             if (!string.IsNullOrEmpty(currencyCultureName))

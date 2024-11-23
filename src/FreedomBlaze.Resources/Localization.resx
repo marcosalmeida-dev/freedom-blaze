@@ -136,4 +136,22 @@
   <data name="SatsConverter.Body2" xml:space="preserve">
     <value />
   </data>
+  <data name="About.Body1" xml:space="preserve">
+    <value />
+  </data>
+  <data name="About.Title" xml:space="preserve">
+    <value>About Freedom Blaze</value>
+  </data>
+  <data name="Contact.SendButtonText" xml:space="preserve">
+    <value />
+  </data>
+  <data name="Contact.Description" xml:space="preserve">
+    <value />
+  </data>
+  <data name="Contact.Title" xml:space="preserve">
+    <value>Contact</value>
+  </data>
+  <data name="SatsConverter.ConvertButtonText" xml:space="preserve">
+    <value />
+  </data>
 </root>
