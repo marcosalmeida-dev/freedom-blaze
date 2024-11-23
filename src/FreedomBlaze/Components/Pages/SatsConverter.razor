@@ -16,7 +16,7 @@
 
 <PageTitle>Freedom Blaze | Sats Converter</PageTitle>
 
-<MudContainer Class="mt-8">
+<MudContainer Class="mt-4">
     <MudGrid>
         <MudItem xs="12" sm="6" md="12">
             <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">@Localizer["SatsConverter.Title"]</MudText>
@@ -60,49 +60,56 @@
             </MudStack>
         </MudItem>
         <MudItem xs="12" sm="12" md="12" Class="d-flex justify-center">
-            <MudPaper>
-                <MudDataGrid T="Currency" Items="@CurrencyList" RowStyleFunc="@_rowStyleFunc" ColumnResizeMode="ResizeMode.Column" Hover="true">
-                    <Columns>
-                        <PropertyColumn Title="Region" Property="x => x.Name">
-                            <CellTemplate>
-                                <MudTooltip Text="@context.Item.Name">
-                                    <MudAvatar>
-                                        <MudImage Src="@context.Item.FlagSvgPath"></MudImage>
-                                    </MudAvatar>
-                                </MudTooltip>
-                            </CellTemplate>
-                        </PropertyColumn>
-                        <PropertyColumn Title="BTC Price" Property="x => x.BitcoinPrice">
-                            <CellTemplate>
-                                @if (context.Item.BitcoinPrice == 0)
-                                {
-                                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-                                }
-                                else
-                                {
-                                    <MudTooltip Text="Copy BTC Price">
-                                        <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", @context.Item.CultureInfo)</MudLink>
+            @if (_loading == false)
+            {
+                <MudPaper>
+                    <MudDataGrid T="Currency" Items="@CurrencyList" RowStyleFunc="@_rowStyleFunc" ColumnResizeMode="ResizeMode.Column" Hover="true">
+                        <Columns>
+                            <PropertyColumn Title="Region" Property="x => x.Name">
+                                <CellTemplate>
+                                    <MudTooltip Text="@context.Item.Name">
+                                        <MudAvatar>
+                                            <MudImage Src="@context.Item.FlagSvgPath"></MudImage>
+                                        </MudAvatar>
                                     </MudTooltip>
-                                }
-                            </CellTemplate>
-                        </PropertyColumn>
-                        <PropertyColumn Title="@currencyValueInCurrencyLabel" Property="x => x.CurrencyValueInCurrency">
-                            <CellTemplate>
-                                @if (context.Item.CurrencyValueInCurrency == 0)
-                                {
-                                    <MudText>--</MudText>
-                                }
-                                else
-                                {
-                                    <MudTooltip Text="Copy Currency">
-                                        <MudLink Color="Color.Secondary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", @context.Item.CultureInfo)</MudLink>
-                                    </MudTooltip>
-                                }
-                            </CellTemplate>
-                        </PropertyColumn>
-                    </Columns>
-                </MudDataGrid>
-            </MudPaper>
+                                </CellTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Title="BTC Price" Property="x => x.BitcoinPrice">
+                                <CellTemplate>
+                                    @if (context.Item.BitcoinPrice == 0)
+                                    {
+                                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                                    }
+                                    else
+                                    {
+                                        <MudTooltip Text="Copy BTC Price">
+                                            <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", @context.Item.CultureInfo)</MudLink>
+                                        </MudTooltip>
+                                    }
+                                </CellTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Title="@currencyValueInCurrencyLabel" Property="x => x.CurrencyValueInCurrency">
+                                <CellTemplate>
+                                    @if (context.Item.CurrencyValueInCurrency == 0)
+                                    {
+                                        <MudText>--</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudTooltip Text="Copy Currency">
+                                            <MudLink Color="Color.Secondary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", @context.Item.CultureInfo)</MudLink>
+                                        </MudTooltip>
+                                    }
+                                </CellTemplate>
+                            </PropertyColumn>
+                        </Columns>
+                    </MudDataGrid>
+                </MudPaper>
+            }
+            else
+            {
+                <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="@_loading" />
+            }
         </MudItem>
     </MudGrid>
 </MudContainer>
@@ -122,7 +129,7 @@
 
 @code {
     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-
+    private bool _loading = false;
     private List<Currency> CurrencyList = new List<Currency>();
     private Task<BitcoinExchangeRateModel> currencyRatesTask;
 
@@ -139,14 +146,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            currencyRatesTask = ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
-        }
-        catch (Exception ex)
-        {
-            SnackMessage($"Error loading exchange rates: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
-        }
+        currencyRatesTask = ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -161,21 +161,33 @@
 
     async Task HandleCultureInfo()
     {
-        var localizationValue = ContextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
-        if (!string.IsNullOrEmpty(localizationValue))
+        try
         {
-            //currencyValue = 0;
-            currencyCultureName = CultureService.CurrentCulture.Name;
-
-            if (!string.IsNullOrEmpty(currencyCultureName))
+            _loading = true;
+            var localizationValue = ContextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
+            if (!string.IsNullOrEmpty(localizationValue))
             {
-                await GetCurrencyValueFromCookie();
+                //currencyValue = 0;
+                currencyCultureName = CultureService.CurrentCulture.Name;
+
+                if (!string.IsNullOrEmpty(currencyCultureName))
+                {
+                    await GetCurrencyValueFromCookie();
+                }
             }
+
+            var currencyRatesResult = await currencyRatesTask;
+
+            await HandleCurrencyList(currencyRatesResult, currencyCultureName ?? "en-US");
         }
-
-        var currencyRatesResult = await currencyRatesTask;
-
-        await HandleCurrencyList(currencyRatesResult, currencyCultureName ?? "en-US");
+        catch (Exception ex)
+        {
+            SnackMessage($"Error loading exchange rates: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
 
         StateHasChanged();
     }
@@ -260,7 +272,7 @@
         if (satsValue.HasValue && satsValue.Value > 0)
         {
             // Track the custom event using TelemetryClient
-            var properties = new Dictionary<string, string >
+            var properties = new Dictionary<string, string>
             {
                 { "satsValue", satsValue.Value.ToString() }
             };
