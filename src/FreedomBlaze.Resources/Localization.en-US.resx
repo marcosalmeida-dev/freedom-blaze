@@ -1,5 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -58,52 +117,40 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  
   <data name="SatsInfo.Title" xml:space="preserve">
     <value>Understanding Satoshis (Sats) and Bitcoin</value>
   </data>
-  
   <data name="SatsInfo.Body1" xml:space="preserve">
     <value>Bitcoin is a decentralized digital currency, where each unit is divisible into smaller fractions called Satoshis, or 'Sats.' A single Satoshi, named after Bitcoin's enigmatic creator, Satoshi Nakamoto, is the smallest unit of Bitcoin, equating to 0.00000001 BTC. This makes 100 million Satoshis equal to one Bitcoin.</value>
   </data>
-  
   <data name="SatsInfo.Body2" xml:space="preserve">
     <value>By breaking Bitcoin into these tiny units, users can make microtransactions and participate in Bitcoin’s economy with even the smallest amounts of value.</value>
   </data>
-  
   <data name="SatsConverter.Title" xml:space="preserve">
     <value>Bitcoin Satoshis (SATS) Converter</value>
   </data>
-
-  <data name="About.Body1">
-    <value>Freedom Blaze is a revolutionary app designed to promote financial independence and personal liberty through the use of Bitcoin, the world’s first decentralized digital currency. Our mission is to empower individuals to take full control of their finances, free from the constraints of traditional banking and centralized institutions.</value>
-  </data>
-  
-  <data name="About.Title">
-    <value>About Freedom Blaze</value>
-  </data>
-  
-  <data name="Contact.SendButtonText">
-    <value>Send</value>
-  </data>
-  
-  <data name="Contact.Description">
-    <value>Send us a message or suggestion</value>
-  </data>
-  
-  <data name="Contact.Title">
-    <value>Contact</value>
-  </data>
-  
-  <data name="SatsConverter.ConvertButtonText">
-    <value>Convert</value>
-  </data>
-
   <data name="SatsConverter.Body1" xml:space="preserve">
-    <value>Select your Currency Region. Convert currency to sats and sats to currency.</value>
+    <value>Select Currency. Convert currency to sats and sats to currency.</value>
   </data>
-  
   <data name="SatsConverter.Body2" xml:space="preserve">
     <value>You can copy the BTC Sats/Currency result by touching/clicking on the copy icon or table item result.</value>
+  </data>
+  <data name="About.Body1" xml:space="preserve">
+    <value>Freedom Blaze is a revolutionary app designed to promote financial independence and personal liberty through the use of Bitcoin, the world’s first decentralized digital currency. Our mission is to empower individuals to take full control of their finances, free from the constraints of traditional banking and centralized institutions.</value>
+  </data>
+  <data name="About.Title" xml:space="preserve">
+    <value>About Freedom Blaze</value>
+  </data>
+  <data name="Contact.SendButtonText" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="Contact.Description" xml:space="preserve">
+    <value>Send us a message or suggestion</value>
+  </data>
+  <data name="Contact.Title" xml:space="preserve">
+    <value>Contact</value>
+  </data>
+  <data name="SatsConverter.ConvertButtonText" xml:space="preserve">
+    <value>Convert</value>
   </data>
 </root>
