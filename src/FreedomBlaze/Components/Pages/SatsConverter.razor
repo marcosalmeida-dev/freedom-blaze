@@ -175,12 +175,12 @@
 
         var currencyRatesResult = await currencyRatesTask;
 
-        HandleCurrencyList(currencyRatesResult, currencyCultureName ?? "en-US");
+        await HandleCurrencyList(currencyRatesResult, currencyCultureName ?? "en-US");
 
         StateHasChanged();
     }
 
-    void HandleCurrencyList(BitcoinExchangeRateModel currencyRatesResult, string currencyCultureName)
+    async Task HandleCurrencyList(BitcoinExchangeRateModel currencyRatesResult, string currencyCultureName)
     {
         CurrencyList = CurrencyModel.BuildCurrencyList();
 
@@ -207,10 +207,15 @@
 
         satsValue = CurrencyConverterHelper.ConvertToSats(currentCurrency.CurrencyValueInCurrency, currentCurrency.BitcoinPrice);
 
-        lastCurrencyValue = currencyValue;
-        lastSatsValue = satsValue;
-        currencyValueLabelName = $"{currentCurrency.Value}";
-        currencyValueInCurrencyLabel = $"{currencyValue?.ToString("C", CultureService.CurrentCulture)} in Currency";
+        if (currencyValue > 0)
+        {
+            lastCurrencyValue = currencyValue;
+            lastSatsValue = satsValue;
+            currencyValueLabelName = $"{currentCurrency.Value}";
+            currencyValueInCurrencyLabel = $"{currencyValue?.ToString("C", CultureService.CurrentCulture)} in Currency";
+
+            await SetCurrencyValueCookie();
+        }
     }
 
     async Task ConvertToBitcoin()
@@ -238,9 +243,7 @@
 
             // Get exchange rates
             var exchangeRateAvg = await ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
-            HandleCurrencyList(exchangeRateAvg, currencyCultureName);
-
-            await SetCurrencyValueCookie();
+            await HandleCurrencyList(exchangeRateAvg, currencyCultureName);
         }
         catch (Exception ex)
         {
