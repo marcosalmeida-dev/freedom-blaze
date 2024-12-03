@@ -1,14 +1,16 @@
+using FreedomBlaze.Exceptions;
 using FreedomBlaze.Http.Extensions;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
-using ReactCA.Application.Common.Exceptions;
 using System.Net.Http.Headers;
 using System.Text.Json.Serialization;
 
-namespace FreedomBlaze.WebClients.BitcoinExchanges.CoinGecko;
+namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
 public class CoinGeckoExchangeRateProvider : IExchangeRateProvider
 {
+    public string ExchangeName { get => "CoinGecko"; }
+
     public static readonly Version ClientVersion = new(2, 0, 5, 0);
     public async Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
@@ -23,11 +25,11 @@ public class CoinGeckoExchangeRateProvider : IExchangeRateProvider
             using var content = response.Content;
             var rates = await content.ReadAsJsonAsync<CoinGeckoExchangeRate[]>();
 
-            return new BitcoinExchangeRateModel { BitcoinRateInUSD = rates[0].Rate };
+            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = rates[0].Rate };
         }
         catch
         {
-            throw new ExchangeIntegrationException(nameof(CoinGeckoExchangeRateProvider));
+            throw new ExchangeIntegrationException(ExchangeName);
         }
     }
 }

@@ -1,17 +1,13 @@
+using FreedomBlaze.Components.Pages;
+using FreedomBlaze.Exceptions;
 using FreedomBlaze.Extensions;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Logging;
 using FreedomBlaze.Models;
-using FreedomBlaze.WebClients.BitcoinExchanges.Bitstamp;
-using FreedomBlaze.WebClients.BitcoinExchanges.BlockchainInfo;
-using FreedomBlaze.WebClients.BitcoinExchanges.Coinbase;
-using FreedomBlaze.WebClients.BitcoinExchanges.Coingate;
-using FreedomBlaze.WebClients.BitcoinExchanges.CoinGecko;
-using FreedomBlaze.WebClients.BitcoinExchanges.Gemini;
+using FreedomBlaze.WebClients.BitcoinExchanges;
 using Microsoft.Extensions.Caching.Memory;
-using ReactCA.Application.Common.Exceptions;
 
-namespace FreedomBlaze.WebClients.BitcoinExchanges;
+namespace FreedomBlaze.WebClients;
 
 public class ExchangeRateProvider : IExchangeRateProvider
 {
@@ -25,8 +21,14 @@ public class ExchangeRateProvider : IExchangeRateProvider
         new CoingateExchangeRateProvider()
     };
 
-    private IMemoryCache _cache;
-    private ICurrencyExchangeProvider _currencyExchangeProvider;
+    private readonly IMemoryCache _cache;
+    private readonly ICurrencyExchangeProvider _currencyExchangeProvider;
+
+    public static TimeOnly LastUpdateTime { get; set; }
+
+    public string ExchangeName => "ExchangeRateProvider";
+
+    public static List<BitcoinExchangeStatusModel> BitcoinExchangeStatusList = new List<BitcoinExchangeStatusModel>();
 
     public ExchangeRateProvider(IMemoryCache cache, ICurrencyExchangeProvider currencyExchangeProvider)
     {
@@ -66,12 +68,20 @@ public class ExchangeRateProvider : IExchangeRateProvider
 
                     _cache.Set(cacheKey, exchangeRateAvgResult, cacheEntryOptions);
 
+                    BitcoinExchangeStatusList = exchangeRates.Select(s => new BitcoinExchangeStatusModel
+                    {
+                        ExchangeName = s.IsSuccess ? s.Result.ExchangeName : ((ExchangeIntegrationException)s.Exception.InnerException).ExchangeName,
+                        IsExchangeAvailable = s.IsSuccess
+                    }).ToList();
+
                     var failedExchangesTasks = exchangeRates.Where(w => w.IsSuccess == false).ToList();
                     foreach (var failedTask in failedExchangesTasks)
                     {
                         ExchangeIntegrationException exchangeRateEx = failedTask.Exception.InnerException as ExchangeIntegrationException;
                         Logger.LogError(exchangeRateEx, $"GetExchangeRate FAILED for: {exchangeRateEx.ExchangeName}");
                     }
+
+                    LastUpdateTime = timeNow;
                 }
             }
 

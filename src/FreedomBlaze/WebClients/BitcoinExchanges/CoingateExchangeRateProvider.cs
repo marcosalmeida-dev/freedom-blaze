@@ -5,13 +5,14 @@ using System.Threading.Tasks;
 using FreedomBlaze.Models;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Extensions;
-using FreedomBlaze.WebClients.BitcoinExchanges.CoinGecko;
-using ReactCA.Application.Common.Exceptions;
+using FreedomBlaze.Exceptions;
 
-namespace FreedomBlaze.WebClients.BitcoinExchanges.Coingate;
+namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
 public class CoingateExchangeRateProvider : IExchangeRateProvider
 {
+    public string ExchangeName { get => "Coingate"; }
+
     public async Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
         try
@@ -23,11 +24,11 @@ public class CoingateExchangeRateProvider : IExchangeRateProvider
             var response = await httpClient.GetStringAsync("/v2/rates/merchant/BTC/USD", cancellationToken)
                 ;
 
-            return new BitcoinExchangeRateModel { BitcoinRateInUSD = double.Parse(response.ToRemoveDecimalCase()) };
+            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = double.Parse(response.ToRemoveDecimalCase()) };
         }
         catch
         {
-            throw new ExchangeIntegrationException(nameof(CoingateExchangeRateProvider));
+            throw new ExchangeIntegrationException(ExchangeName);
         }
     }
 }

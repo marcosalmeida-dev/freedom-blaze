@@ -7,13 +7,13 @@ using FreedomBlaze.Interfaces;
 using FreedomBlaze.Http.Extensions;
 using System.Text.Json.Serialization;
 using FreedomBlaze.Extensions;
-using FreedomBlaze.WebClients.BitcoinExchanges.Gemini;
-using ReactCA.Application.Common.Exceptions;
+using FreedomBlaze.Exceptions;
 
-namespace FreedomBlaze.WebClients.BitcoinExchanges.Coinbase;
+namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
 public class CoinbaseExchangeRateProvider : IExchangeRateProvider
 {
+    public string ExchangeName { get => "CoinGecko"; }
     public async Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
         try
@@ -26,11 +26,11 @@ public class CoinbaseExchangeRateProvider : IExchangeRateProvider
             using var content = response.Content;
             var wrapper = await content.ReadAsJsonAsync<DataWrapper>();
 
-            return new BitcoinExchangeRateModel { BitcoinRateInUSD = double.Parse(wrapper.Data.Rates.USD.ToRemoveDecimalCase()) };
+            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = double.Parse(wrapper.Data.Rates.USD.ToRemoveDecimalCase()) };
         }
         catch
         {
-            throw new ExchangeIntegrationException(nameof(CoinbaseExchangeRateProvider));
+            throw new ExchangeIntegrationException(ExchangeName);
         }
     }
 

@@ -1,0 +1,32 @@
+﻿@using FreedomBlaze.Models
+@using MudBlazor
+
+
+<MudContainer Class="mt-12">
+    <MudGrid>
+        <MudItem xs="12" sm="12" md="12" Class="d-flex justify-center">
+            <MudTable Items="ExchangeStatusList" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Exchange Name</MudTh>
+                    <MudTh>Availability</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.ExchangeName</MudTd>
+                    <MudTd>
+                        <MudIcon Icon="@GetIcon(context.IsExchangeAvailable)"
+                                 Color="@GetColor(context.IsExchangeAvailable)" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public List<BitcoinExchangeStatusModel> ExchangeStatusList { get; set; } = new();
+
+    private string GetIcon(bool isAvailable) => isAvailable ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel;
+
+    private Color GetColor(bool isAvailable) => isAvailable ? Color.Success : Color.Error;
+}

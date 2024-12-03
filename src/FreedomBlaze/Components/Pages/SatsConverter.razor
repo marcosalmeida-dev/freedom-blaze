@@ -37,18 +37,18 @@
                 </MudSelect>
 
                 <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
-                                 OnBlur="ConvertToBitcoin" Culture="@CultureService.CurrentCulture" Format="N2" T="double?"
-                                 HideSpinButtons="true" Variant="Variant.Outlined" Immediate="false"
-                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                                 AdornmentAriaLabel="Copy" AdornmentColor="Color.Warning"
-                                 OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
+                OnBlur="ConvertToBitcoin" Culture="@CultureService.CurrentCulture" Format="N2" T="double?"
+                HideSpinButtons="true" Variant="Variant.Outlined" Immediate="false"
+                Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
+                AdornmentAriaLabel="Copy" AdornmentColor="Color.Warning"
+                OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
 
                 <MudNumericField @bind-Value="satsValue" Label="SATS" MaxLength="9"
-                                 OnBlur="ConvertToCurrency"
-                                 HideSpinButtons="true" Variant="Variant.Outlined" Immediate="false"
-                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                                 AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Warning"
-                                 OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
+                OnBlur="ConvertToCurrency"
+                HideSpinButtons="true" Variant="Variant.Outlined" Immediate="false"
+                Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
+                AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Warning"
+                OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
 
                 @* <MudButton @onclick="ConvertToBitcoin"
                            StartIcon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary"
@@ -113,6 +113,8 @@
         </MudItem>
     </MudGrid>
 </MudContainer>
+
+<BitcoinExchangeStatusList ExchangeStatusList="FreedomBlaze.WebClients.ExchangeRateProvider.BitcoinExchangeStatusList" />
 
 <SatsInfo />
 
@@ -325,7 +327,7 @@
     Func<Currency, int, string> _rowStyleFunc => (x, i) =>
     {
         if (x.CultureName == currencyCultureName)
-            return "background-color:#e8e8e8";
+            return $"background-color:{Colors.Amber.Lighten4}";
 
         return "";
     };

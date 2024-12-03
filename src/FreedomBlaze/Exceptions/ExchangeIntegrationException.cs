@@ -1,11 +1,11 @@
-﻿namespace ReactCA.Application.Common.Exceptions;
+﻿namespace FreedomBlaze.Exceptions;
 
 public class ExchangeIntegrationException : Exception
 {
-    public ExchangeIntegrationException(string exchangeName) : base() 
+    public ExchangeIntegrationException(string exchangeName) : base()
     {
         ExchangeName = exchangeName;
     }
 
-    public string ExchangeName { get; set; } 
+    public string ExchangeName { get; set; }
 }

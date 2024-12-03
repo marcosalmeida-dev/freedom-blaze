@@ -1,14 +1,15 @@
+using FreedomBlaze.Exceptions;
 using FreedomBlaze.Http.Extensions;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
-using FreedomBlaze.WebClients.BitcoinExchanges.BlockchainInfo;
-using ReactCA.Application.Common.Exceptions;
 using System.Text.Json.Serialization;
 
-namespace FreedomBlaze.WebClients.BitcoinExchanges.Bitstamp;
+namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
 public class BitstampExchangeRateProvider : IExchangeRateProvider
 {
+    public string ExchangeName { get => "Bitstamp"; }
+
     public async Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
         try
@@ -21,11 +22,11 @@ public class BitstampExchangeRateProvider : IExchangeRateProvider
             using var content = response.Content;
             var rate = await content.ReadAsJsonAsync<BitstampExchangeRate>();
 
-            return new BitcoinExchangeRateModel { BitcoinRateInUSD = double.Parse(rate.Rate) };
+            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName,  BitcoinRateInUSD = double.Parse(rate.Rate) };
         }
         catch
-        {
-            throw new ExchangeIntegrationException(nameof(BitstampExchangeRateProvider));
+        { 
+            throw new ExchangeIntegrationException(ExchangeName);
         }
     }
 }

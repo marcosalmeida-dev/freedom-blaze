@@ -1,5 +1,4 @@
 ﻿using FreedomBlaze.Models;
-using FreedomBlaze.WebClients.CurrencyExchanges.ExchangeRateApi;
 
 namespace FreedomBlaze.Interfaces
 {
