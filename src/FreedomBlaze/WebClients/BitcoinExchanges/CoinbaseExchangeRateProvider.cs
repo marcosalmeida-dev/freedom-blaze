@@ -13,7 +13,7 @@ namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
 public class CoinbaseExchangeRateProvider : IExchangeRateProvider
 {
-    public string ExchangeName { get => "CoinGecko"; }
+    public string ExchangeName { get => "Coinbase"; }
     public async Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
         try
