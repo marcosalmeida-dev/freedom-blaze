@@ -2,7 +2,6 @@
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
 using FreedomBlaze.WebClients.BitcoinExchanges;
-using FreedomBlaze.WebClients.CurrencyExchanges.ExchangeRateApi;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace FreedomBlaze.WebClients.CurrencyExchanges;

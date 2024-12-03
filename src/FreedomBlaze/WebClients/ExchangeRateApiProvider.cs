@@ -4,7 +4,7 @@ using FreedomBlaze.Models;
 using System.Net;
 using System.Text.Json.Serialization;
 
-namespace FreedomBlaze.WebClients.CurrencyExchanges.ExchangeRateApi
+namespace FreedomBlaze.WebClients
 {
     public class ExchangeRateApiProvider : ICurrencyExchangeProvider
     {
@@ -15,7 +15,7 @@ namespace FreedomBlaze.WebClients.CurrencyExchanges.ExchangeRateApi
         }
         public async Task<CurrencyExchangeRateModel> GetCurrencyRate(CancellationToken cancellationToken)
         {
-            if(_apiKey == null)
+            if (_apiKey == null)
             {
                 throw new ArgumentNullException("CurrencyExchangeRateApi key is missing in the configuration file");
             }
@@ -26,7 +26,7 @@ namespace FreedomBlaze.WebClients.CurrencyExchanges.ExchangeRateApi
             };
             using var response = await httpClient.GetAsync($"v1/latest?access_key={_apiKey}&symbols=USD,EUR,GBP,CHF,AUD,JPY,ZAR,ARS,BRL", cancellationToken);
             using var content = response.Content;
-            if(response.StatusCode != HttpStatusCode.OK)
+            if (response.StatusCode != HttpStatusCode.OK)
             {
                 throw new HttpRequestException($"Error getting currency exchange rates from the provider. API Key: {_apiKey}. Status code: {response.StatusCode}. Response content: {response.Content}");
             }
@@ -48,42 +48,42 @@ namespace FreedomBlaze.WebClients.CurrencyExchanges.ExchangeRateApi
                     new CurrencyRate()
                     {
                         Currency = nameof(currencyRates.Rates.EUR),
-                        Rate = (double)((currencyRates).Rates.EUR / currencyRates.Rates.USD)
+                        Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD)
                     },
                     new CurrencyRate()
                     {
                         Currency = nameof(currencyRates.Rates.GBP),
-                        Rate = (double)((currencyRates.Rates.EUR / currencyRates.Rates.USD) * currencyRates.Rates.GBP)
+                        Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.GBP)
                     },
-                    new CurrencyRate() 
+                    new CurrencyRate()
                     {
                         Currency = nameof(currencyRates.Rates.CHF),
-                        Rate = (double)((currencyRates.Rates.EUR / currencyRates.Rates.USD) * currencyRates.Rates.CHF)
+                        Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.CHF)
                     },
                     new CurrencyRate()
                     {
                         Currency = nameof(currencyRates.Rates.AUD),
-                        Rate = (double)((currencyRates.Rates.EUR / currencyRates.Rates.USD) * currencyRates.Rates.AUD)
+                        Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.AUD)
                     },
                     new CurrencyRate()
                     {
                         Currency = nameof(currencyRates.Rates.JPY),
-                        Rate = (double)((currencyRates.Rates.EUR / currencyRates.Rates.USD) * currencyRates.Rates.JPY)
+                        Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.JPY)
                     },
                      new CurrencyRate()
                     {
                         Currency = nameof(currencyRates.Rates.ZAR),
-                        Rate = (double)((currencyRates.Rates.EUR / currencyRates.Rates.USD) * currencyRates.Rates.ZAR)
+                        Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.ZAR)
                     },
                     new CurrencyRate()
                     {
                         Currency = nameof(currencyRates.Rates.ARS),
-                        Rate = (double)((currencyRates.Rates.EUR / currencyRates.Rates.USD) * currencyRates.Rates.ARS)
+                        Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.ARS)
                     },
                     new CurrencyRate()
                     {
                         Currency = nameof(currencyRates.Rates.BRL),
-                        Rate = (double)((currencyRates.Rates.EUR / currencyRates.Rates.USD) * currencyRates.Rates.BRL)
+                        Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.BRL)
                     }
                 }
             };

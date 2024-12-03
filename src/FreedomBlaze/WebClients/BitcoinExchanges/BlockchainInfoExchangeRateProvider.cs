@@ -1,16 +1,17 @@
+using FreedomBlaze.Exceptions;
 using FreedomBlaze.Http.Extensions;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Globalization;
 using System.Text.Json.Serialization;
-using FreedomBlaze.WebClients.BitcoinExchanges.Gemini;
-using ReactCA.Application.Common.Exceptions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace FreedomBlaze.WebClients.BitcoinExchanges.BlockchainInfo;
+namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
 public class BlockchainInfoExchangeRateProvider : IExchangeRateProvider
 {
+    public string ExchangeName { get => "BlockchainInfo"; }
+
     public async Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
         try
@@ -23,11 +24,11 @@ public class BlockchainInfoExchangeRateProvider : IExchangeRateProvider
             using var content = response.Content;
             var rates = await content.ReadAsJsonAsync<BlockchainInfoExchangeRates>();
 
-            return new BitcoinExchangeRateModel { BitcoinRateInUSD = Math.Round(rates.USD.Sell, 0) };
+            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = Math.Round(rates.USD.Sell, 0) };
         }
         catch
         {
-            throw new ExchangeIntegrationException(nameof(BlockchainInfoExchangeRateProvider));
+            throw new ExchangeIntegrationException(ExchangeName);
         }
     }
 

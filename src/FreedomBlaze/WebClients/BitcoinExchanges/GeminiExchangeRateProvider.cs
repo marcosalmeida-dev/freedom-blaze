@@ -7,12 +7,14 @@ using FreedomBlaze.Interfaces;
 using FreedomBlaze.Http.Extensions;
 using System.Text.Json.Serialization;
 using FreedomBlaze.Extensions;
-using ReactCA.Application.Common.Exceptions;
+using FreedomBlaze.Exceptions;
 
-namespace FreedomBlaze.WebClients.BitcoinExchanges.Gemini;
+namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
 public class GeminiExchangeRateProvider : IExchangeRateProvider
 {
+    public string ExchangeName { get => "Gemini"; }
+
     public async Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
         try
@@ -25,11 +27,11 @@ public class GeminiExchangeRateProvider : IExchangeRateProvider
             using var content = response.Content;
             var data = await content.ReadAsJsonAsync<GeminiExchangeRateInfo>();
 
-            return new BitcoinExchangeRateModel { BitcoinRateInUSD = double.Parse(data.Bid.ToRemoveDecimalCase()) };
+            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = double.Parse(data.Bid.ToRemoveDecimalCase()) };
         }
         catch
         {
-            throw new ExchangeIntegrationException(nameof(GeminiExchangeRateProvider));
+            throw new ExchangeIntegrationException(ExchangeName);
         }
     }
 

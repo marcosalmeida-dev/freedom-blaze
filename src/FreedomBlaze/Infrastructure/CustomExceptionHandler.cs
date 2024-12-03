@@ -1,7 +1,7 @@
-﻿using FreedomBlaze.Logging;
+﻿using FreedomBlaze.Exceptions;
+using FreedomBlaze.Logging;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using ReactCA.Application.Common.Exceptions;
 using System.ComponentModel.DataAnnotations;
 
 namespace FreedomBlaze.Infrastructure;
