@@ -69,7 +69,7 @@
                                 <CellTemplate>
                                     <MudTooltip Text="@context.Item.Name">
                                         <MudAvatar>
-                                            <MudImage Src="@context.Item.FlagSvgPath"></MudImage>
+                                            <MudImage Src="@context.Item.FlagSvgPath" Alt="@context.Item.Name"></MudImage>
                                         </MudAvatar>
                                     </MudTooltip>
                                 </CellTemplate>
@@ -114,7 +114,7 @@
     </MudGrid>
 </MudContainer>
 
-<BitcoinExchangeStatusList ExchangeStatusList="FreedomBlaze.WebClients.ExchangeRateProvider.BitcoinExchangeStatusList" />
+<BitcoinExchangeStatusList ExchangeStatusList="FreedomBlaze.WebClients.ExchangeRateProvider.BitcoinExchangeStatusList" CurrencyList="@CurrencyList" />
 
 <SatsInfo />
 
@@ -166,6 +166,8 @@
         try
         {
             _loading = true;
+            StateHasChanged();
+
             var localizationValue = ContextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
             if (!string.IsNullOrEmpty(localizationValue))
             {
