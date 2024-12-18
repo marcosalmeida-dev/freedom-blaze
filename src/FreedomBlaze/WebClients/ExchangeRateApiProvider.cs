@@ -20,6 +20,28 @@ namespace FreedomBlaze.WebClients
                 throw new ArgumentNullException("CurrencyExchangeRateApi key is missing in the configuration file");
             }
 
+#if DEBUG
+            // Return test result in debug mode
+            CurrencyExchangeApiModel currencyRates = new CurrencyExchangeApiModel()
+            {
+                Success = true,
+                Timestamp = 1620000000,
+                Base = "EUR",
+                Date = "2021-05-03",
+                Rates = new Rates()
+                {
+                    USD = 1.2m,
+                    EUR = 1,
+                    GBP = 0.8m,
+                    CHF = 1.1m,
+                    AUD = 1.5m,
+                    JPY = 130m,
+                    ZAR = 20m,
+                    ARS = 100m,
+                    BRL = 6.0m
+                }
+            };
+#else
             using var httpClient = new HttpClient
             {
                 BaseAddress = new Uri("https://api.exchangeratesapi.io")
@@ -32,6 +54,8 @@ namespace FreedomBlaze.WebClients
             }
 
             var currencyRates = await content.ReadAsJsonAsync<CurrencyExchangeApiModel>();
+#endif
+
             DateTime dateTime = DateTime.Now;
             DateTime.TryParse(currencyRates.Date, out dateTime);
             //The base rate for this provider is EUR, so we have to convert it to USD to calculate with the btc exchanges providers which default is USD
