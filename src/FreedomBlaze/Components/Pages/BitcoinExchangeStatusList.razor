@@ -4,7 +4,7 @@
 <MudContainer Class="mt-12">
     <MudGrid>
         <MudItem xs="12" sm="6" md="6">
-            <MudDataGrid Items="@ExchangeStatusList" ColumnResizeMode="ResizeMode.None" Hover="true">
+            <MudDataGrid Items="@ExchangeStatusList" ColumnResizeMode="ResizeMode.None" Hover="true" Dense="true">
                 <Columns>
                     <PropertyColumn Title="Exchange Name" Property="x => x.ExchangeName">
                         <CellTemplate>
@@ -21,18 +21,18 @@
             </MudDataGrid>
         </MudItem>
         <MudItem xs="12" sm="6" md="6">
-            <MudDataGrid Items="@CurrencyList" ColumnResizeMode="ResizeMode.None" Hover="true">
+            <MudDataGrid Items="@CurrencyList" ColumnResizeMode="ResizeMode.None" Hover="true" Dense="true">
                 <Columns>
-                    <PropertyColumn Title="Rate In USD" Property="x => x.CurrencyRateInUSD">
-                        <CellTemplate>
-                            @context.Item.CurrencyRateInUSD.ToString("C", @context.Item.CultureInfo)
-                        </CellTemplate>
-                    </PropertyColumn>
-                    <PropertyColumn Title="Region" Property="x => x.FlagSvgPath">
+                    <PropertyColumn Title="Currency" Property="x => x.FlagSvgPath">
                         <CellTemplate>
                             <MudAvatar>
-                                <MudImage Src="@context.Item.FlagSvgPath"></MudImage>
+                                <MudImage Src="@context.Item.FlagSvgPath" Alt="@context.Item.Symbol"></MudImage>
                             </MudAvatar>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="$1.00 in Currency" Property="x => x.CurrencyRateInUSD">
+                        <CellTemplate>
+                            @context.Item.CurrencyRateInUSD.ToString("C", @context.Item.CultureInfo)
                         </CellTemplate>
                     </PropertyColumn>
                 </Columns>
