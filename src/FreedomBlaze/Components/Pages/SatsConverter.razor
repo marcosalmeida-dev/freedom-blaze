@@ -26,7 +26,7 @@
     <MudGrid Class="mt-2">
         <MudItem xs="12" sm="12" md="12" Class="d-flex justify-center">
             <MudStack>
-                <MudSelect id="currency" Label="Currency" Variant="Variant.Outlined" @bind-Value="CultureService.CurrencyCultureName" AdornmentColor="Color.Primary">
+                <MudSelect id="currency" Label="Currency" Variant="Variant.Filled" @bind-Value="CultureService.CurrencyCultureName" AdornmentColor="Color.Primary">
                     @foreach (var currency in CurrencyModel.CurrencyListStatic)
                     {
                         <MudSelectItem Value="@currency.CultureName" @key="@currency.CultureName">
@@ -38,14 +38,14 @@
 
                 <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
                 OnBlur="ConvertToBitcoin" Culture="@CultureService.CurrentCulture" Format="N2" T="double?"
-                HideSpinButtons="true" Variant="Variant.Outlined" Immediate="false"
+                HideSpinButtons="true" Variant="Variant.Text" Immediate="false"
                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
                 AdornmentAriaLabel="Copy" AdornmentColor="Color.Warning"
                 OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
 
                 <MudNumericField @bind-Value="satsValue" Label="SATS" MaxLength="9"
                 OnBlur="ConvertToCurrency"
-                HideSpinButtons="true" Variant="Variant.Outlined" Immediate="false"
+                                 HideSpinButtons="true" Variant="Variant.Text" Immediate="false"
                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
                 AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Warning"
                 OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
