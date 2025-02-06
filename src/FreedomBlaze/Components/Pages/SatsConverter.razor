@@ -203,7 +203,7 @@
 
     async Task HandleCurrencyList(BitcoinExchangeRateModel currencyRatesResult, string currencyCultureName)
     {
-        CurrencyList = CurrencyModel.BuildCurrencyList();
+        CurrencyList = CurrencyModel.GetCurrencyList(currencyCultureName);
 
         var currentCurrency = CurrencyList.FirstOrDefault(f => f.CultureName == currencyCultureName);
 
