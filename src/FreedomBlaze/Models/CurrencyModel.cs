@@ -11,7 +11,7 @@ public class CurrencyModel
         {
             if (_currentAppCurrencyList == null)
             {
-                _currentAppCurrencyList = BuildCurrencyList();
+                _currentAppCurrencyList = GetCurrencyList();
             }
             return _currentAppCurrencyList.FirstOrDefault(w => w.CultureName == CultureInfo.CurrentCulture.Name);
         }
@@ -29,9 +29,9 @@ public class CurrencyModel
         new Currency() { Name = "Brazilian Real", Value = "BRL", CultureName = "pt-BR", Symbol = "R$", FlagSvgPath = "/img/country-flag/brazil-flag.svg", CultureInfo = new CultureInfo("pt-BR") }
     };
 
-    public static List<Currency> BuildCurrencyList(string currentCultureName = null)
+    public static List<Currency> GetCurrencyList(string currentCultureName = "en-US")
     {
-        return new List<Currency>(CurrencyListStatic);
+        return CurrencyListStatic.OrderByDescending(ob => ob.CultureName == currentCultureName).ToList();
     }
 }
 

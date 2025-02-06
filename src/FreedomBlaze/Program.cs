@@ -43,7 +43,7 @@ builder.Services.AddMudServices();
 
 builder.Services.AddLocalization(options => options.ResourcesPath = "");
 
-var supportedCultures = CurrencyModel.BuildCurrencyList().Select(s => s.CultureName).ToArray();
+var supportedCultures = CurrencyModel.GetCurrencyList().Select(s => s.CultureName).ToArray();
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
     options.SetDefaultCulture(supportedCultures[0])
