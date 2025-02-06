@@ -102,6 +102,11 @@
                                     }
                                 </CellTemplate>
                             </PropertyColumn>
+                            <PropertyColumn Title="$1.00 in Currency" Property="x => x.CurrencyRateInUSD">
+                                <CellTemplate>
+                                    @context.Item.CurrencyRateInUSD.ToString("C", @context.Item.CultureInfo)
+                                </CellTemplate>
+                            </PropertyColumn>
                         </Columns>
                     </MudDataGrid>
                 </MudPaper>
@@ -114,7 +119,7 @@
     </MudGrid>
 </MudContainer>
 
-<BitcoinExchangeStatusList ExchangeStatusList="FreedomBlaze.WebClients.ExchangeRateProvider.BitcoinExchangeStatusList" CurrencyList="@CurrencyList" />
+<BitcoinExchangeStatusList ExchangeStatusList="FreedomBlaze.WebClients.ExchangeRateProvider.BitcoinExchangeStatusList" />
 
 <SatsInfo />
 
