@@ -102,9 +102,9 @@
                                     }
                                 </CellTemplate>
                             </PropertyColumn>
-                            <PropertyColumn Title="$1.00 in Currency" Property="x => x.CurrencyRateInUSD">
+                            <PropertyColumn Title="USD Rate" Property="x => x.CurrencyRateInUSD">
                                 <CellTemplate>
-                                    @context.Item.CurrencyRateInUSD.ToString("C", @context.Item.CultureInfo)
+                                    <MudText Color="Color.Secondary">@context.Item.CurrencyRateInUSD.ToString("C", @context.Item.CultureInfo)</MudText>
                                 </CellTemplate>
                             </PropertyColumn>
                         </Columns>
