@@ -97,14 +97,14 @@
                                     else
                                     {
                                         <MudTooltip Text="Copy Currency">
-                                            <MudLink Color="Color.Secondary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", @context.Item.CultureInfo)</MudLink>
+                                            <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", @context.Item.CultureInfo)</MudLink>
                                         </MudTooltip>
                                     }
                                 </CellTemplate>
                             </PropertyColumn>
                             <PropertyColumn Title="USD Rate" Property="x => x.CurrencyRateInUSD">
                                 <CellTemplate>
-                                    <MudText Color="Color.Secondary">@context.Item.CurrencyRateInUSD.ToString("C", @context.Item.CultureInfo)</MudText>
+                                    <MudText Color="Color.Primary">@context.Item.CurrencyRateInUSD.ToString("C", @context.Item.CultureInfo)</MudText>
                                 </CellTemplate>
                             </PropertyColumn>
                         </Columns>
@@ -334,7 +334,7 @@
     Func<Currency, int, string> _rowStyleFunc => (x, i) =>
     {
         if (x.CultureName == currencyCultureName)
-            return $"background-color:{Colors.Amber.Lighten4}";
+            return $"background-color:{Colors.Gray.Darken2}";
 
         return "";
     };

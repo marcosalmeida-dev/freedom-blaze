@@ -1,9 +1,9 @@
 ﻿@using FreedomBlaze.Models
 @using MudBlazor
 
-<MudContainer Class="mt-12 d-flex">
+<MudContainer Class="mt-12">
     <MudGrid Class="d-flex justify-center">
-        <MudItem xs="12" sm="3" md="3" Class="d-flex">
+        <MudItem xs="12" sm="4" md="4" Class="d-flex justify-center">
             <MudDataGrid Items="@ExchangeStatusList" ColumnResizeMode="ResizeMode.None" Hover="true" Dense="true">
                 <Columns>
                     <PropertyColumn Title="Exchange" Property="x => x.ExchangeName">
