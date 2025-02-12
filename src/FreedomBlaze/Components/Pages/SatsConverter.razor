@@ -40,14 +40,14 @@
                 OnBlur="ConvertToBitcoin" Culture="@CultureService.CurrentCulture" Format="N2" T="double?"
                 HideSpinButtons="true" Variant="Variant.Text" Immediate="false"
                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                AdornmentAriaLabel="Copy" AdornmentColor="Color.Warning"
+                AdornmentAriaLabel="Copy" AdornmentColor="Color.Primary"
                 OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
 
                 <MudNumericField @bind-Value="satsValue" Label="SATS" MaxLength="9"
                 OnBlur="ConvertToCurrency"
                                  HideSpinButtons="true" Variant="Variant.Text" Immediate="false"
                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Warning"
+                AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
                 OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
 
                 @* <MudButton @onclick="ConvertToBitcoin"
@@ -150,6 +150,8 @@
     private double? lastCurrencyValue;
     private double? satsValue;
     private double? lastSatsValue;
+
+    private MudThemeProvider _mudThemeProvider;
 
     protected override async Task OnInitializedAsync()
     {
@@ -334,7 +336,7 @@
     Func<Currency, int, string> _rowStyleFunc => (x, i) =>
     {
         if (x.CultureName == currencyCultureName)
-            return $"background-color:{Colors.Gray.Darken2}";
+            return $"background-color:{Colors.Gray.Lighten2}";
 
         return "";
     };
