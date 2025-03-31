@@ -1,8 +1,6 @@
 ﻿using FreedomBlaze.Exceptions;
 using FreedomBlaze.Logging;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 
 namespace FreedomBlaze.Infrastructure;
 

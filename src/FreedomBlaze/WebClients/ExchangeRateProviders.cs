@@ -1,4 +1,3 @@
-using FreedomBlaze.Components.Pages;
 using FreedomBlaze.Exceptions;
 using FreedomBlaze.Extensions;
 using FreedomBlaze.Interfaces;
@@ -38,7 +37,6 @@ public class ExchangeRateProvider : IExchangeRateProvider
 
     public Task<BitcoinExchangeRateModel?> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
-        //Set the time cache to avoid blazor stateful reconnection after prerendering - https://learn.microsoft.com/en-us/aspnet/core/blazor/components/lifecycle?view=aspnetcore-8.0
         var timeNow = new TimeOnly(DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second);
         return _cache.GetOrCreateAsync(timeNow, async e =>
         {

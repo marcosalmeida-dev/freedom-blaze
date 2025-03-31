@@ -1,8 +1,6 @@
-﻿using FreedomBlaze.Http.Extensions;
+﻿using System.Text.Json.Serialization;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
-using System.Net;
-using System.Text.Json.Serialization;
 
 namespace FreedomBlaze.WebClients
 {

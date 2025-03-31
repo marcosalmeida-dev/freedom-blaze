@@ -5,6 +5,7 @@
 @using System.Text.Json;
 @using System.Threading.Tasks;
 @using System.Collections.Generic;
+@using FreedomBlaze.Client.Components
 @using FreedomBlaze.Client.Helpers;
 @using FreedomBlaze.Interfaces
 @using FreedomBlaze.Models;
@@ -45,7 +46,7 @@
 
                 <MudNumericField @bind-Value="satsValue" Label="SATS" MaxLength="9"
                 OnBlur="ConvertToCurrency"
-                                 HideSpinButtons="true" Variant="Variant.Text" Immediate="false"
+                HideSpinButtons="true" Variant="Variant.Text" Immediate="false"
                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
                 AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
                 OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
@@ -119,7 +120,9 @@
     </MudGrid>
 </MudContainer>
 
-<BitcoinExchangeStatusList ExchangeStatusList="FreedomBlaze.WebClients.ExchangeRateProvider.BitcoinExchangeStatusList" />
+@* <BitcoinExchangeStatusList ExchangeStatusList="FreedomBlaze.WebClients.ExchangeRateProvider.BitcoinExchangeStatusList" /> *@
+
+<BitcoinNews />
 
 <SatsInfo />
 
@@ -136,7 +139,9 @@
 
 @code {
     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
     private bool _loading = false;
+    private Timer _timer;
     private List<Currency> CurrencyList = new List<Currency>();
     private Task<BitcoinExchangeRateModel> currencyRatesTask;
 
@@ -151,29 +156,28 @@
     private double? satsValue;
     private double? lastSatsValue;
 
-    private MudThemeProvider _mudThemeProvider;
-
     protected override async Task OnInitializedAsync()
     {
         currencyRatesTask = ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
+        _timer = new Timer(async _ => await GetExchangeRates(), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await HandleCultureInfo();
+            await GetExchangeRates();
         }
 
         await base.OnAfterRenderAsync(firstRender);
     }
 
-    async Task HandleCultureInfo()
+    async Task GetExchangeRates()
     {
         try
         {
             _loading = true;
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
 
             var localizationValue = ContextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
             if (!string.IsNullOrEmpty(localizationValue))
@@ -189,7 +193,9 @@
 
             var currencyRatesResult = await currencyRatesTask;
 
-            await HandleCurrencyList(currencyRatesResult, currencyCultureName ?? "en-US");
+            await LoadCurrencyList(currencyRatesResult, currencyCultureName ?? "en-US");
+
+            SnackMessage($"Exchanges prices updated!", Defaults.Classes.Position.BottomCenter, Severity.Success);
         }
         catch (Exception ex)
         {
@@ -200,10 +206,10 @@
             _loading = false;
         }
 
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
-    async Task HandleCurrencyList(BitcoinExchangeRateModel currencyRatesResult, string currencyCultureName)
+    async Task LoadCurrencyList(BitcoinExchangeRateModel currencyRatesResult, string currencyCultureName)
     {
         CurrencyList = CurrencyModel.GetCurrencyList(currencyCultureName);
 
@@ -256,6 +262,9 @@
 
         try
         {
+            _loading = true;
+            StateHasChanged();
+
             // Track the custom event using TelemetryClient
             var properties = new Dictionary<string, string>
             {
@@ -266,12 +275,18 @@
 
             // Get exchange rates
             var exchangeRateAvg = await ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
-            await HandleCurrencyList(exchangeRateAvg, currencyCultureName);
+            await LoadCurrencyList(exchangeRateAvg, currencyCultureName);
         }
         catch (Exception ex)
         {
             SnackMessage($"Exception occurred converting to Bitcoin: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
         }
+        finally
+        {
+            _loading = false;
+        }
+
+        StateHasChanged();
     }
 
     async Task ConvertToCurrency()
@@ -348,5 +363,7 @@
             cancellationTokenSource.Cancel();
             cancellationTokenSource.Dispose();
         }
+
+        _timer?.Dispose();
     }
 }
