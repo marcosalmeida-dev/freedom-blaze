@@ -1,0 +1,90 @@
+﻿@page "/bitcoinnews"
+@rendermode InteractiveAuto
+
+@using System.Globalization
+@using FreedomBlaze.Client.Helpers
+@using FreedomBlaze.Client.Services
+@using FreedomBlaze.Models
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudGrid Justify="Justify.Center" Class="mt-8">
+        <MudText Typo="Typo.h3" GutterBottom="true">World Crypto News Today</MudText>
+        <MudDivider></MudDivider>
+        <MudPaper>
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="@_loading" />
+        </MudPaper>
+    </MudGrid>
+    <MudGrid Justify="Justify.Center">
+        @foreach (var article in NewsArticles)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <!-- 3 columns on medium and larger screens -->
+                <MudCard Class="d-flex flex-column h-100" Style="height: 100%;">
+                    <!-- Ensures equal height -->
+                    @if (!string.IsNullOrEmpty(article.NewsThumbImg))
+                    {
+                        <MudCardMedia Image="@article.NewsThumbImg" Height="150" />
+                    }
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h5">@(article.Title.Length > 55 ? article.Title.Substring(0, 55) + "..." : article.Title)</MudText>
+                            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                                <MudIcon Icon="@Icons.Material.Filled.Public" Class="mt-1 me-1" Size="Size.Small" />
+                                @article.Source
+                            </MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Class="mt-1 me-1" Size="Size.Small" />
+                                @article.SourceRegion
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent Class="flex-grow-1">
+                        <!-- Makes content expand to fit -->
+                        <MudText>@(article.Text.Length > 150 ? article.Text.Substring(0, 150) + "..." : article.Text)</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @article.Date.ToString("MMMM dd, yyyy")
+                        </MudText>
+                    </MudCardContent>
+                    <MudCardActions Class="mt-auto">
+                        <!-- Pushes actions to the bottom -->
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@article.ArticleLinkUrl" Target="_blank">Read More</MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+</MudContainer>
+
+
+@inject ISnackbar Snackbar
+@inject BitcoinNewsService Service
+
+@code {
+    private List<NewsArticleModel> NewsArticles = new List<NewsArticleModel>();
+    private bool _loading = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _loading = true;
+                StateHasChanged();
+
+                NewsArticles = await Service.GetBtcNews();
+            }
+            catch(Exception ex)
+            {
+                Snackbar.SnackMessage("Some error ocurred while trying to get bitcoin news, sorry!", Defaults.Classes.Position.TopCenter, Severity.Error);
+            }
+            finally
+            {
+                _loading = false;
+                StateHasChanged();
+            }
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+}

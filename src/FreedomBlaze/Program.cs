@@ -1,6 +1,8 @@
 using Azure.Identity;
+using Azure.Storage.Blobs;
 using FreedomBlaze.Client.Services;
 using FreedomBlaze.Components;
+using FreedomBlaze.Configuration;
 using FreedomBlaze.Infrastructure;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
@@ -9,28 +11,53 @@ using FreedomBlaze.Services;
 using FreedomBlaze.WebClients;
 using FreedomBlaze.WebClients.CurrencyExchanges;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.Extensions.Options;
 using MudBlazor.Services;
 using Phoenixd.NET.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddHttpClient();
-// For Blazor Client: Use AddHttpClient to inject the HttpClient with a dynamically set base address.
+builder.Services.AddSingleton<IConfiguration>(provider => builder.Configuration);
+
+var baseUrlAddress = new Uri(builder.Configuration["BaseUrl"]);
+builder.Services.AddHttpClient<BitcoinNewsService>(c =>
+{
+    c.BaseAddress = baseUrlAddress;
+});
 builder.Services.AddHttpClient<ContactService>(c =>
 {
-    // Configure HttpClient with NavigationManager to set the base address dynamically
-    c.BaseAddress = new Uri(builder.Configuration["BaseUrl"]);
+    c.BaseAddress = baseUrlAddress;
 });
 
-builder.Services.AddSingleton<IConfiguration>(provider => builder.Configuration);
-builder.Services.AddMemoryCache();
+builder.Services.Configure<BlobStorageOptions>(
+    builder.Configuration.GetSection("BlobStorage"));
+// Register BlobServiceClient using DefaultAzureCredential
+builder.Services.AddSingleton(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<BlobStorageOptions>>().Value;
+    var blobUri = new Uri($"https://{options.AccountName}.blob.core.windows.net");
+    return new BlobServiceClient(blobUri, new DefaultAzureCredential());
+});
+builder.Services.AddSingleton<BlobStorageService>();
 
-builder.Services.AddSingleton<IExchangeRateProvider, ExchangeRateProvider>();
-builder.Services.AddSingleton<ICurrencyExchangeProvider, CurrencyExchangeRateProviders>();
+builder.Services.AddScoped(provider =>
+{
+    var httpClient = provider.GetRequiredService<HttpClient>();
+    var blobStorageService = provider.GetRequiredService<BlobStorageService>();
+    var imageService = provider.GetRequiredService<ImageService>();
+    var apiKey = builder.Configuration["ChatGptApiKey"];
+    return new ChatGptService(httpClient, blobStorageService, imageService, apiKey);
+});
+
+builder.Services.AddScoped<IExchangeRateProvider, ExchangeRateProvider>();
+builder.Services.AddScoped<ICurrencyExchangeProvider, CurrencyExchangeRateProviders>();
 
 builder.Services.AddScoped<CultureService>();
+builder.Services.AddScoped<ImageService>();
 
 builder.Services.AddExceptionHandler<CustomExceptionHandler>();
+
+builder.Services.AddMemoryCache();
 
 builder.Services.AddControllers();
 
@@ -85,6 +112,11 @@ else
             new DefaultAzureCredential());
     }
 }
+
+app.UseCors(builder =>
+    builder.AllowAnyOrigin()
+           .AllowAnyHeader()
+           .AllowAnyMethod());
 
 app.UseHttpsRedirection();
 

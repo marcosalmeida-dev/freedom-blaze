@@ -1,8 +1,8 @@
+using System.Globalization;
+using FreedomBlaze.Client.Services;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.Localization;
 using MudBlazor.Services;
-using System.Globalization;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
@@ -16,6 +16,8 @@ CultureInfo.DefaultThreadCurrentCulture = new CultureInfo(defaultCulture);
 CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo(defaultCulture);
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+//builder.Services.AddScoped<BitcoinNewsService>();
+//builder.Services.AddScoped<ContactService>();
 
 builder.Services.AddMudServices();
 builder.Services.AddScoped<HubConnectionBuilder>();
