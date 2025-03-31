@@ -490,3 +490,6 @@ $RECYCLE.BIN/
 /src/FreedomBlaze.AppHost/infra/resources.bicep
 /src/FreedomBlaze.AppHost/aspire-manifest.json
 /src/FreedomBlaze.AppHost/azure.yaml
+/src/FreedomBlaze/bitcoin-news-29-03-2025.json
+/src/FreedomBlaze/bitcoin-news.json
+/src/FreedomBlaze/get-bitcoin-news.txt
