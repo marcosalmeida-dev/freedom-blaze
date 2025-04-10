@@ -38,18 +38,18 @@
                 </MudSelect>
 
                 <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
-                OnBlur="ConvertToBitcoin" Culture="@CultureService.CurrentCulture" Format="N2" T="double?"
-                HideSpinButtons="true" Variant="Variant.Text" Immediate="false"
-                Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                AdornmentAriaLabel="Copy" AdornmentColor="Color.Primary"
-                OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
+                                 OnBlur="ConvertToBitcoin" Culture="@CultureService.CurrentCulture" Format="N2" T="double?"
+                                 HideSpinButtons="true" Variant="Variant.Text" Immediate="false"
+                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
+                                 AdornmentAriaLabel="Copy" AdornmentColor="Color.Primary"
+                                 OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
 
                 <MudNumericField @bind-Value="satsValue" Label="SATS" MaxLength="9"
-                OnBlur="ConvertToCurrency"
-                HideSpinButtons="true" Variant="Variant.Text" Immediate="false"
-                Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
-                OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
+                                 OnBlur="ConvertToCurrency"
+                                 HideSpinButtons="true" Variant="Variant.Text" Immediate="false"
+                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
+                                 AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
+                                 OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
 
                 @* <MudButton @onclick="ConvertToBitcoin"
                            StartIcon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary"
@@ -61,68 +61,68 @@
             </MudStack>
         </MudItem>
         <MudItem xs="12" sm="12" md="12" Class="d-flex justify-center">
-            @if (_loading == false)
-            {
-                <MudPaper>
-                    <MudDataGrid T="Currency" Items="@CurrencyList" RowStyleFunc="@_rowStyleFunc" ColumnResizeMode="ResizeMode.Column" Hover="true">
-                        <Columns>
-                            <PropertyColumn Title="Region" Property="x => x.Name">
-                                <CellTemplate>
-                                    <MudTooltip Text="@context.Item.Name">
-                                        <MudAvatar>
-                                            <MudImage Src="@context.Item.FlagSvgPath" Alt="@context.Item.Name"></MudImage>
-                                        </MudAvatar>
+            <MudPaper>
+                <MudDataGrid T="Currency" Items="@CurrencyList" RowStyleFunc="@_rowStyleFunc" ColumnResizeMode="ResizeMode.Column" Hover="true">
+                    <Columns>
+                        <PropertyColumn Title="Region" Property="x => x.Name">
+                            <CellTemplate>
+                                <MudTooltip Text="@context.Item.Name">
+                                    <MudAvatar>
+                                        <MudImage Src="@context.Item.FlagSvgPath" Alt="@context.Item.Name"></MudImage>
+                                    </MudAvatar>
+                                </MudTooltip>
+                            </CellTemplate>
+                        </PropertyColumn>
+                        <PropertyColumn Title="BTC Price" Property="x => x.BitcoinPrice">
+                            <CellTemplate>
+                                @if (_loading)
+                                {
+                                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="Copy BTC Price">
+                                        <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", @context.Item.CultureInfo)</MudLink>
                                     </MudTooltip>
-                                </CellTemplate>
-                            </PropertyColumn>
-                            <PropertyColumn Title="BTC Price" Property="x => x.BitcoinPrice">
-                                <CellTemplate>
-                                    @if (context.Item.BitcoinPrice == 0)
-                                    {
-                                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-                                    }
-                                    else
-                                    {
-                                        <MudTooltip Text="Copy BTC Price">
-                                            <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", @context.Item.CultureInfo)</MudLink>
-                                        </MudTooltip>
-                                    }
-                                </CellTemplate>
-                            </PropertyColumn>
-                            <PropertyColumn Title="@currencyValueInCurrencyLabel" Property="x => x.CurrencyValueInCurrency">
-                                <CellTemplate>
-                                    @if (context.Item.CurrencyValueInCurrency == 0)
-                                    {
-                                        <MudText>--</MudText>
-                                    }
-                                    else
-                                    {
-                                        <MudTooltip Text="Copy Currency">
-                                            <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", @context.Item.CultureInfo)</MudLink>
-                                        </MudTooltip>
-                                    }
-                                </CellTemplate>
-                            </PropertyColumn>
-                            <PropertyColumn Title="USD Rate" Property="x => x.CurrencyRateInUSD">
-                                <CellTemplate>
+                                }
+                            </CellTemplate>
+                        </PropertyColumn>
+                        <PropertyColumn Title="@currencyValueInCurrencyLabel" Property="x => x.CurrencyValueInCurrency">
+                            <CellTemplate>
+                                @if (_loading)
+                                {
+                                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="Copy Currency">
+                                        <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", @context.Item.CultureInfo)</MudLink>
+                                    </MudTooltip>
+                                }
+                            </CellTemplate>
+                        </PropertyColumn>
+                        <PropertyColumn Title="USD Rate" Property="x => x.CurrencyRateInUSD">
+                            <CellTemplate>
+                                @if (_loading)
+                                {
+                                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                                }
+                                else
+                                {
                                     <MudText Color="Color.Primary">@context.Item.CurrencyRateInUSD.ToString("C", @context.Item.CultureInfo)</MudText>
-                                </CellTemplate>
-                            </PropertyColumn>
-                        </Columns>
-                    </MudDataGrid>
-                </MudPaper>
-            }
-            else
-            {
-                <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="@_loading" />
-            }
+                                }
+                            </CellTemplate>
+                        </PropertyColumn>
+                    </Columns>
+                </MudDataGrid>
+            </MudPaper>
         </MudItem>
     </MudGrid>
 </MudContainer>
 
 @* <BitcoinExchangeStatusList ExchangeStatusList="FreedomBlaze.WebClients.ExchangeRateProvider.BitcoinExchangeStatusList" /> *@
 
-<BitcoinNews />
+@* <BitcoinNews /> *@
 
 <SatsInfo />
 
