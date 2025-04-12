@@ -1,10 +1,4 @@
-﻿using FreedomBlaze.Exceptions;
-using FreedomBlaze.Interfaces;
-using FreedomBlaze.Logging;
-using System.Diagnostics;
-using System.Threading.Tasks;
-
-namespace FreedomBlaze.Extensions;
+﻿namespace FreedomBlaze.Extensions;
 
 public static class TaskExtensions
 {

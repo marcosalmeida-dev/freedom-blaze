@@ -75,7 +75,6 @@
     private string DarkModeCookieName = "darkModeCookie";
     private bool _drawerOpen = false;
     private bool _isDarkMode;
-    private DateTime _navigationStartTime;
 
     private bool IsDarkMode
     {
@@ -85,7 +84,7 @@
             if (_isDarkMode != value)
             {
                 _isDarkMode = value;
-                OnDarkModeChanged();
+                OnDarkModeChanged().GetAwaiter().GetResult();
             }
         }
     }

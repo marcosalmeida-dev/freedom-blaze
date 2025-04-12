@@ -1,7 +1,6 @@
 using FreedomBlaze.Exceptions;
 using FreedomBlaze.Extensions;
 using FreedomBlaze.Interfaces;
-using FreedomBlaze.Logging;
 using FreedomBlaze.Models;
 using FreedomBlaze.WebClients.BitcoinExchanges;
 using Microsoft.Extensions.Caching.Memory;
@@ -68,22 +67,21 @@ public class ExchangeRateProvider : IExchangeRateProvider
 
                     BitcoinExchangeStatusList = exchangeRates.Select(s => new BitcoinExchangeStatusModel
                     {
-                        ExchangeName = s.IsSuccess ? s.Result.ExchangeName : ((ExchangeIntegrationException)s.Exception.InnerException).ExchangeName,
+                        ExchangeName = s.IsSuccess ? s.Result.ExchangeName : (s.Exception?.InnerException as ExchangeIntegrationException)?.ExchangeName,
                         IsExchangeAvailable = s.IsSuccess
                     }).ToList();
 
                     var failedExchangesTasks = exchangeRates.Where(w => w.IsSuccess == false).ToList();
                     foreach (var failedTask in failedExchangesTasks)
                     {
-                        ExchangeIntegrationException exchangeRateEx = failedTask.Exception.InnerException as ExchangeIntegrationException;
-                        Logger.LogError(exchangeRateEx, $"GetExchangeRate FAILED for: {exchangeRateEx.ExchangeName}");
+                        ExchangeIntegrationException? exchangeRateEx = failedTask?.Exception?.InnerException as ExchangeIntegrationException;
                     }
 
                     LastUpdateTime = timeNow;
                 }
             }
 
-            BitcoinExchangeRateModel exchangeRateModelResult = null;
+            BitcoinExchangeRateModel? exchangeRateModelResult = null;
             if (exchangeRateAvgResult.HasValue)
             {
                 var currentCurrency = CurrencyModel.CurrentAppCurrency.Value;

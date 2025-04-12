@@ -29,7 +29,7 @@
                         }
                         <MudCardHeader>
                             <CardHeaderContent>
-                                <MudText Typo="Typo.h5">@(article.Title.Length > 55 ? article.Title.Substring(0, 55) + "..." : article.Title)</MudText>
+                                <MudText Typo="Typo.h5">@(article.Title.Length > 50 ? article.Title.Substring(0, 50) + "..." : article.Title)</MudText>
                                 <MudText Typo="Typo.body1" Color="Color.Secondary">
                                     <MudIcon Icon="@Icons.Material.Filled.Public" Class="mt-1 me-1" Size="Size.Small" />
                                     @article.Source
@@ -77,7 +77,7 @@
 
                 NewsArticles = await Service.GetBtcNews();
             }
-            catch (Exception ex)
+            catch
             {
                 Snackbar.SnackMessage("Some error ocurred while trying to get bitcoin news, sorry!", Defaults.Classes.Position.TopCenter, Severity.Error);
             }

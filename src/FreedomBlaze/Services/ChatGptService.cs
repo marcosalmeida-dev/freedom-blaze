@@ -29,16 +29,18 @@ public class ChatGptService
 
     public async Task<List<NewsArticleModel>> GetTodayBitcoinNewsAsync()
     {
-        string jsonContent = await _blobStorageService.DownloadTextAsync("bitcoin-news", $"bitcoin-news-{DateTime.Now:dd-MM-yyyy}.json");
+        string? jsonContent = await _blobStorageService.DownloadTextAsync("bitcoin-news", $"bitcoin-news-{DateTime.Now:dd-MM-yyyy}.json");
 
-        List<NewsArticleModel> newsResult = new List<NewsArticleModel>();
-        if (jsonContent != null)
+        if (string.IsNullOrEmpty(jsonContent))
         {
-            newsResult = JsonSerializer.Deserialize<List<NewsArticleModel>>(jsonContent, _jsonSerializerOptions) ?? new List<NewsArticleModel>();
-            foreach (var newsArticle in newsResult.Where(w => w.NewsThumbImg == null))
-            {
-                newsArticle.NewsThumbImg = _imageService.GetAbsoluteImageUri("img/articles/default-img.png");
-            }
+            return new List<NewsArticleModel>(); // Return an empty list if jsonContent is null or empty
+        }
+
+        var newsResult = JsonSerializer.Deserialize<List<NewsArticleModel>>(jsonContent, _jsonSerializerOptions) ?? new List<NewsArticleModel>();
+
+        foreach (var newsArticle in newsResult.Where(w => w.NewsThumbImg == null))
+        {
+            newsArticle.NewsThumbImg = _imageService.GetAbsoluteImageUri("img/articles/default-img.png");
         }
 
         return newsResult;
@@ -59,6 +61,8 @@ public class ChatGptService
                                                                    new ResponseCreationOptions()
                                                                    {
                                                                        Tools = { ResponseTool.CreateWebSearchTool() },
+                                                                       TruncationMode = ResponseTruncationMode.Auto,
+                                                                       MaxOutputTokenCount = 8000
                                                                    });
         string textResult = string.Empty;
         foreach (ResponseItem item in response.OutputItems)
@@ -71,7 +75,10 @@ public class ChatGptService
             {
                 var messageContent = message.Content?.FirstOrDefault()?.Text;
                 Console.WriteLine($"[{message.Role}] {messageContent}");
-                textResult = ExtractJsonArray(messageContent) ?? string.Empty;
+                if(!string.IsNullOrEmpty(messageContent))
+                {
+                    textResult = ExtractJsonArray(messageContent) ?? string.Empty;
+                }
             }
         }
 
@@ -98,7 +105,7 @@ public class ChatGptService
         await _blobStorageService.UploadTextAsync("bitcoin-news", blobName, jsonContent);
     }
 
-    public async Task<string> GetMainArticleImageAsync(string articleLinkUrl)
+    public async Task<string?> GetMainArticleImageAsync(string articleLinkUrl)
     {
         _httpClient.DefaultRequestHeaders.Clear(); // Clear default headers
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");

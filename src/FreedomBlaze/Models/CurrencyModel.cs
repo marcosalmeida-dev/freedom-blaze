@@ -13,7 +13,8 @@ public class CurrencyModel
             {
                 _currentAppCurrencyList = GetCurrencyList();
             }
-            return _currentAppCurrencyList.FirstOrDefault(w => w.CultureName == CultureInfo.CurrentCulture.Name);
+            return _currentAppCurrencyList.FirstOrDefault(w => w.CultureName == CultureInfo.CurrentCulture.Name)
+                   ?? new Currency(); // Return a default Currency instance to avoid null reference.  
         }
     }
 
@@ -49,10 +50,10 @@ public class Currency
     public double CurrencyValueInCurrency { get; set; }
     public double SatoshisInFiat { get; set; }
 
-    // Note: this is important so the MudSelect can compare Currency
-    public override bool Equals(object o)
+    // Updated Equals method to fix CS8765 diagnostic
+    public override bool Equals(object? obj) // Updated parameter to be nullable
     {
-        var other = o as Currency;
+        var other = obj as Currency;
         return other?.CultureName == CultureName;
     }
 
