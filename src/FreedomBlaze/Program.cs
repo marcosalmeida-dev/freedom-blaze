@@ -1,9 +1,9 @@
 using Azure.Identity;
+using Azure.Storage;
 using Azure.Storage.Blobs;
 using FreedomBlaze.Client.Services;
 using FreedomBlaze.Components;
 using FreedomBlaze.Configuration;
-using FreedomBlaze.Infrastructure;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
 using FreedomBlaze.ServiceDefaults;
@@ -19,7 +19,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<IConfiguration>(provider => builder.Configuration);
 
-var baseUrlAddress = new Uri(builder.Configuration["BaseUrl"]);
+var baseUrl = builder.Configuration["BaseUrl"];
+if (string.IsNullOrEmpty(baseUrl))
+{
+    throw new InvalidOperationException("BaseUrl configuration is missing or empty.");
+}
+var baseUrlAddress = new Uri(baseUrl);
+
 builder.Services.AddHttpClient<BitcoinNewsService>(c =>
 {
     c.BaseAddress = baseUrlAddress;
@@ -31,13 +37,24 @@ builder.Services.AddHttpClient<ContactService>(c =>
 
 builder.Services.Configure<BlobStorageOptions>(
     builder.Configuration.GetSection("BlobStorage"));
-// Register BlobServiceClient using DefaultAzureCredential
+
 builder.Services.AddSingleton(sp =>
 {
     var options = sp.GetRequiredService<IOptions<BlobStorageOptions>>().Value;
     var blobUri = new Uri($"https://{options.AccountName}.blob.core.windows.net");
-    return new BlobServiceClient(blobUri, new DefaultAzureCredential());
+
+    // Choose credential type based on whether AccessKey is set
+    if (!string.IsNullOrEmpty(options.AccessKey))
+    {
+        var credential = new StorageSharedKeyCredential(options.AccountName, options.AccessKey);
+        return new BlobServiceClient(blobUri, credential);
+    }
+    else
+    {
+        return new BlobServiceClient(blobUri, new DefaultAzureCredential());
+    }
 });
+
 builder.Services.AddSingleton<BlobStorageService>();
 
 builder.Services.AddScoped(provider =>
@@ -45,7 +62,7 @@ builder.Services.AddScoped(provider =>
     var httpClient = provider.GetRequiredService<HttpClient>();
     var blobStorageService = provider.GetRequiredService<BlobStorageService>();
     var imageService = provider.GetRequiredService<ImageService>();
-    var apiKey = builder.Configuration["ChatGptApiKey"];
+    var apiKey = builder.Configuration["ChatGptApiKey"] ?? string.Empty;
     return new ChatGptService(httpClient, blobStorageService, imageService, apiKey);
 });
 
@@ -54,8 +71,6 @@ builder.Services.AddScoped<ICurrencyExchangeProvider, CurrencyExchangeRateProvid
 
 builder.Services.AddScoped<CultureService>();
 builder.Services.AddScoped<ImageService>();
-
-builder.Services.AddExceptionHandler<CustomExceptionHandler>();
 
 builder.Services.AddMemoryCache();
 

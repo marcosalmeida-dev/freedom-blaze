@@ -5,6 +5,11 @@ var builder = DistributedApplication.CreateBuilder(args);
 //                     .WithEndpoint(port: 9741, targetPort: 9740)
 //                     .PublishAsContainer();
 
-builder.AddProject<Projects.FreedomBlaze>(nameof(Projects.FreedomBlaze).ToLower()).WithExternalHttpEndpoints();
+// Automatically provision an Application Insights resource
+var insights = builder.AddAzureApplicationInsights("fb-applicationinsights");
+
+builder.AddProject<Projects.FreedomBlaze>(nameof(Projects.FreedomBlaze).ToLower())
+    .WithReference(insights)
+    .WithExternalHttpEndpoints();
 
 builder.Build().Run();

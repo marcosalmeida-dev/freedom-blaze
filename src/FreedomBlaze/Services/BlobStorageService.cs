@@ -42,7 +42,7 @@ public class BlobStorageService
                 return downloadResult.Value.Content.ToString();
             }
         }
-        catch(Exception ex)
+        catch
         {
             throw;
         }

@@ -17,14 +17,14 @@
                 <MudCard>
                     <MudCardContent>
                         <MudTextField Label="@Localizer["Contact.Title"]" HelperText="Max. 128"
-                                      @bind-Value="model.Title" For="@(() => model.Title)"
-                                      Variant="Variant.Outlined"
-                                      Clearable="true" />
+                        @bind-Value="model.Title" For="@(() => model.Title)"
+                        Variant="Variant.Outlined"
+                        Clearable="true" />
                         <MudTextField Label="@Localizer["Contact.Description"]" HelperText="Max. 1024" Class="mt-3"
-                                      @bind-Value="model.Description" For="@(() => model.Description )"
-                                      Clearable="true"
-                                      Variant="Variant.Outlined"
-                                      Lines="5" />
+                        @bind-Value="model.Description" For="@(() => model.Description )"
+                        Clearable="true"
+                        Variant="Variant.Outlined"
+                        Lines="5" />
                     </MudCardContent>
                     <MudCardActions>
                         <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">@Localizer["Contact.SendButtonText"]</MudButton>
@@ -46,11 +46,13 @@
         var response = await ContactService.AddCommentAsync(model);
         if (response.IsSuccessStatusCode)
         {
-            Snackbar.SnackMessage("Message sent, thanks!", Defaults.Classes.Position.TopCenter, Severity.Success);
+            Snackbar.SnackMessage("Message sent, thanks!", Defaults.Classes.Position.BottomCenter, Severity.Success);
+            model.Title = string.Empty;
+            model.Description = string.Empty;
         }
         else
         {
-            Snackbar.SnackMessage("Some error ocurred, sorry!", Defaults.Classes.Position.TopCenter, Severity.Error);
+            Snackbar.SnackMessage("Some error ocurred, sorry!", Defaults.Classes.Position.BottomCenter, Severity.Error);
         }
     }
 }

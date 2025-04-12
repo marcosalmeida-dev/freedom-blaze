@@ -17,6 +17,6 @@ public class BitcoinNewsService
     {
         var result = await _httpClient.GetFromJsonAsync<List<NewsArticleModel>>("api/bitcoin-news");
 
-        return result;
+        return result ?? new List<NewsArticleModel>();
     }
 }
