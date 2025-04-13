@@ -84,7 +84,7 @@
             if (_isDarkMode != value)
             {
                 _isDarkMode = value;
-                OnDarkModeChanged().GetAwaiter().GetResult();
+                OnDarkModeChanged();
             }
         }
     }

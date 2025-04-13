@@ -160,8 +160,6 @@
     {
         currencyRatesTask = ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
         _timer = new Timer(async _ => await GetExchangeRates(), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
-
-        await base.OnInitializedAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

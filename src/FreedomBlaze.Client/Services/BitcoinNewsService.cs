@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using FreedomBlaze.Models;
 
 namespace FreedomBlaze.Client.Services;
