@@ -1,10 +1,6 @@
-using System.Text;
-using System.Text.Json;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
-using FreedomBlaze.ServiceDefaults.CustomHealthChecks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
@@ -28,14 +24,14 @@ public static class Extensions
 
         builder.Services.AddServiceDiscovery();
 
-        //builder.Services.ConfigureHttpClientDefaults(http =>
-        //{
-        //    // Turn on resilience by default
-        //    http.AddStandardResilienceHandler();
+        builder.Services.ConfigureHttpClientDefaults(http =>
+        {
+            // Turn on resilience by default
+            http.AddStandardResilienceHandler();
 
-        //    // Turn on service discovery by default
-        //    http.AddServiceDiscovery();
-        //});
+            // Turn on service discovery by default
+            http.AddServiceDiscovery();
+        });
 
         return builder;
     }
@@ -91,10 +87,10 @@ public static class Extensions
     {
         builder.Services.AddHealthChecks()
             // Add a default liveness check to ensure app is responsive
-            .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"])
-            .AddCheck<PhoenixdContainerHealthCheck>("phoenixd_container_health_check",
-                                                    failureStatus: HealthStatus.Unhealthy,
-                                                    tags: new[] { "docker", "container" });
+            .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+            //.AddCheck<PhoenixdContainerHealthCheck>("phoenixd_container_health_check",
+            //                                        failureStatus: HealthStatus.Unhealthy,
+            //                                        tags: new[] { "docker", "container" });
 
         return builder;
     }
@@ -111,53 +107,10 @@ public static class Extensions
             // Only health checks tagged with the "live" tag must pass for app to be considered alive
             app.MapHealthChecks("/alive", new HealthCheckOptions
             {
-                //Predicate = r => r.Tags.Contains("live"),
-                ResponseWriter = WriteResponse
+                Predicate = r => r.Tags.Contains("live")
             });
         }
 
         return app;
-    }
-
-    private static Task WriteResponse(HttpContext context, HealthReport healthReport)
-    {
-        context.Response.ContentType = "application/json; charset=utf-8";
-
-        var options = new JsonWriterOptions { Indented = true };
-
-        using var memoryStream = new MemoryStream();
-        using (var jsonWriter = new Utf8JsonWriter(memoryStream, options))
-        {
-            jsonWriter.WriteStartObject();
-            jsonWriter.WriteString("status", healthReport.Status.ToString());
-            jsonWriter.WriteStartObject("results");
-
-            foreach (var healthReportEntry in healthReport.Entries)
-            {
-                jsonWriter.WriteStartObject(healthReportEntry.Key);
-                jsonWriter.WriteString("status",
-                    healthReportEntry.Value.Status.ToString());
-                jsonWriter.WriteString("description",
-                    healthReportEntry.Value.Description);
-                jsonWriter.WriteStartObject("data");
-
-                foreach (var item in healthReportEntry.Value.Data)
-                {
-                    jsonWriter.WritePropertyName(item.Key);
-
-                    JsonSerializer.Serialize(jsonWriter, item.Value,
-                        item.Value?.GetType() ?? typeof(object));
-                }
-
-                jsonWriter.WriteEndObject();
-                jsonWriter.WriteEndObject();
-            }
-
-            jsonWriter.WriteEndObject();
-            jsonWriter.WriteEndObject();
-        }
-
-        return context.Response.WriteAsync(
-            Encoding.UTF8.GetString(memoryStream.ToArray()));
     }
 }

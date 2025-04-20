@@ -14,6 +14,9 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Options;
 using MudBlazor.Services;
 using Phoenixd.NET.Hubs;
+using Microsoft.Extensions.Azure;
+using Microsoft.Identity.Client.Platforms.Features.DesktopOs.Kerberos;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,42 +38,36 @@ builder.Services.AddHttpClient<ContactService>(c =>
     c.BaseAddress = baseUrlAddress;
 });
 
-builder.Services.Configure<BlobStorageOptions>(
-    builder.Configuration.GetSection("BlobStorage"));
-
-builder.Services.AddSingleton(sp =>
+var blobStorageOptions = builder.Configuration.GetSection("BlobStorage").Get<BlobStorageOptions>();
+builder.Services.AddAzureClients(clientBuilder =>
 {
-    var options = sp.GetRequiredService<IOptions<BlobStorageOptions>>().Value;
-    var blobUri = new Uri($"https://{options.AccountName}.blob.core.windows.net");
-
-    // Choose credential type based on whether AccessKey is set
-    if (!string.IsNullOrEmpty(options.AccessKey))
+    var blobUri = new Uri($"https://{blobStorageOptions?.AccountName}.blob.core.windows.net");
+    if (!string.IsNullOrEmpty(blobStorageOptions?.AccessKey))
     {
-        var credential = new StorageSharedKeyCredential(options.AccountName, options.AccessKey);
-        return new BlobServiceClient(blobUri, credential);
+        var credential = new StorageSharedKeyCredential(blobStorageOptions.AccountName, blobStorageOptions.AccessKey);
+        clientBuilder.AddBlobServiceClient(blobUri, credential);
     }
     else
     {
-        return new BlobServiceClient(blobUri, new DefaultAzureCredential());
+        clientBuilder.AddBlobServiceClient(blobUri);
+        clientBuilder.UseCredential(new DefaultAzureCredential());
     }
-});
 
-builder.Services.AddSingleton<BlobStorageService>();
-
-builder.Services.AddScoped(provider =>
-{
-    var httpClient = provider.GetRequiredService<HttpClient>();
-    var blobStorageService = provider.GetRequiredService<BlobStorageService>();
-    var imageService = provider.GetRequiredService<ImageService>();
-    var apiKey = builder.Configuration["ChatGptApiKey"] ?? string.Empty;
-    return new ChatGptService(httpClient, blobStorageService, imageService, apiKey);
+    var useKeyVault = builder.Configuration.GetValue<bool?>("UseKeyVault");
+    if (useKeyVault.HasValue && useKeyVault == true)
+    {
+        clientBuilder.AddSecretClient(new Uri($"https://{builder.Configuration["KeyVaultName"]}.vault.azure.net/"));
+    }
 });
 
 builder.Services.AddScoped<IExchangeRateProvider, ExchangeRateProvider>();
 builder.Services.AddScoped<ICurrencyExchangeProvider, CurrencyExchangeRateProviders>();
 
+builder.Services.AddSingleton<BlobStorageService>();
+
 builder.Services.AddScoped<CultureService>();
 builder.Services.AddScoped<ImageService>();
+builder.Services.AddScoped<ChatGptService>();
 
 builder.Services.AddMemoryCache();
 
@@ -101,9 +98,6 @@ builder.AddServiceDefaults();
 
 //builder.Services.ConfigurePhoenixdServices(builder.Configuration);
 
-//Logger.InitializeDefaults(Path.Combine(AppContext.BaseDirectory, "Logs", "Logs.txt"));
-//Logger.LogSoftwareStarted("Freedom Blaze App");
-
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
@@ -118,22 +112,13 @@ else
     //app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
-
-    var useKeyVault = builder.Configuration.GetValue<bool?>("UseKeyVault");
-    if (useKeyVault.HasValue && useKeyVault == true)
-    {
-        builder.Configuration.AddAzureKeyVault(
-            new Uri($"https://{builder.Configuration["KeyVaultName"]}.vault.azure.net/"),
-            new DefaultAzureCredential());
-    }
 }
 
-app.UseCors(builder =>
-    builder.AllowAnyOrigin()
-           .AllowAnyHeader()
-           .AllowAnyMethod());
+//app.UseCors(builder =>
+//    builder.AllowAnyOrigin()
+//           .AllowAnyHeader()
+//           .AllowAnyMethod());
 
-app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
@@ -147,7 +132,10 @@ app.UseRequestLocalization(localizationOptions);
 app.UseExceptionHandler(options => { });
 
 app.UseRouting();
+
 app.UseAntiforgery();
+
+app.UseHttpsRedirection();
 
 app.MapControllers();
 

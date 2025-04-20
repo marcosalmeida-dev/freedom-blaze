@@ -1,8 +1,11 @@
 ﻿using System.Text.Json;
 using System.Text.RegularExpressions;
+using FreedomBlaze.Constants;
 using FreedomBlaze.Models;
 using FreedomBlaze.Services;
 using HtmlAgilityPack;
+using Microsoft.Extensions.Caching.Memory;
+using OpenAI.Images;
 using OpenAI.Responses;
 
 public class ChatGptService
@@ -10,16 +13,23 @@ public class ChatGptService
     private readonly HttpClient _httpClient;
     private readonly ImageService _imageService;
     private readonly BlobStorageService _blobStorageService;
+    private readonly IMemoryCache _cache;
     private readonly string _apiKey;
+
+    private readonly string _promptContainerName = "prompts";
+    private readonly string _promptGetBitcoinNewsBlobName = "get-bitcoin-news.txt";
+    private readonly string _newsContainerName = "bitcoin-news";
+    private readonly string _newsBlobName = $"bitcoin-news-{DateTime.Now:dd-MM-yyyy}/result.json";
 
     private readonly JsonSerializerOptions _jsonSerializerOptions;
 
-    public ChatGptService(HttpClient httpClient, BlobStorageService blobStorageService, ImageService imageService, string apiKey)
+    public ChatGptService(HttpClient httpClient, BlobStorageService blobStorageService, ImageService imageService, IMemoryCache memoryCache, IConfiguration configuration)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _blobStorageService = blobStorageService ?? throw new ArgumentNullException(nameof(blobStorageService));
         _imageService = imageService ?? throw new ArgumentNullException(nameof(imageService));
-        _apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
+        _cache = memoryCache;
+        _apiKey = configuration["ChatGptApiKey"] ?? throw new ArgumentNullException("ChatGptApiKey");
 
         _jsonSerializerOptions = new JsonSerializerOptions
         {
@@ -27,35 +37,68 @@ public class ChatGptService
         };
     }
 
-    public async Task<List<NewsArticleModel>> GetTodayBitcoinNewsAsync()
+    public async Task SaveDefaultImageToBlobStorage()
     {
-        string? jsonContent = await _blobStorageService.DownloadTextAsync("bitcoin-news", $"bitcoin-news-{DateTime.Now:dd-MM-yyyy}.json");
+        // Get the image URL
+        var imageUrl = _imageService.GetAbsoluteImageUri("img/articles/default-img.png");
 
-        if (string.IsNullOrEmpty(jsonContent))
-        {
-            return new List<NewsArticleModel>(); // Return an empty list if jsonContent is null or empty
-        }
+        // Extract the file name from the image URL
+        var fileName = Path.GetFileName(new Uri(imageUrl).LocalPath);
 
-        var newsResult = JsonSerializer.Deserialize<List<NewsArticleModel>>(jsonContent, _jsonSerializerOptions) ?? new List<NewsArticleModel>();
+        // Define the blob name with a subfolder
+        var blobName = $"images/{fileName}";
 
-        foreach (var newsArticle in newsResult.Where(w => w.NewsThumbImg == null))
-        {
-            newsArticle.NewsThumbImg = _imageService.GetAbsoluteImageUri("img/articles/default-img.png");
-        }
+        // Download the image as a byte array
+        using var response = await _httpClient.GetAsync(imageUrl);
+        response.EnsureSuccessStatusCode();
+        var imageBytes = await response.Content.ReadAsByteArrayAsync();
 
-        return newsResult;
+        // Upload the image to blob storage
+        var blobUrl = await _blobStorageService.UploadImageAsync(_newsContainerName, blobName, imageBytes);
+
+        Console.WriteLine($"Image uploaded to blob storage: {blobUrl}");
     }
 
-    public async Task GetBitcoinChatGptNews()
+    public async Task<List<NewsArticleModel>?> GetTodayBitcoinNewsAsync()
     {
-        string promptBlob = await _blobStorageService.DownloadTextAsync("prompts", "get-bitcoin-news.txt") ?? string.Empty;
+        if (!_cache.TryGetValue(CacheKeys.TodayBitcoinNewsCacheKey, out List<NewsArticleModel>? cachedNews))
+        {
+            string? jsonContent = await _blobStorageService.DownloadTextAsync(_newsContainerName, _newsBlobName);
+
+            if (string.IsNullOrEmpty(jsonContent))
+            {
+                cachedNews = new List<NewsArticleModel>(); 
+            }
+            else
+            {
+                cachedNews = JsonSerializer.Deserialize<List<NewsArticleModel>>(jsonContent, _jsonSerializerOptions) ?? new List<NewsArticleModel>();
+
+                foreach (var newsArticle in cachedNews)
+                {
+                    newsArticle.NewsThumbImg = await SearchArticleImageAsync(newsArticle.ArticleLinkUrl);
+                    if (string.IsNullOrEmpty(newsArticle.NewsThumbImg))
+                    {
+                        newsArticle.NewsThumbImg = _imageService.GetAbsoluteImageUri("img/articles/default-img.png"); //await GenerateChatGptImageByText(newsArticle.Title); // 
+                    }
+                }
+            }
+
+            _cache.Set(CacheKeys.TodayBitcoinNewsCacheKey, cachedNews, TimeSpan.FromHours(1));
+        }
+
+        return cachedNews;
+    }
+
+    public async Task SearchBitcoinChatGptNews(string model)
+    {
+        string promptBlob = await _blobStorageService.DownloadTextAsync(_promptContainerName, _promptGetBitcoinNewsBlobName) ?? string.Empty;
 
         if (string.IsNullOrEmpty(promptBlob))
         {
             throw new InvalidOperationException("Prompt content is empty or null.");
         }
 
-        OpenAIResponseClient client = new(model: "gpt-4o", apiKey: _apiKey);
+        OpenAIResponseClient client = new(model: model, apiKey: _apiKey);
 
         OpenAIResponse response = await client.CreateResponseAsync(userInputText: promptBlob,
                                                                    new ResponseCreationOptions()
@@ -75,7 +118,7 @@ public class ChatGptService
             {
                 var messageContent = message.Content?.FirstOrDefault()?.Text;
                 Console.WriteLine($"[{message.Role}] {messageContent}");
-                if(!string.IsNullOrEmpty(messageContent))
+                if (!string.IsNullOrEmpty(messageContent))
                 {
                     textResult = ExtractJsonArray(messageContent) ?? string.Empty;
                 }
@@ -91,21 +134,64 @@ public class ChatGptService
 
         foreach (var newsArticle in newsResult.Where(w => string.IsNullOrEmpty(w.NewsThumbImg)))
         {
-            newsArticle.NewsThumbImg = await GetMainArticleImageAsync(newsArticle.ArticleLinkUrl);
+            newsArticle.NewsThumbImg = await SearchArticleImageAsync(newsArticle.ArticleLinkUrl);
+            if (string.IsNullOrEmpty(newsArticle.NewsThumbImg))
+            {
+                newsArticle.NewsThumbImg = _imageService.GetAbsoluteImageUri("img/articles/default-img.png"); //await GenerateChatGptImageByText(newsArticle.Title); // 
+            }
         }
 
-        // Serialize the list to JSON
+        //var tasks = newsResult.Where(w => string.IsNullOrEmpty(w.NewsThumbImg))
+        //                      .Select(async newsArticle =>
+        //                      {
+        //                         var img = await GetMainArticleImageAsync(newsArticle.ArticleLinkUrl);
+        //                          newsArticle.NewsThumbImg = !string.IsNullOrEmpty(img) ? img
+        //                                                                                : await GetGeneratedChatGptImageByText(newsArticle.Title);
+        //                                                                               //: _imageService.GetAbsoluteImageUri("img/articles/default-img.png");
+        //                      });
+
+        //await Task.WhenAll(tasks);
+
         string jsonContent = JsonSerializer.Serialize(newsResult, new JsonSerializerOptions
         {
             WriteIndented = true
         });
 
         // Upload the JSON content to blob storage
-        string blobName = $"bitcoin-news-{DateTime.Now:dd-MM-yyyy}.json";
-        await _blobStorageService.UploadTextAsync("bitcoin-news", blobName, jsonContent);
+        await _blobStorageService.UploadTextAsync(_newsContainerName, _newsBlobName, jsonContent);
+
+        // Update the cache
+        _cache.Set(CacheKeys.TodayBitcoinNewsCacheKey, newsResult, TimeSpan.FromHours(1));
     }
 
-    public async Task<string?> GetMainArticleImageAsync(string articleLinkUrl)
+    public async Task<string> GenerateChatGptImageByText(string prompt)
+    {
+        ImageClient client = new(model: "dall-e-3", apiKey: _apiKey);
+
+        ImageGenerationOptions options = new()
+        {
+            Quality = GeneratedImageQuality.Standard,
+            Size = GeneratedImageSize.W1024xH1024,
+            Style = GeneratedImageStyle.Natural,
+            //ResponseFormat = GeneratedImageFormat.Uri
+            ResponseFormat = GeneratedImageFormat.Bytes
+        };
+
+        GeneratedImage image = await client.GenerateImageAsync("Generate a image, with no text inside, for this title: " + prompt, options);
+
+        //TODO: save it into blob storage and return generated url getting from image.Bytes
+        //var blobUrl = _blobStorageService.UploadTextAsync()
+        string blobUrl = string.Empty;
+
+        return options.ResponseFormat == GeneratedImageFormat.Uri ? image.ImageUri.ToString() : blobUrl;
+
+        //BinaryData bytes = image.ImageBytes;
+
+        //using FileStream stream = File.OpenWrite($"{Guid.NewGuid()}.png");
+        //bytes.ToStream().CopyTo(stream);
+    }
+
+    public async Task<string?> SearchArticleImageAsync(string articleLinkUrl)
     {
         _httpClient.DefaultRequestHeaders.Clear(); // Clear default headers
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");

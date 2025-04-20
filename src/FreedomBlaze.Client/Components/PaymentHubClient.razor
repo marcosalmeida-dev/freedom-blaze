@@ -6,24 +6,24 @@
 @using FreedomBlaze.Client.Models
 @using Microsoft.AspNetCore.SignalR.Client;
 
-@* <ReceiveLightningPaymentForm ConnectionId="@connectionId" /> *@
+@* <ReceiveLightningPaymentForm _connectionId="@_connectionId" /> *@
 
 <MudCard>
     <MudCardContent>
-        <MudText Typo="Typo.h5">Connection status: @statusMessage</MudText>
+        <MudText Typo="Typo.h5">Connection status: @_statusMessage</MudText>
 
-        <MudTextField @bind-Value="messageToSend" Label="Type message" Variant="Variant.Outlined"></MudTextField>
+        <MudTextField @bind-Value="_messageToSend" Label="Type message" Variant="Variant.Outlined"></MudTextField>
         <MudButton @onclick="SendMessage" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Mail" Color="Color.Primary" Size="Size.Large" ButtonType="ButtonType.Submit">Send</MudButton>
 
         <MudText Typo="Typo.h5">Message List</MudText>
         <MudDivider />
-        @if (receivedMessages?.Count == 0)
+        @if (_receivedMessages?.Count == 0)
         {
             <MudText Typo="Typo.h6" Color="Color.Error">Empty</MudText>
         }
         <MudPaper Width="300px" Square="true">
             <MudList T="string">
-                @foreach (var message in receivedMessages)
+                @foreach (var message in _receivedMessages)
                 {
                     <MudListItem>
                         <MudText Typo="Typo.h6" Color="Color.Success">@message</MudText>
@@ -48,19 +48,19 @@
 @code {
     private HubConnection _hubConnection;
 
-    private bool isConnected = false;
-    private string connectionId = string.Empty;
-    private string statusMessage = "Not connected";
-    private string messageToSend = string.Empty;
-    private List<string> receivedMessages = new List<string>();
+    private bool _isConnected = false;
+    private string _connectionId = string.Empty;
+    private string _statusMessage = "Not connected";
+    private string _messageToSend = string.Empty;
+    private List<string> _receivedMessages = new List<string>();
 
-    private IDialogReference paymentDialogReference;
+    private IDialogReference _paymentDialogReference;
 
     private async Task OpenDialogAsync()
     {
         var options = new DialogOptions { CloseOnEscapeKey = true };
-        var parameters = new DialogParameters<ReceiveLightningPaymentForm> { { x => x.ConnectionId, connectionId } };
-        paymentDialogReference = await DialogService.ShowAsync<ReceiveLightningPaymentForm>("Lightning Dialog", parameters);
+        var parameters = new DialogParameters<ReceiveLightningPaymentForm> { { x => x.ConnectionId, _connectionId } };
+        _paymentDialogReference = await DialogService.ShowAsync<ReceiveLightningPaymentForm>("Lightning Dialog", parameters);
 
     }
 
@@ -72,26 +72,26 @@
             .WithAutomaticReconnect() // Automatically reconnect if connection is lost
             .Build();
 
-        _hubConnection.On<string>("ReceiveConnectionId", (id) =>
+        _hubConnection.On<string>("Receive_connectionId", (id) =>
         {
-            connectionId = id;
-            statusMessage = $"Connected with ID: {id}";
+            _connectionId = id;
+            _statusMessage = $"Connected with ID: {id}";
             InvokeAsync(StateHasChanged);
         });
 
         _hubConnection.On<string>("ReceiveMessage", (message) =>
         {
-            receivedMessages.Add($"Message: {message} - {DateTime.Now.ToShortTimeString()}");
+            _receivedMessages.Add($"Message: {message} - {DateTime.Now.ToShortTimeString()}");
             InvokeAsync(StateHasChanged);
         });
 
         _hubConnection.On<PaymentReceivedModel>("ReceivePayment", async (payment) =>
         {
-            if (payment.PaymentHash != null && paymentDialogReference != null)
+            if (payment.PaymentHash != null && _paymentDialogReference != null)
             {
                 await InvokeAsync(() =>
                 {
-                    paymentDialogReference.Close();
+                    _paymentDialogReference.Close();
                     Snackbar.SnackMessage("Payment received!", Defaults.Classes.Position.TopCenter, Severity.Success);
                     StateHasChanged();
                 }); 
@@ -101,12 +101,12 @@
         // Handle connection closed event
         _hubConnection.Closed += async (error) =>
         {
-            isConnected = false;
-            statusMessage = "Connection closed. Reconnecting...";
+            _isConnected = false;
+            _statusMessage = "Connection closed. Reconnecting...";
             await InvokeAsync(StateHasChanged);
         };
 
-        if (!isConnected)
+        if (!_isConnected)
         {
             await ConnectToHub();
         }
@@ -119,12 +119,12 @@
         try
         {
             await _hubConnection.StartAsync();
-            isConnected = true;
+            _isConnected = true;
         }
         catch (Exception ex)
         {
-            statusMessage = $"Error connecting: {ex.Message}";
-            isConnected = false;
+            _statusMessage = $"Error connecting: {ex.Message}";
+            _isConnected = false;
         }
         StateHasChanged();
     }
@@ -135,17 +135,17 @@
         {
             try
             {
-                await _hubConnection.InvokeAsync("SendMessageToAll", messageToSend);
-                messageToSend = string.Empty;
+                await _hubConnection.InvokeAsync("SendMessageToAll", _messageToSend);
+                _messageToSend = string.Empty;
             }
             catch (Exception ex)
             {
-                statusMessage = $"Error sending message: {ex.Message}";
+                _statusMessage = $"Error sending message: {ex.Message}";
             }
         }
         else
         {
-            statusMessage = "Not connected.";
+            _statusMessage = "Not connected.";
         }
         StateHasChanged();
     }

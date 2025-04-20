@@ -29,6 +29,18 @@ public class BlobStorageService
         await blobClient.UploadAsync(stream, overwrite: true);
     }
 
+    public async Task<string> UploadImageAsync(string containerName, string blobName, byte[] imageBytes)
+    {
+        var containerClient = await GetContainerAsync(containerName);
+        var blobClient = containerClient.GetBlobClient(blobName);
+
+        using var stream = new MemoryStream(imageBytes);
+        await blobClient.UploadAsync(stream, overwrite: true);
+
+        // Return the URI of the uploaded blob
+        return blobClient.Uri.ToString();
+    }
+
     public async Task<string?> DownloadTextAsync(string containerName, string blobName)
     {
         try
