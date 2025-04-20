@@ -11,23 +11,23 @@
 <MudGrid Spacing="1" Justify="Justify.Center" Class="mt-8">
     <MudItem xs="12" sm="6" md="6" Class="justify-center">
         <MudStack>
-            <MudText Align="Align.Center" Typo="Typo.h4">@Localizer["Contact.Title"]</MudText>
-            <EditForm Model="@model" OnSubmit="OnSubmit">
+            <MudText Align="Align.Center" Typo="Typo.h4">@Localizer["_contactModel.Title"]</MudText>
+            <EditForm Model="@_contactModel" OnSubmit="OnSubmit">
                 <DataAnnotationsValidator />
                 <MudCard>
                     <MudCardContent>
-                        <MudTextField Label="@Localizer["Contact.Title"]" HelperText="Max. 128"
-                        @bind-Value="model.Title" For="@(() => model.Title)"
+                        <MudTextField Label="@Localizer["_contactModel.Title"]" HelperText="Max. 128"
+                        @bind-Value="_contactModel.Title" For="@(() => _contactModel.Title)"
                         Variant="Variant.Outlined"
                         Clearable="true" />
-                        <MudTextField Label="@Localizer["Contact.Description"]" HelperText="Max. 1024" Class="mt-3"
-                        @bind-Value="model.Description" For="@(() => model.Description )"
+                        <MudTextField Label="@Localizer["_contactModel.Description"]" HelperText="Max. 1024" Class="mt-3"
+                        @bind-Value="_contactModel.Description" For="@(() => _contactModel.Description )"
                         Clearable="true"
                         Variant="Variant.Outlined"
                         Lines="5" />
                     </MudCardContent>
                     <MudCardActions>
-                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">@Localizer["Contact.SendButtonText"]</MudButton>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">@Localizer["_contactModel.SendButtonText"]</MudButton>
                     </MudCardActions>
                 </MudCard>
             </EditForm>
@@ -39,16 +39,16 @@
 @inject ContactService ContactService
 
 @code {
-    ContactForm model = new ContactForm();
+    private ContactForm _contactModel = new ContactForm();
 
     private async Task OnSubmit()
     {
-        var response = await ContactService.AddCommentAsync(model);
+        var response = await ContactService.AddCommentAsync(_contactModel);
         if (response.IsSuccessStatusCode)
         {
             Snackbar.SnackMessage("Message sent, thanks!", Defaults.Classes.Position.BottomCenter, Severity.Success);
-            model.Title = string.Empty;
-            model.Description = string.Empty;
+            _contactModel.Title = string.Empty;
+            _contactModel.Description = string.Empty;
         }
         else
         {

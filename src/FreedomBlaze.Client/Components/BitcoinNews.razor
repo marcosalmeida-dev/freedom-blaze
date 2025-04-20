@@ -6,18 +6,33 @@
 @using FreedomBlaze.Client.Services
 @using FreedomBlaze.Models
 
-@if (NewsArticles?.Count > 0)
-{
-    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-        <MudGrid Justify="Justify.Center" Class="mt-8">
-            <MudText Typo="Typo.h3" GutterBottom="true">World Crypto News Today</MudText>
-            <MudDivider></MudDivider>
-            <MudPaper>
-                <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="@_loading" />
-            </MudPaper>
-        </MudGrid>
-        <MudGrid Justify="Justify.Center">
-            @foreach (var article in NewsArticles)
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudGrid Justify="Justify.Center" Class="mt-8">
+        <MudText Typo="Typo.h3" GutterBottom="true">World Crypto News Today</MudText>
+        <MudDivider></MudDivider>
+        <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="@_loading" />
+    </MudGrid>
+    <MudGrid Justify="Justify.FlexStart">
+        <MudItem xs="12" sm="6" md="2">
+            <MudSelect T="string" Label="Select GPT Model" @bind-Value="_selectedModel">
+                @foreach (var model in GptModels)
+                {
+                    <MudSelectItem Value="@model">@model</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3" Class="d-flex align-center">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GetRefrehedBitcoinNews">
+                Refresh
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+    <MudDivider></MudDivider>
+
+    @if (_newsArticles?.Count > 0)
+    {
+        <MudGrid Justify="Justify.Center" Class="mt-4">
+            @foreach (var article in _newsArticles)
             {
                 <MudItem xs="12" sm="6" md="4">
                     <!-- 3 columns on medium and larger screens -->
@@ -55,15 +70,27 @@
                 </MudItem>
             }
         </MudGrid>
-    </MudContainer>
-}
+    }
+    else
+    {
+        <MudGrid Justify="Justify.Center" Class="mt-8">
+            <MudCard>
+                <MudAlert>No news found!</MudAlert>
+            </MudCard>
+        </MudGrid>
+    }
+</MudContainer>
 
 
 @inject ISnackbar Snackbar
 @inject BitcoinNewsService Service
 
 @code {
-    private List<NewsArticleModel> NewsArticles = new List<NewsArticleModel>();
+    private List<string> GptModels = new() { "gpt-4.1", "gpt-4.1-mini", "gpt-4o", "gpt-4o-mini" };
+    private string _selectedModel = "gpt-4.1"; // Default selected model
+
+    private List<NewsArticleModel> _newsArticles = new List<NewsArticleModel>();
+
     private bool _loading = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -75,7 +102,7 @@
                 _loading = true;
                 StateHasChanged();
 
-                NewsArticles = await Service.GetBtcNews();
+                _newsArticles = await Service.GetBtcNews();
             }
             catch
             {
@@ -89,5 +116,13 @@
         }
 
         await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task GetRefrehedBitcoinNews()
+    {
+        if (!string.IsNullOrEmpty(_selectedModel))
+        {
+            _newsArticles = await Service.GetRefrehedBitcoinNews(_selectedModel);
+        }
     }
 }

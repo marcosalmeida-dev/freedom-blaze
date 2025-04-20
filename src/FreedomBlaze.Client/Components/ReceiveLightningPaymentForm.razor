@@ -27,30 +27,30 @@
 
             <MudPaper Class="pa-4" Style="overflow:visible">
 
-                <EditForm Model="@model" OnValidSubmit="HandleValidSubmit">
+                <EditForm Model="@_model" OnValidSubmit="HandleValidSubmit">
                     <MudStack Spacing="4">
 
                         <DataAnnotationsValidator />
-                        <MudNumericField T="long" Label="Amount (Satoshis)" @bind-Value="model.AmountSat"
-                                         For="@(() => model.AmountSat)" />
-                        <MudTextField Label="Description (optional)" @bind-Value="model.Description"
-                                      For="@(() => model.Description)" />
+                        <MudNumericField T="long" Label="Amount (Satoshis)" @bind-Value="_model.AmountSat"
+                                         For="@(() => _model.AmountSat)" />
+                        <MudTextField Label="Description (optional)" @bind-Value="_model.Description"
+                                      For="@(() => _model.Description)" />
 
                         <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" StartIcon="@Icons.Material.Filled.QrCodeScanner">Donate</MudButton>
                     </MudStack>
                 </EditForm>
             </MudPaper>
             <MudCollapse Expanded="_expanded">
-                @if (!string.IsNullOrEmpty(errorMessage))
+                @if (!string.IsNullOrEmpty(_errorMessage))
                 {
-                    <MudText>Error: @errorMessage</MudText>
+                    <MudText>Error: @_errorMessage</MudText>
                 }
-                @if (!string.IsNullOrEmpty(addressValue))
+                @if (!string.IsNullOrEmpty(_addressValue))
                 {
                     <MudStack>
-                        <QRCode Data="@addressValue" Amount="@addressAmountValue" BtcAddressType="@btcAddressType"></QRCode>
+                        <QRCode Data="@_addressValue" Amount="@_addressAmountValue" BtcAddressType="@_btcAddressType"></QRCode>
 
-                        <MudButton OnClick="@(() => WriteTextAsync(addressValue))" ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FileCopy">Copy</MudButton>
+                        <MudButton OnClick="@(() => WriteTextAsync(_addressValue))" ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FileCopy">Copy</MudButton>
                     </MudStack>
                 }
             </MudCollapse>
@@ -82,13 +82,13 @@
 
     private void Cancel() => MudDialog.Cancel();
 
-    private ReceivePaymentFormModel model = new ReceivePaymentFormModel() { AmountSat = 1 };
+    private ReceivePaymentFormModel _model = new ReceivePaymentFormModel() { AmountSat = 1 };
 
-    private string? addressValue;
-    private decimal? addressAmountValue;
-    private BtcAddressType btcAddressType = BtcAddressType.BitcoinLightning;
+    private string? _addressValue;
+    private decimal? _addressAmountValue;
+    private BtcAddressType _btcAddressType = BtcAddressType.BitcoinLightning;
 
-    string errorMessage = string.Empty;
+    string _errorMessage = string.Empty;
     bool _expanded = false;
 
     private void OnExpandCollapseClick()
@@ -100,27 +100,27 @@
     {
         try
         {
-            model.ExternalId = ConnectionId;
+            _model.ExternalId = ConnectionId;
 
-            var response = await Http.PostAsJsonAsync("api/payment-manager/receive-payment", model);
+            var response = await Http.PostAsJsonAsync("api/payment-manager/receive-payment", _model);
 
             if (response.IsSuccessStatusCode)
             {
                 var invoice = await response.Content.ReadFromJsonAsync<InvoiceModel>();
-                addressValue = invoice?.Serialized;
-                addressAmountValue = invoice?.AmountSat;
+                _addressValue = invoice?.Serialized;
+                _addressAmountValue = invoice?.AmountSat;
 
                 _expanded = true;
             }
             else
             {
-                errorMessage = $"Error code: {response}";
+                _errorMessage = $"Error code: {response}";
                 _expanded = false;
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Exception: {ex}";
+            _errorMessage = $"Exception: {ex}";
             _expanded = false;
         }
         StateHasChanged();

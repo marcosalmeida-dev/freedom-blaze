@@ -4,11 +4,11 @@ public static class CurrencyConverterHelper
 {
     public const double SatoshiPerBitcoin = 100000000d; // 1 BTC = 100,000,000 Satoshis
 
-    public static double ConvertToSats(double currencyAmount, double bitcoinPrice)
+    public static double? ConvertToSats(double currencyAmount, double bitcoinPrice)
     {
-        if (currencyAmount < 0)
+        if (currencyAmount <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(currencyAmount), "Currency Amount must be positive.");
+            return null;
         }
 
         if (bitcoinPrice <= 0)
