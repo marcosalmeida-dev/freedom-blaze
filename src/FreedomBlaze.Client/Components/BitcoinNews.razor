@@ -7,7 +7,7 @@
 @using FreedomBlaze.Models
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudGrid Justify="Justify.Center" Class="mt-8">
+    @* <MudGrid Justify="Justify.Center" Class="mt-8">
         <MudText Typo="Typo.h3" GutterBottom="true">World Crypto News Today</MudText>
         <MudDivider></MudDivider>
         <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="@_loading" />
@@ -27,7 +27,7 @@
             </MudButton>
         </MudItem>
     </MudGrid>
-    <MudDivider></MudDivider>
+    <MudDivider></MudDivider> *@
 
     @if (_newsArticles?.Count > 0)
     {

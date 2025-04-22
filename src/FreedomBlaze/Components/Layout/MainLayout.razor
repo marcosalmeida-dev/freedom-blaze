@@ -10,11 +10,11 @@
 <MudSnackbarProvider @rendermode="InteractiveServer" />
 <MudPopoverProvider @rendermode="InteractiveServer" />
 <MudDialogProvider @rendermode="InteractiveServer"
-                   FullWidth="true"
-                   CloseButton="true"
-                   CloseOnEscapeKey="true"
-                   MaxWidth="MaxWidth.ExtraSmall"
-                   Position="DialogPosition.Center" />
+FullWidth="true"
+CloseButton="true"
+CloseOnEscapeKey="true"
+MaxWidth="MaxWidth.ExtraSmall"
+Position="DialogPosition.Center" />
 
 <MudLayout>
     <MudAppBar Elevation="1">
@@ -25,8 +25,8 @@
 
         <div class="select-container">
             <MudSelect T="string" Label="" @bind-Value="CultureService.CurrencyCultureName"
-                       AdornmentColor="Color.Primary" AnchorOrigin="Origin.BottomCenter" AdornmentIcon="@Icons.Material.Filled.Flag"
-                       Variant="Variant.Outlined">
+            AdornmentColor="Color.Primary" AnchorOrigin="Origin.BottomCenter" AdornmentIcon="@Icons.Material.Filled.ArrowDropDown"
+            Variant="Variant.Outlined">
                 @foreach (var currency in CurrencyModel.CurrencyListStatic)
                 {
                     <MudSelectItem Value="@currency.CultureName" @key="@currency.CultureName">
@@ -36,6 +36,11 @@
                 }
             </MudSelect>
         </div>
+        <MudIcon Icon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary" />
+        <MudButton Variant="Variant.Filled" DropShadow="false" Size="Size.Medium" 
+                   OnClick="@(() => WriteTextAsync(_btcPriceCulture?.ToString()))">
+            @_btcPriceCulture
+        </MudButton>
         <MudSwitch @bind-Value="@IsDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" Class="toggle-switch ma-4" T="bool" Label="Light/Dark" />
     </MudAppBar>
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Temporary">
@@ -72,10 +77,10 @@
         }
     };
 
-    private string DarkModeCookieName = "darkModeCookie";
     private bool _drawerOpen = false;
-    private bool _isDarkMode;
 
+    private string _darkModeCookieName = "darkModeCookie";
+    private bool _isDarkMode;
     private bool IsDarkMode
     {
         get => _isDarkMode;
@@ -89,18 +94,23 @@
         }
     }
 
+    private string? _btcPriceCulture;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             CultureService.OnCurrencyCultureChanged += (sender, args) => OnCurrencyChanged();
 
-            var savedDarkMode = await JS.InvokeAsync<string>("cookieHelper.getCookie", DarkModeCookieName);
+            var savedDarkMode = await JS.InvokeAsync<string>("cookieHelper.getCookie", _darkModeCookieName);
             if (!string.IsNullOrEmpty(savedDarkMode))
             {
                 IsDarkMode = bool.Parse(savedDarkMode);
-                StateHasChanged();
             }
+
+            var currentCurrencyInfo = CurrencyModel.GetCurrencyList(CultureService.CurrencyCultureName).FirstOrDefault();
+            _btcPriceCulture = currentCurrencyInfo?.BitcoinPrice.ToString("C", currentCurrencyInfo.CultureInfo);
+            StateHasChanged();
 
             await TrackEvents();
         }
@@ -125,7 +135,7 @@
 
     private async Task OnDarkModeChanged()
     {
-        await JS.InvokeVoidAsync("cookieHelper.setCookie", DarkModeCookieName, _isDarkMode.ToString(), 365);
+        await JS.InvokeVoidAsync("cookieHelper.setCookie", _darkModeCookieName, _isDarkMode.ToString(), 365);
     }
 
     public void Dispose()
@@ -158,6 +168,17 @@
         }
 
         TelemetryClient.TrackPageView(pageViewTelemetry);
+    }
+
+    async Task WriteTextAsync(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        }
+        catch
+        {
+        }
     }
 
     private class UserEnvironment
