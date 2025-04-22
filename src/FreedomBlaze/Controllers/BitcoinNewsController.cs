@@ -22,17 +22,17 @@ public class BitcoinNewsController : ControllerBase
     [Route("get-chatgpt-news")]
     public async Task<IActionResult> GetBitcoinChatGptNews(string model)
     {
-        try
-        {
-            await _chatGptService.SearchBitcoinChatGptNews(model ?? "gpt-4o");
+        //try
+        //{
+        //    await _chatGptService.SearchBitcoinChatGptNews(model ?? "gpt-4o");
 
-            var news = await _chatGptService.GetTodayBitcoinNewsAsync();
-            return Ok(news);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ex.Message);
-        }
+        //    var news = await _chatGptService.GetTodayBitcoinNewsAsync();
+        //    return Ok(news);
+        //}
+        //catch (Exception ex)
+        //{
+        //    return StatusCode(500, ex.Message);
+        //}
 
         throw new NotImplementedException();
     }
