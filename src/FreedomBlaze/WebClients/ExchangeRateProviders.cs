@@ -22,8 +22,6 @@ public class ExchangeRateProvider : IExchangeRateProvider
     private readonly IMemoryCache _cache;
     private readonly ICurrencyExchangeProvider _currencyExchangeProvider;
 
-    public static TimeOnly LastUpdateTime { get; set; }
-
     public string ExchangeName => "ExchangeRateProvider";
 
     public static List<BitcoinExchangeStatusModel> BitcoinExchangeStatusList = new List<BitcoinExchangeStatusModel>();
@@ -41,7 +39,7 @@ public class ExchangeRateProvider : IExchangeRateProvider
         {
             e.SetOptions(new MemoryCacheEntryOptions
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(15)
             });
 
             var cacheKey = nameof(GetExchangeRateAsync);
@@ -59,9 +57,11 @@ public class ExchangeRateProvider : IExchangeRateProvider
 
                 if (exchangeRates != null)
                 {
-                    exchangeRateAvgResult = exchangeRates.Where(w => w.IsSuccess && w.Result != null && w.Result.BitcoinRateInUSD > 0).Average(a => a.Result.BitcoinRateInUSD);
+                    exchangeRateAvgResult = exchangeRates.Where(w => w.IsSuccess && w.Result != null && w.Result.BitcoinRateInUSD > 0)
+                                                         .Average(a => a.Result.BitcoinRateInUSD);
+                    
                     var cacheEntryOptions = new MemoryCacheEntryOptions()
-                        .SetAbsoluteExpiration(TimeSpan.FromMinutes(1));
+                        .SetAbsoluteExpiration(TimeSpan.FromSeconds(30));
 
                     _cache.Set(cacheKey, exchangeRateAvgResult, cacheEntryOptions);
 
@@ -76,8 +76,6 @@ public class ExchangeRateProvider : IExchangeRateProvider
                     {
                         ExchangeIntegrationException? exchangeRateEx = failedTask?.Exception?.InnerException as ExchangeIntegrationException;
                     }
-
-                    LastUpdateTime = timeNow;
                 }
             }
 
@@ -89,7 +87,6 @@ public class ExchangeRateProvider : IExchangeRateProvider
 
                 exchangeRateModelResult = new BitcoinExchangeRateModel()
                 {
-                    //BitcoinRateInUSD = double.Truncate(currencyRatesResult[currentCurrency].Rate * exchangeRateAvgResult.Value),
                     BitcoinRateInUSD = exchangeRateAvgResult.Value,
                     CurrencyExchangeRate = currencyRatesResult
                 };

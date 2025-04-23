@@ -11,23 +11,23 @@
 <MudGrid Spacing="1" Justify="Justify.Center" Class="mt-8">
     <MudItem xs="12" sm="6" md="6" Class="justify-center">
         <MudStack>
-            <MudText Align="Align.Center" Typo="Typo.h4">@Localizer["_contactModel.Title"]</MudText>
+            <MudText Align="Align.Center" Typo="Typo.h4">@Localizer["Contact.Title"]</MudText>
             <EditForm Model="@_contactModel" OnSubmit="OnSubmit">
                 <DataAnnotationsValidator />
                 <MudCard>
                     <MudCardContent>
-                        <MudTextField Label="@Localizer["_contactModel.Title"]" HelperText="Max. 128"
+                        <MudTextField Label="@Localizer["Contact.Title"]" HelperText="Max. 128"
                         @bind-Value="_contactModel.Title" For="@(() => _contactModel.Title)"
                         Variant="Variant.Outlined"
                         Clearable="true" />
-                        <MudTextField Label="@Localizer["_contactModel.Description"]" HelperText="Max. 1024" Class="mt-3"
+                        <MudTextField Label="@Localizer["Contact.Description"]" HelperText="Max. 1024" Class="mt-3"
                         @bind-Value="_contactModel.Description" For="@(() => _contactModel.Description )"
                         Clearable="true"
                         Variant="Variant.Outlined"
                         Lines="5" />
                     </MudCardContent>
                     <MudCardActions>
-                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">@Localizer["_contactModel.SendButtonText"]</MudButton>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">@Localizer["Contact.SendButtonText"]</MudButton>
                     </MudCardActions>
                 </MudCard>
             </EditForm>

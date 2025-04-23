@@ -4,6 +4,6 @@ namespace FreedomBlaze.Interfaces;
 
 public interface IExchangeRateProvider
 {
-    string ExchangeName { get; }
-    Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken);
+    public string ExchangeName { get; }
+    public Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken);
 }

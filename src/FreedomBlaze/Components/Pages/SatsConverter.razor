@@ -134,6 +134,7 @@
 @inject IExchangeRateProvider ExchangeRateProvider
 @inject CultureService CultureService
 @inject ISnackbar Snackbar
+@inject AppState AppState
 
 @implements IDisposable
 
@@ -141,7 +142,6 @@
     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
     private bool _loading = false;
-    private Timer _timer;
     private List<Currency> CurrencyList = new List<Currency>();
     private Task<BitcoinExchangeRateModel> currencyRatesTask;
 
@@ -156,44 +156,57 @@
     private double? satsValue;
     private double? lastSatsValue;
 
-    protected override async Task OnInitializedAsync()
-    {
-        currencyRatesTask = ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
-        _timer = new Timer(async _ => await GetExchangeRates(), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
-    }
+    BitcoinExchangeRateModel _bitcoinExchangeRateModel;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            AppState.OnChange += OnAppStateChanged; 
+
             await GetExchangeRates();
         }
 
         await base.OnAfterRenderAsync(firstRender);
     }
 
-    async Task GetExchangeRates()
+    private async Task OnAppStateChanged()
+    {
+        if (_loading == false)
+        {
+            await GetExchangeRates(AppState.BitcoinExchangeRate);
+
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    async Task GetExchangeRates(BitcoinExchangeRateModel bitcoinExchangeRateModel = null)
     {
         try
         {
             _loading = true;
             await InvokeAsync(StateHasChanged);
 
-            var localizationValue = ContextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
-            if (!string.IsNullOrEmpty(localizationValue))
+            _bitcoinExchangeRateModel = bitcoinExchangeRateModel;
+            if (_bitcoinExchangeRateModel == null)
             {
-                //currencyValue = 0;
-                currencyCultureName = CultureService.CurrentCulture.Name;
-
-                if (!string.IsNullOrEmpty(currencyCultureName))
+                var localizationValue = ContextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
+                if (!string.IsNullOrEmpty(localizationValue))
                 {
-                    await GetCurrencyValueFromCookie();
+                    //currencyValue = 0;
+                    currencyCultureName = CultureService.CurrentCulture.Name;
+
+                    if (!string.IsNullOrEmpty(currencyCultureName))
+                    {
+                        await GetCurrencyValueFromCookie();
+                    }
                 }
+
+                _bitcoinExchangeRateModel = await ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
+                AppState.BitcoinExchangeRate = _bitcoinExchangeRateModel;
             }
 
-            var currencyRatesResult = await currencyRatesTask;
-
-            await LoadCurrencyList(currencyRatesResult, currencyCultureName ?? "en-US");
+            await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName ?? "en-US");
 
             SnackMessage($"Exchanges prices updated!", Defaults.Classes.Position.BottomCenter, Severity.Success);
         }
@@ -274,8 +287,8 @@
             Telemetry.TrackEvent("ConvertToBitcoin", properties);
 
             // Get exchange rates
-            var exchangeRateAvg = await ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
-            await LoadCurrencyList(exchangeRateAvg, currencyCultureName);
+            //_bitcoinExchangeRateModel = await ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
+            await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName);
         }
         catch (Exception ex)
         {
@@ -364,6 +377,6 @@
             cancellationTokenSource.Dispose();
         }
 
-        _timer?.Dispose();
+        AppState.OnChange -= OnAppStateChanged;
     }
 }

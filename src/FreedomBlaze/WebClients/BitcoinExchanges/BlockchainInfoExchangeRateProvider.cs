@@ -1,10 +1,8 @@
+using System.Text.Json.Serialization;
 using FreedomBlaze.Exceptions;
 using FreedomBlaze.Http.Extensions;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
-using System.Globalization;
-using System.Text.Json.Serialization;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FreedomBlaze.WebClients.BitcoinExchanges;
 

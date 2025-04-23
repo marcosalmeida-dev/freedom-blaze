@@ -1,6 +1,6 @@
 using Azure.Identity;
 using Azure.Storage;
-using Azure.Storage.Blobs;
+using FreedomBlaze;
 using FreedomBlaze.Client.Services;
 using FreedomBlaze.Components;
 using FreedomBlaze.Configuration;
@@ -11,12 +11,9 @@ using FreedomBlaze.Services;
 using FreedomBlaze.WebClients;
 using FreedomBlaze.WebClients.CurrencyExchanges;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Azure;
 using MudBlazor.Services;
 using Phoenixd.NET.Hubs;
-using Microsoft.Extensions.Azure;
-using Microsoft.Identity.Client.Platforms.Features.DesktopOs.Kerberos;
-using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -68,6 +65,8 @@ builder.Services.AddSingleton<BlobStorageService>();
 builder.Services.AddScoped<CultureService>();
 builder.Services.AddScoped<ImageService>();
 builder.Services.AddScoped<ChatGptService>();
+
+builder.Services.AddScoped<AppState>();
 
 builder.Services.AddMemoryCache();
 

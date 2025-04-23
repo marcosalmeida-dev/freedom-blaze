@@ -1,5 +1,7 @@
-﻿@using FreedomBlaze.Models
+﻿@using FreedomBlaze.Interfaces
+@using FreedomBlaze.Models
 @using FreedomBlaze.Services
+@using FreedomBlaze.WebClients
 @using Microsoft.ApplicationInsights
 @using Microsoft.AspNetCore.Localization
 @using System.Globalization
@@ -36,11 +38,14 @@ Position="DialogPosition.Center" />
                 }
             </MudSelect>
         </div>
-        <MudIcon Icon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary" />
-        <MudButton Variant="Variant.Filled" DropShadow="false" Size="Size.Medium" 
-                   OnClick="@(() => WriteTextAsync(_btcPriceCulture?.ToString()))">
-            @_btcPriceCulture
-        </MudButton>
+        @if (_btcPriceCulture != null)
+        {
+            <MudIcon Icon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary" Size="Size.Small" />
+            <MudButton Variant="Variant.Text" DropShadow="false" Size="Size.Medium" Color="Color.Primary"
+            OnClick="@(() => WriteTextAsync(_btcPriceCulture))">
+                @_btcPriceCulture
+            </MudButton>
+        }
         <MudSwitch @bind-Value="@IsDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" Class="toggle-switch ma-4" T="bool" Label="Light/Dark" />
     </MudAppBar>
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Temporary">
@@ -59,23 +64,25 @@ Position="DialogPosition.Center" />
 @inject IConfiguration Configuration
 @inject IHttpContextAccessor ContextAccessor
 @inject CultureService CultureService
+@inject ISnackbar Snackbar
+@inject AppState AppState
 
 @code {
     MudTheme _theme = new MudTheme()
-    {
-        PaletteLight = new PaletteLight()
         {
-            Primary = Colors.Orange.Darken2,
-            Secondary = Colors.BlueGray.Darken1,
-            AppbarBackground = Colors.Shades.Black,
-        },
-        PaletteDark = new PaletteDark()
-        {
-            Primary = Colors.Orange.Darken2,
-            Secondary = Colors.Green.Lighten1,
-            AppbarBackground = Colors.Shades.Black
-        }
-    };
+            PaletteLight = new PaletteLight()
+            {
+                Primary = Colors.Orange.Darken2,
+                Secondary = Colors.BlueGray.Darken1,
+                AppbarBackground = Colors.Shades.Black,
+            },
+            PaletteDark = new PaletteDark()
+            {
+                Primary = Colors.Orange.Darken2,
+                Secondary = Colors.Green.Lighten1,
+                AppbarBackground = Colors.Shades.Black
+            }
+        };
 
     private bool _drawerOpen = false;
 
@@ -95,12 +102,16 @@ Position="DialogPosition.Center" />
     }
 
     private string? _btcPriceCulture;
+    private Timer _timer;
+
+    CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             CultureService.OnCurrencyCultureChanged += (sender, args) => OnCurrencyChanged();
+            AppState.OnChange += OnAppStateChanged;
 
             var savedDarkMode = await JS.InvokeAsync<string>("cookieHelper.getCookie", _darkModeCookieName);
             if (!string.IsNullOrEmpty(savedDarkMode))
@@ -108,14 +119,18 @@ Position="DialogPosition.Center" />
                 IsDarkMode = bool.Parse(savedDarkMode);
             }
 
-            var currentCurrencyInfo = CurrencyModel.GetCurrencyList(CultureService.CurrencyCultureName).FirstOrDefault();
-            _btcPriceCulture = currentCurrencyInfo?.BitcoinPrice.ToString("C", currentCurrencyInfo.CultureInfo);
-            StateHasChanged();
-
             await TrackEvents();
         }
 
         await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task OnAppStateChanged()
+    {
+        var currentCurrencyInfo = CurrencyModel.GetCurrencyList(CultureService.CurrencyCultureName).FirstOrDefault();
+        _btcPriceCulture = (currentCurrencyInfo.CurrencyRateInUSD * AppState.BitcoinExchangeRate.BitcoinRateInUSD).ToString("C", currentCurrencyInfo.CultureInfo);
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private void OnCurrencyChanged()
@@ -138,11 +153,6 @@ Position="DialogPosition.Center" />
         await JS.InvokeVoidAsync("cookieHelper.setCookie", _darkModeCookieName, _isDarkMode.ToString(), 365);
     }
 
-    public void Dispose()
-    {
-        CultureService.OnCurrencyCultureChanged -= (sender, args) => OnCurrencyChanged();
-    }
-
     private async Task TrackEvents()
     {
         // Capture user environment data (language, platform, user agent)
@@ -157,10 +167,10 @@ Position="DialogPosition.Center" />
 
         // Track Page View
         var pageViewTelemetry = new Microsoft.ApplicationInsights.DataContracts.PageViewTelemetry
-        {
-            Name = Navigation.Uri,  // Page name based on the current URL
-            Url = new Uri(Navigation.Uri)  // The actual page URL
-        };
+            {
+                Name = Navigation.Uri,  // Page name based on the current URL
+                Url = new Uri(Navigation.Uri)  // The actual page URL
+            };
 
         foreach (var property in properties)
         {
@@ -170,21 +180,37 @@ Position="DialogPosition.Center" />
         TelemetryClient.TrackPageView(pageViewTelemetry);
     }
 
+    void SnackMessage(string message, string position = Defaults.Classes.Position.TopCenter, Severity severity = Severity.Info)
+    {
+        Snackbar.Clear();
+        Snackbar.Configuration.SnackbarVariant = Variant.Text;
+        Snackbar.Configuration.PositionClass = position;
+        Snackbar.Add(message, severity);
+    }
+
     async Task WriteTextAsync(string text)
     {
         try
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            SnackMessage($"{text} Copied to clipboard!", position: Defaults.Classes.Position.TopRight, severity: Severity.Success);
         }
         catch
         {
         }
     }
 
-    private class UserEnvironment
+    public void Dispose()
     {
-        public string Language { get; set; }
-        public string Platform { get; set; }
-        public string UserAgent { get; set; }
+        CultureService.OnCurrencyCultureChanged -= (sender, args) => OnCurrencyChanged();
+        AppState.OnChange -= OnAppStateChanged;
+
+        if (cancellationTokenSource != null && !cancellationTokenSource.IsCancellationRequested)
+        {
+            cancellationTokenSource.Cancel();
+            cancellationTokenSource.Dispose();
+        }
+
+        _timer?.Dispose();
     }
 }
