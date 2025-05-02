@@ -8,15 +8,15 @@
 
 @inherits LayoutComponentBase
 
-<MudThemeProvider @rendermode="InteractiveServer" @bind-IsDarkMode="@_isDarkMode" Theme="_theme" />
-<MudSnackbarProvider @rendermode="InteractiveServer" />
-<MudPopoverProvider @rendermode="InteractiveServer" />
-<MudDialogProvider @rendermode="InteractiveServer"
-FullWidth="true"
-CloseButton="true"
-CloseOnEscapeKey="true"
-MaxWidth="MaxWidth.ExtraSmall"
-Position="DialogPosition.Center" />
+<MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@ThemeManager.IsDarkMode" Theme="_theme" />
+<MudSnackbarProvider />
+<MudPopoverProvider />
+<MudDialogProvider
+    FullWidth="true"
+    CloseButton="true"
+    CloseOnEscapeKey="true"
+    MaxWidth="MaxWidth.ExtraSmall"
+    Position="DialogPosition.Center" />
 
 <MudLayout>
     <MudAppBar Elevation="1">
@@ -46,7 +46,7 @@ Position="DialogPosition.Center" />
                 @_btcPriceCulture
             </MudButton>
         }
-        <MudSwitch @bind-Value="@IsDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" Class="toggle-switch ma-4" T="bool" Label="Light/Dark" />
+        <MudSwitch @bind-Value="@ThemeManager.IsDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" Class="toggle-switch ma-4" T="bool" Label="Light/Dark" />
     </MudAppBar>
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Temporary">
         <NavMenu />
@@ -66,43 +66,32 @@ Position="DialogPosition.Center" />
 @inject CultureService CultureService
 @inject ISnackbar Snackbar
 @inject AppState AppState
+@inject ThemeManager ThemeManager
 
 @code {
     MudTheme _theme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
         {
-            PaletteLight = new PaletteLight()
-            {
-                Primary = Colors.Orange.Darken2,
-                Secondary = Colors.BlueGray.Darken1,
-                AppbarBackground = Colors.Shades.Black,
-            },
-            PaletteDark = new PaletteDark()
-            {
-                Primary = Colors.Orange.Darken2,
-                Secondary = Colors.Green.Lighten1,
-                AppbarBackground = Colors.Shades.Black
-            }
-        };
+            Primary = Colors.Orange.Darken2,
+            Secondary = Colors.BlueGray.Darken1,
+            AppbarBackground = Colors.Shades.Black,
+        },
+        PaletteDark = new PaletteDark()
+        {
+            Primary = Colors.Orange.Darken2,
+            Secondary = Colors.Green.Lighten1,
+            AppbarBackground = Colors.Shades.Black
+        }
+    };
+
+    private MudThemeProvider _mudThemeProvider;
+
+    private string _darkModeCookieName = "darkModeCookie";
 
     private bool _drawerOpen = false;
 
-    private string _darkModeCookieName = "darkModeCookie";
-    private bool _isDarkMode;
-    private bool IsDarkMode
-    {
-        get => _isDarkMode;
-        set
-        {
-            if (_isDarkMode != value)
-            {
-                _isDarkMode = value;
-                OnDarkModeChanged();
-            }
-        }
-    }
-
     private string? _btcPriceCulture;
-    private Timer _timer;
 
     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
@@ -112,17 +101,37 @@ Position="DialogPosition.Center" />
         {
             CultureService.OnCurrencyCultureChanged += (sender, args) => OnCurrencyChanged();
             AppState.OnChange += OnAppStateChanged;
+            ThemeManager.OnThemeChanged += ThemeChanged;
 
+            await _mudThemeProvider.WatchSystemPreference(OnSystemPreferenceChanged);
             var savedDarkMode = await JS.InvokeAsync<string>("cookieHelper.getCookie", _darkModeCookieName);
             if (!string.IsNullOrEmpty(savedDarkMode))
             {
-                IsDarkMode = bool.Parse(savedDarkMode);
+                ThemeManager.IsDarkMode = bool.Parse(savedDarkMode);
             }
+            else
+            {
+                ThemeManager.IsDarkMode = await _mudThemeProvider.GetSystemPreference();
+            }
+
+            await InvokeAsync(StateHasChanged);
 
             await TrackEvents();
         }
 
         await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private Task OnSystemPreferenceChanged(bool isDark)
+    {
+        ThemeManager.IsDarkMode = isDark;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task ThemeChanged(bool isDarkMode)
+    {
+        await JS.InvokeVoidAsync("cookieHelper.setCookie", _darkModeCookieName, isDarkMode.ToString(), 365);
     }
 
     private async Task OnAppStateChanged()
@@ -148,9 +157,24 @@ Position="DialogPosition.Center" />
         _drawerOpen = !_drawerOpen;
     }
 
-    private async Task OnDarkModeChanged()
+    private void SnackMessage(string message, string position = Defaults.Classes.Position.TopCenter, Severity severity = Severity.Info)
     {
-        await JS.InvokeVoidAsync("cookieHelper.setCookie", _darkModeCookieName, _isDarkMode.ToString(), 365);
+        Snackbar.Clear();
+        Snackbar.Configuration.SnackbarVariant = Variant.Text;
+        Snackbar.Configuration.PositionClass = position;
+        Snackbar.Add(message, severity);
+    }
+
+    private async Task WriteTextAsync(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            SnackMessage($"{text} Copied to clipboard!", position: Defaults.Classes.Position.TopRight, severity: Severity.Success);
+        }
+        catch
+        {
+        }
     }
 
     private async Task TrackEvents()
@@ -180,26 +204,6 @@ Position="DialogPosition.Center" />
         TelemetryClient.TrackPageView(pageViewTelemetry);
     }
 
-    void SnackMessage(string message, string position = Defaults.Classes.Position.TopCenter, Severity severity = Severity.Info)
-    {
-        Snackbar.Clear();
-        Snackbar.Configuration.SnackbarVariant = Variant.Text;
-        Snackbar.Configuration.PositionClass = position;
-        Snackbar.Add(message, severity);
-    }
-
-    async Task WriteTextAsync(string text)
-    {
-        try
-        {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
-            SnackMessage($"{text} Copied to clipboard!", position: Defaults.Classes.Position.TopRight, severity: Severity.Success);
-        }
-        catch
-        {
-        }
-    }
-
     public void Dispose()
     {
         CultureService.OnCurrencyCultureChanged -= (sender, args) => OnCurrencyChanged();
@@ -210,7 +214,5 @@ Position="DialogPosition.Center" />
             cancellationTokenSource.Cancel();
             cancellationTokenSource.Dispose();
         }
-
-        _timer?.Dispose();
     }
 }
