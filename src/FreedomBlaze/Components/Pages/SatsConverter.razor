@@ -101,7 +101,7 @@
                                 }
                             </CellTemplate>
                         </PropertyColumn>
-                        <PropertyColumn Title="USD Rate" Property="x => x.CurrencyRateInUSD">
+                        <PropertyColumn Title="@currencyValuePerUSDLabel" Property="x => x.CurrencyRateInUSD">
                             <CellTemplate>
                                 @if (_loading)
                                 {
@@ -135,10 +135,14 @@
 @inject CultureService CultureService
 @inject ISnackbar Snackbar
 @inject AppState AppState
+@inject ThemeManager ThemeManager
 
 @implements IDisposable
 
 @code {
+    private const string CurrencyCookieName = "currencyValueCookie";
+    private const string _darkModeCookieName = "darkModeCookie";
+
     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
     private bool _loading = false;
@@ -147,14 +151,15 @@
 
     public string currencyCultureName;
 
-    private string currencyValueLabelName = "USD Value";
+    private string currencyValueLabelName = "USD";
     private string currencyValueInCurrencyLabel = "Rate in Currency";
-    private const string CurrencyCookieName = "currencyValueCookie";
+    private string currencyValuePerUSDLabel = "1,00 in USD";
 
     private double? currencyValue;
     private double? lastCurrencyValue;
     private double? satsValue;
     private double? lastSatsValue;
+    private Func<Currency, int, string> _rowStyleFunc;
 
     BitcoinExchangeRateModel _bitcoinExchangeRateModel;
 
@@ -162,12 +167,27 @@
     {
         if (firstRender)
         {
+            ThemeManager.OnThemeChanged += ThemeChanged;
             AppState.OnChange += OnAppStateChanged; 
 
             await GetExchangeRates();
         }
 
         await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private Task ThemeChanged(bool isDarkMode)
+    {
+        _rowStyleFunc = (x, i) =>
+        {
+            if (x.CultureName == currencyCultureName)
+            {
+                return isDarkMode ? $"background-color:{Colors.Shades.Black}" : $"background-color:{Colors.Gray.Lighten2}";
+            }
+            return "";
+        };
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     private async Task OnAppStateChanged()
@@ -247,13 +267,14 @@
             }
         }
 
+        currencyValueLabelName = $"{currentCurrency.Value}";
+
         if (currencyValue > 0)
         {
             satsValue = CurrencyConverterHelper.ConvertToSats(currencyValue.Value, currentCurrency.BitcoinPrice);
 
             lastCurrencyValue = currencyValue;
             lastSatsValue = satsValue;
-            currencyValueLabelName = $"{currentCurrency.Value}";
             currencyValueInCurrencyLabel = $"{currencyValue?.ToString("C", CultureService.CurrentCulture)} in Currency";
 
             await SetCurrencyValueCookie();
@@ -361,13 +382,15 @@
         }
     }
 
-    Func<Currency, int, string> _rowStyleFunc => (x, i) =>
-    {
-        if (x.CultureName == currencyCultureName)
-            return $"background-color:{Colors.Gray.Lighten2}";
+    // Func<Currency, int, string> _rowStyleFunc => (x, i) =>
+    // {
+    //     if (x.CultureName == currencyCultureName)
+    //     {
+    //         return _isDarkMode ? $"background-color:{Colors.Shades.Black}" : $"background-color:{Colors.Gray.Lighten2}";
+    //     }
 
-        return "";
-    };
+    //     return "";
+    // };
 
     public void Dispose()
     {

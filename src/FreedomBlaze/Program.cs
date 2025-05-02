@@ -67,6 +67,7 @@ builder.Services.AddScoped<ImageService>();
 builder.Services.AddScoped<ChatGptService>();
 
 builder.Services.AddScoped<AppState>();
+builder.Services.AddScoped<ThemeManager>();
 
 builder.Services.AddMemoryCache();
 
