@@ -55,7 +55,7 @@ public class ExchangeRateApiProvider : ICurrencyExchangeProvider
             using var content = response.Content;
             if (response.StatusCode != HttpStatusCode.OK)
             {
-                throw new HttpRequestException($"Error getting currency exchange rates from the provider. API Key: {_apiKey}. Status code: {response.StatusCode}. Response content: {response.Content}");
+                throw new HttpRequestException($"Error getting currency exchange rates from the provider: {httpClient.BaseAddress}. Status code: {response.StatusCode}. Response content: {response.Content}");
             }
 
             currencyRates = await content.ReadAsJsonAsync<CurrencyExchangeApiModel>();
