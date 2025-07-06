@@ -41,7 +41,7 @@ public class ExchangeRateApiProvider : ICurrencyExchangeProvider
                     JPY = 130m,
                     ZAR = 20m,
                     ARS = 100m,
-                    BRL = 6.0m
+                    BRL = 7.25m //6.75m = R$5,63
                 }
             };
         }
