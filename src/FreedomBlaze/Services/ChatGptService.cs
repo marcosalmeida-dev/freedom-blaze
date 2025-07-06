@@ -89,6 +89,7 @@ public class ChatGptService
         return cachedNews;
     }
 
+    #pragma warning disable OPENAI001
     public async Task SearchBitcoinChatGptNews(string model)
     {
         string promptBlob = await _blobStorageService.DownloadTextAsync(_promptContainerName, _promptGetBitcoinNewsBlobName) ?? string.Empty;
