@@ -21,25 +21,6 @@ public static class CurrencyConverterHelper
         return Math.Round(btcAmount * SatoshiPerBitcoin, MidpointRounding.AwayFromZero);
     }
 
-    public static string ConvertToBtcFormat(double currencyAmount, double bitcoinPrice)
-    {
-        if (currencyAmount < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(currencyAmount), "Currency Amount must be positive.");
-        }
-
-        if (bitcoinPrice <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(bitcoinPrice), "Bitcoin price must be positive.");
-        }
-
-        // Convert USD to BTC
-        double btcAmount = currencyAmount / bitcoinPrice;
-
-        // Format the result to 8 decimal places as Bitcoin format
-        return btcAmount.ToString("F8");
-    }
-
     public static double ConvertSatsToCurrency(double satsAmount, double bitcoinPrice)
     {
         if (satsAmount <= 0)

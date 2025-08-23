@@ -17,7 +17,7 @@
 
 <PageTitle>Freedom Blaze | Sats Converter</PageTitle>
 
-<MudContainer Class="mt-4">
+<MudContainer Class="mt-4" id="main-container">
     <MudGrid>
         <MudItem xs="12" sm="6" md="12">
             <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">@Localizer["SatsConverter.Title"]</MudText>
@@ -121,11 +121,29 @@
     </MudGrid>
 </MudContainer>
 
-<BitcoinExchangeStatusList ExchangeStatusList="FreedomBlaze.WebClients.ExchangeRateProvider.BitcoinExchangeStatusList" />
+<MudContainer id="content-area" MaxWidth="MaxWidth.Medium">
 
-@* <BitcoinNews /> *@
+    <MudPaper Class="mt-4">
+        <MudStack Spacing="2">
+            <MudButton OnClick="OnExpandBitcoinInfoCollapseClick">@(_bitcoinInfoExpanded ? "Bitcoin Info-" : "Bitcon Info+")</MudButton>
+            <MudDivider />
+            <MudCollapse Expanded="_bitcoinInfoExpanded" id="bitcoin-info-section">
+                <SatsInfo />
+            </MudCollapse>
+        </MudStack>
+    </MudPaper>
 
-<SatsInfo />
+    <MudPaper Class="mt-4">
+        <MudStack Spacing="2">
+            <MudButton OnClick="OnExpandExchangesCollapseClick">@(_exchangeListExpanded ? "Exchanges-" : "Exchanges+")</MudButton>
+            <MudDivider />
+            <MudCollapse Expanded="_exchangeListExpanded" id="exchanges-section">
+                <BitcoinExchangeStatusList ExchangeStatusList="FreedomBlaze.WebClients.ExchangeRateProvider.BitcoinExchangeStatusList" />
+            </MudCollapse>
+        </MudStack>
+    </MudPaper>
+
+</MudContainer>
 
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
@@ -142,13 +160,13 @@
 
 @code {
     private const string CurrencyCookieName = "currencyValueCookie";
+    private const string SatsCookieName = "satsValueCookie";
     private const string _darkModeCookieName = "darkModeCookie";
 
     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
     private bool _loading = false;
     private List<Currency> CurrencyList = new List<Currency>();
-    private Task<BitcoinExchangeRateModel> currencyRatesTask;
 
     public string currencyCultureName;
 
@@ -177,20 +195,6 @@
         await base.OnAfterRenderAsync(firstRender);
     }
 
-    private Task ThemeChanged(bool isDarkMode)
-    {
-        _rowStyleFunc = (x, i) =>
-        {
-            if (x.CultureName == currencyCultureName)
-            {
-                return isDarkMode ? $"background-color:{Colors.Shades.Black}" : $"background-color:{Colors.Gray.Lighten2}";
-            }
-            return "";
-        };
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
     private async Task OnAppStateChanged()
     {
         if (_loading == false)
@@ -214,12 +218,11 @@
                 var localizationValue = ContextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
                 if (!string.IsNullOrEmpty(localizationValue))
                 {
-                    //currencyValue = 0;
                     currencyCultureName = CultureService.CurrentCulture.Name;
 
                     if (!string.IsNullOrEmpty(currencyCultureName))
                     {
-                        await GetCurrencyValueFromCookie();
+                        satsValue = double.TryParse(await GetValueFromCookie(SatsCookieName) ?? "0", out var sats) ? sats : (double?)null;
                     }
                 }
 
@@ -270,15 +273,16 @@
 
         currencyValueLabelName = $"{currentCurrency.Value}";
 
-        if (currencyValue > 0)
+        if (currencyValue.HasValue && currencyValue.Value > 0)
         {
             satsValue = CurrencyConverterHelper.ConvertToSats(currencyValue.Value, currentCurrency.BitcoinPrice);
-
-            lastCurrencyValue = currencyValue;
             lastSatsValue = satsValue;
+        }
+        if (satsValue.HasValue && satsValue.Value > 0)
+        {
+            currencyValue = CurrencyConverterHelper.ConvertSatsToCurrency(satsValue.Value, currentCurrency.BitcoinPrice);
             currencyValueInCurrencyLabel = $"{currencyValue?.ToString("C", CultureService.CurrentCulture)} in Currency";
-
-            await SetCurrencyValueCookie();
+            lastCurrencyValue = currencyValue;
         }
     }
 
@@ -286,7 +290,7 @@
     {
         if (!currencyValue.HasValue || currencyValue.Value == 0)
         {
-            SnackMessage("Insert a valid currency value!", Defaults.Classes.Position.BottomCenter, Severity.Warning);
+            await RemoveCookie(CurrencyCookieName);
             return;
         }
 
@@ -308,9 +312,9 @@
             };
             Telemetry.TrackEvent("ConvertToBitcoin", properties);
 
-            // Get exchange rates
-            //_bitcoinExchangeRateModel = await ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
             await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName);
+
+            await SetValueCookie(CurrencyCookieName, currencyValue?.ToString());
         }
         catch (Exception ex)
         {
@@ -326,10 +330,17 @@
 
     async Task ConvertToCurrency()
     {
+        if (satsValue.HasValue == false || satsValue.Value == 0)
+        {
+            await RemoveCookie(SatsCookieName);
+            return;
+        }
+
         if (satsValue.HasValue && lastSatsValue.HasValue && satsValue.Value == lastSatsValue.Value)
         {
             return;
         }
+
         if (satsValue.HasValue && satsValue.Value > 0)
         {
             // Track the custom event using TelemetryClient
@@ -341,7 +352,8 @@
 
             var btcPrice = CurrencyList.FirstOrDefault(f => f.CultureName == currencyCultureName && f.BitcoinPrice > 0)?.BitcoinPrice;
             currencyValue = CurrencyConverterHelper.ConvertSatsToCurrency(satsValue.Value, btcPrice.Value);
-            await ConvertToBitcoin();
+
+            await SetValueCookie(SatsCookieName, satsValue?.ToString());
         }
     }
 
@@ -351,6 +363,20 @@
         Snackbar.Configuration.SnackbarVariant = Variant.Text;
         Snackbar.Configuration.PositionClass = position;
         Snackbar.Add(message, severity);
+    }
+
+    private Task ThemeChanged(bool isDarkMode)
+    {
+        _rowStyleFunc = (x, i) =>
+        {
+            if (x.CultureName == currencyCultureName)
+            {
+                return isDarkMode ? $"background-color:{Colors.Shades.Black}" : $"background-color:{Colors.Gray.Lighten2}";
+            }
+            return "";
+        };
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     async Task WriteTextAsync(string text)
@@ -366,22 +392,56 @@
         }
     }
 
-    async Task GetCurrencyValueFromCookie()
+    async Task<string> GetValueFromCookie(string cookieName)
     {
-        var currencyCookieValue = await JS.InvokeAsync<string>("cookieHelper.getCookie", CurrencyCookieName);
+        var currencyCookieValue = await JS.InvokeAsync<string>("cookieHelper.getCookie", cookieName);
         if (!string.IsNullOrEmpty(currencyCookieValue))
         {
-            currencyValue = double.Parse(currencyCookieValue);
+            return currencyCookieValue;
+        }
+        return string.Empty;
+    }
+
+    async Task SetValueCookie(string cookieName, string cookieValue, int totalTimeInDays = 30)
+    {
+        await JS.InvokeVoidAsync("cookieHelper.setCookie", cookieName, cookieValue, totalTimeInDays);
+    }
+
+    async Task RemoveCookie(string cookieName)
+    {
+        await JS.InvokeVoidAsync("cookieHelper.setCookie", cookieName, 0, -1);
+    }
+
+    bool _exchangeListExpanded = false;
+
+    private async Task OnExpandExchangesCollapseClick()
+    {
+        _exchangeListExpanded = !_exchangeListExpanded; 
+        if (_exchangeListExpanded)
+        {
+            await InvokeAsync(async () =>
+            {
+                await Task.Delay(300);
+                await JS.InvokeVoidAsync("scrollToElement", "exchanges-section");
+            });
         }
     }
 
-    async Task SetCurrencyValueCookie()
+    bool _bitcoinInfoExpanded = false;
+
+    private async Task OnExpandBitcoinInfoCollapseClick()
     {
-        if (currencyValue.HasValue)
+        _bitcoinInfoExpanded = !_bitcoinInfoExpanded;
+        if (_bitcoinInfoExpanded)
         {
-            await JS.InvokeVoidAsync("cookieHelper.setCookie", CurrencyCookieName, currencyValue.Value, 1); // Store for 1 day(s)
+            await InvokeAsync(async () =>
+            {
+                await Task.Delay(300);
+                await JS.InvokeVoidAsync("scrollToElement", "bitcoin-info-section");
+            });
         }
     }
+
 
     public void Dispose()
     {
