@@ -6,6 +6,7 @@
 @using System.Threading.Tasks;
 @using System.Collections.Generic;
 @using FreedomBlaze.Client.Components
+@using FreedomBlaze.Client.Enums
 @using FreedomBlaze.Client.Helpers;
 @using FreedomBlaze.Interfaces
 @using FreedomBlaze.Models;
@@ -27,7 +28,8 @@
     <MudGrid Class="mt-2">
         <MudItem xs="12" sm="12" md="12" Class="d-flex justify-center">
             <MudStack>
-                <MudSelect id="currency" Label="Currency" Variant="Variant.Filled" @bind-Value="CultureService.CurrencyCultureName" AdornmentColor="Color.Primary">
+                <MudSelect id="currency" Label="Currency" Variant="Variant.Filled" @bind-Value="CultureService.CurrencyCultureName" 
+                           AdornmentColor="Color.Primary" >
                     @foreach (var currency in CurrencyModel.CurrencyListStatic)
                     {
                         <MudSelectItem Value="@currency.CultureName" @key="@currency.CultureName">
@@ -38,16 +40,17 @@
                 </MudSelect>
 
                 <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
-                                 OnKeyUp="ConvertToBitcoin" Culture="@CultureService.CurrentCulture" Format="N2" T="double?"
-                                 HideSpinButtons="true" Variant="Variant.Text" Immediate="true"
+                                 Culture="@CultureService.CurrentCulture" Format="N2" T="double?"
+                                 DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToBitcoin"
+                                 HideSpinButtons="true" Variant="Variant.Text" 
                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
                                  AdornmentAriaLabel="Copy" AdornmentColor="Color.Primary"
                                  OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
 
                 <MudNumericField @bind-Value="satsValue" Label="SATS" MaxLength="9"
                                  HelperText="@($"BTC {(satsValue ?? 0) / 100_000_000:F8}")" Pattern=""
-                                 OnKeyUp="ConvertToCurrency"
-                                 HideSpinButtons="true" Variant="Variant.Text" Immediate="true"
+                                 DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToCurrency"
+                                 HideSpinButtons="true" Variant="Variant.Text" 
                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
                                  AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
                                  OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
@@ -159,6 +162,7 @@
 @implements IDisposable
 
 @code {
+    private const string LastConversionTypeCookieName = "lastConversionTypeCookie";
     private const string CurrencyCookieName = "currencyValueCookie";
     private const string SatsCookieName = "satsValueCookie";
     private const string _darkModeCookieName = "darkModeCookie";
@@ -189,6 +193,7 @@
             ThemeManager.OnThemeChanged += ThemeChanged;
             AppState.OnChange += OnAppStateChanged;
 
+            currencyCultureName = CultureService.CurrentCulture.Name;
             await GetExchangeRates();
         }
 
@@ -200,8 +205,6 @@
         if (_loading == false)
         {
             await GetExchangeRates(AppState.BitcoinExchangeRate);
-
-            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -212,17 +215,23 @@
             _loading = true;
             await InvokeAsync(StateHasChanged);
 
+            var conversionType = ConversionType.Unknown;
             _bitcoinExchangeRateModel = bitcoinExchangeRateModel;
             if (_bitcoinExchangeRateModel == null)
             {
                 var localizationValue = ContextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
                 if (!string.IsNullOrEmpty(localizationValue))
                 {
-                    currencyCultureName = CultureService.CurrentCulture.Name;
-
-                    if (!string.IsNullOrEmpty(currencyCultureName))
+                    var lastConversionType = await GetValueFromCookie(LastConversionTypeCookieName);
+                    if (lastConversionType == ConversionType.BitcoinToCurrency.ToString() && double.TryParse(await GetValueFromCookie(SatsCookieName) ?? "0", out var sats))
                     {
-                        satsValue = double.TryParse(await GetValueFromCookie(SatsCookieName) ?? "0", out var sats) ? sats : (double?)null;
+                        satsValue = sats;
+                        conversionType = ConversionType.BitcoinToCurrency;
+                    }
+                    if (lastConversionType == ConversionType.CurrencyToBitcoin.ToString() && double.TryParse(await GetValueFromCookie(CurrencyCookieName) ?? "0", out var currency))
+                    {
+                        currencyValue = currency;
+                        conversionType = ConversionType.CurrencyToBitcoin;
                     }
                 }
 
@@ -230,7 +239,7 @@
                 AppState.BitcoinExchangeRate = _bitcoinExchangeRateModel;
             }
 
-            await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName ?? "en-US");
+            await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName ?? "en-US", conversionType);
 
             SnackMessage($"Exchanges prices updated!", Defaults.Classes.Position.BottomCenter, Severity.Success);
         }
@@ -246,7 +255,7 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    async Task LoadCurrencyList(BitcoinExchangeRateModel currencyRatesResult, string currencyCultureName)
+    async Task LoadCurrencyList(BitcoinExchangeRateModel currencyRatesResult, string currencyCultureName, ConversionType conversionType)
     {
         CurrencyList = CurrencyModel.GetCurrencyList(currencyCultureName);
 
@@ -273,12 +282,12 @@
 
         currencyValueLabelName = $"{currentCurrency.Value}";
 
-        if (currencyValue.HasValue && currencyValue.Value > 0)
+        if (currencyValue.HasValue && currencyValue.Value > 0 && conversionType == ConversionType.CurrencyToBitcoin)
         {
             satsValue = CurrencyConverterHelper.ConvertToSats(currencyValue.Value, currentCurrency.BitcoinPrice);
             lastSatsValue = satsValue;
         }
-        if (satsValue.HasValue && satsValue.Value > 0)
+        if (satsValue.HasValue && satsValue.Value > 0 && conversionType == ConversionType.BitcoinToCurrency)
         {
             currencyValue = CurrencyConverterHelper.ConvertSatsToCurrency(satsValue.Value, currentCurrency.BitcoinPrice);
             currencyValueInCurrencyLabel = $"{currencyValue?.ToString("C", CultureService.CurrentCulture)} in Currency";
@@ -301,20 +310,18 @@
 
         try
         {
-            _loading = true;
-            StateHasChanged();
+            // // Track the custom event using TelemetryClient
+            // var properties = new Dictionary<string, string>
+            // {
+            //     { "currencyValue", currencyValue.Value.ToString() },
+            //     { "currencyCultureName", currencyCultureName }
+            // };
+            // Telemetry.TrackEvent("ConvertToBitcoin", properties);
 
-            // Track the custom event using TelemetryClient
-            var properties = new Dictionary<string, string>
-            {
-                { "currencyValue", currencyValue.Value.ToString() },
-                { "currencyCultureName", currencyCultureName }
-            };
-            Telemetry.TrackEvent("ConvertToBitcoin", properties);
-
-            await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName);
+            await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName, ConversionType.CurrencyToBitcoin);
 
             await SetValueCookie(CurrencyCookieName, currencyValue?.ToString());
+            await SetValueCookie(LastConversionTypeCookieName, ConversionType.CurrencyToBitcoin.ToString());
         }
         catch (Exception ex)
         {
@@ -322,38 +329,48 @@
         }
         finally
         {
-            _loading = false;
         }
-
-        StateHasChanged();
     }
 
     async Task ConvertToCurrency()
     {
-        if (satsValue.HasValue == false || satsValue.Value == 0)
+        try
         {
-            await RemoveCookie(SatsCookieName);
-            return;
-        }
-
-        if (satsValue.HasValue && lastSatsValue.HasValue && satsValue.Value == lastSatsValue.Value)
-        {
-            return;
-        }
-
-        if (satsValue.HasValue && satsValue.Value > 0)
-        {
-            // Track the custom event using TelemetryClient
-            var properties = new Dictionary<string, string>
+            if (satsValue.HasValue == false || satsValue.Value == 0)
             {
-                { "satsValue", satsValue.Value.ToString() }
-            };
-            Telemetry.TrackEvent("ConvertToCurrency", properties);
+                await RemoveCookie(SatsCookieName);
+                return;
+            }
 
-            var btcPrice = CurrencyList.FirstOrDefault(f => f.CultureName == currencyCultureName && f.BitcoinPrice > 0)?.BitcoinPrice;
-            currencyValue = CurrencyConverterHelper.ConvertSatsToCurrency(satsValue.Value, btcPrice.Value);
+            if (satsValue.HasValue && lastSatsValue.HasValue && satsValue.Value == lastSatsValue.Value)
+            {
+                return;
+            }
 
-            await SetValueCookie(SatsCookieName, satsValue?.ToString());
+            if (satsValue.HasValue && satsValue.Value > 0)
+            {
+                // // Track the custom event using TelemetryClient
+                // var properties = new Dictionary<string, string>
+                // {
+                //     { "satsValue", satsValue.Value.ToString() }
+                // };
+                // Telemetry.TrackEvent("ConvertToCurrency", properties);
+
+                var btcPrice = CurrencyList.FirstOrDefault(f => f.CultureName == currencyCultureName && f.BitcoinPrice > 0)?.BitcoinPrice;
+                currencyValue = CurrencyConverterHelper.ConvertSatsToCurrency(satsValue.Value, btcPrice.Value);
+
+                await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName, ConversionType.BitcoinToCurrency);
+
+                await SetValueCookie(SatsCookieName, satsValue?.ToString());
+                await SetValueCookie(LastConversionTypeCookieName, ConversionType.BitcoinToCurrency.ToString());
+            }
+        }
+        catch (Exception ex)
+        {
+            SnackMessage($"Exception occurred converting to Currency: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
+        }
+        finally
+        {
         }
     }
 
@@ -416,7 +433,7 @@
 
     private async Task OnExpandExchangesCollapseClick()
     {
-        _exchangeListExpanded = !_exchangeListExpanded; 
+        _exchangeListExpanded = !_exchangeListExpanded;
         if (_exchangeListExpanded)
         {
             await InvokeAsync(async () =>
@@ -441,7 +458,6 @@
             });
         }
     }
-
 
     public void Dispose()
     {
