@@ -26,45 +26,45 @@ if (string.IsNullOrEmpty(baseUrl))
 }
 var baseUrlAddress = new Uri(baseUrl);
 
-builder.Services.AddHttpClient<BitcoinNewsService>(c =>
-{
-    c.BaseAddress = baseUrlAddress;
-});
+//builder.Services.AddHttpClient<BitcoinNewsService>(c =>
+//{
+//    c.BaseAddress = baseUrlAddress;
+//});
 builder.Services.AddHttpClient<ContactService>(c =>
 {
     c.BaseAddress = baseUrlAddress;
 });
 
-var blobStorageOptions = builder.Configuration.GetSection("BlobStorage").Get<BlobStorageOptions>();
-builder.Services.AddAzureClients(clientBuilder =>
-{
-    var blobUri = new Uri($"https://{blobStorageOptions?.AccountName}.blob.core.windows.net");
-    if (!string.IsNullOrEmpty(blobStorageOptions?.AccessKey))
-    {
-        var credential = new StorageSharedKeyCredential(blobStorageOptions.AccountName, blobStorageOptions.AccessKey);
-        clientBuilder.AddBlobServiceClient(blobUri, credential);
-    }
-    else
-    {
-        clientBuilder.AddBlobServiceClient(blobUri);
-        clientBuilder.UseCredential(new DefaultAzureCredential());
-    }
+//var blobStorageOptions = builder.Configuration.GetSection("BlobStorage").Get<BlobStorageOptions>();
+//builder.Services.AddAzureClients(clientBuilder =>
+//{
+//    var blobUri = new Uri($"https://{blobStorageOptions?.AccountName}.blob.core.windows.net");
+//    if (!string.IsNullOrEmpty(blobStorageOptions?.AccessKey))
+//    {
+//        var credential = new StorageSharedKeyCredential(blobStorageOptions.AccountName, blobStorageOptions.AccessKey);
+//        clientBuilder.AddBlobServiceClient(blobUri, credential);
+//    }
+//    else
+//    {
+//        clientBuilder.AddBlobServiceClient(blobUri);
+//        clientBuilder.UseCredential(new DefaultAzureCredential());
+//    }
 
-    var useKeyVault = builder.Configuration.GetValue<bool?>("UseKeyVault");
-    if (useKeyVault.HasValue && useKeyVault == true)
-    {
-        clientBuilder.AddSecretClient(new Uri($"https://{builder.Configuration["KeyVaultName"]}.vault.azure.net/"));
-    }
-});
+//    var useKeyVault = builder.Configuration.GetValue<bool?>("UseKeyVault");
+//    if (useKeyVault.HasValue && useKeyVault == true)
+//    {
+//        clientBuilder.AddSecretClient(new Uri($"https://{builder.Configuration["KeyVaultName"]}.vault.azure.net/"));
+//    }
+//});
 
 builder.Services.AddScoped<IExchangeRateProvider, ExchangeRateProvider>();
 builder.Services.AddScoped<ICurrencyExchangeProvider, CurrencyExchangeRateProviders>();
 
-builder.Services.AddSingleton<BlobStorageService>();
+//builder.Services.AddSingleton<BlobStorageService>();
 
 builder.Services.AddScoped<CultureService>();
-builder.Services.AddScoped<ImageService>();
-builder.Services.AddScoped<ChatGptService>();
+//builder.Services.AddScoped<ImageService>();
+//builder.Services.AddScoped<ChatGptService>();
 
 builder.Services.AddScoped<AppState>();
 builder.Services.AddScoped<ThemeManager>();
