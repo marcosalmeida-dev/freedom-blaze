@@ -494,3 +494,4 @@ $RECYCLE.BIN/
 /src/FreedomBlaze/bitcoin-news.json
 /src/FreedomBlaze/get-bitcoin-news.txt
 /src/FreedomBlaze.AppHost/fb-applicationinsights.module.bicep
+/docker-compose.yml
