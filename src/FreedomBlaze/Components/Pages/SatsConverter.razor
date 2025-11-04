@@ -215,7 +215,7 @@
             _loading = true;
             await InvokeAsync(StateHasChanged);
 
-            var conversionType = ConversionType.Unknown;
+            var conversionType = ConversionType.BitcoinToCurrency;
             _bitcoinExchangeRateModel = bitcoinExchangeRateModel;
             if (_bitcoinExchangeRateModel == null)
             {
