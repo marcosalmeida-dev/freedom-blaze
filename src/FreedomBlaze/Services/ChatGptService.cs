@@ -5,8 +5,8 @@ using FreedomBlaze.Models;
 using FreedomBlaze.Services;
 using HtmlAgilityPack;
 using Microsoft.Extensions.Caching.Memory;
+using OpenAI.Chat;
 using OpenAI.Images;
-using OpenAI.Responses;
 
 public class ChatGptService
 {
@@ -99,32 +99,15 @@ public class ChatGptService
             throw new InvalidOperationException("Prompt content is empty or null.");
         }
 
-        OpenAIResponseClient client = new(model: model, apiKey: _apiKey);
+        ChatClient client = new(model: model, apiKey: _apiKey);
 
-        OpenAIResponse response = await client.CreateResponseAsync(userInputText: promptBlob,
-                                                                   new ResponseCreationOptions()
-                                                                   {
-                                                                       Tools = { ResponseTool.CreateWebSearchTool() },
-                                                                       TruncationMode = ResponseTruncationMode.Auto,
-                                                                       MaxOutputTokenCount = 8000
-                                                                   });
-        string textResult = string.Empty;
-        foreach (ResponseItem item in response.OutputItems)
-        {
-            if (item is WebSearchCallResponseItem webSearchCall)
-            {
-                Console.WriteLine($"[Web search invoked]({webSearchCall.Status}) {webSearchCall.Id}");
-            }
-            else if (item is MessageResponseItem message)
-            {
-                var messageContent = message.Content?.FirstOrDefault()?.Text;
-                Console.WriteLine($"[{message.Role}] {messageContent}");
-                if (!string.IsNullOrEmpty(messageContent))
-                {
-                    textResult = ExtractJsonArray(messageContent) ?? string.Empty;
-                }
-            }
-        }
+        ChatCompletion completion = await client.CompleteChatAsync(
+            [
+                new UserChatMessage(promptBlob)
+            ]);
+
+        string messageContent = completion.Content?.FirstOrDefault()?.Text ?? string.Empty;
+        string textResult = ExtractJsonArray(messageContent) ?? string.Empty;
 
         if (textResult == string.Empty)
         {
@@ -138,31 +121,12 @@ public class ChatGptService
             newsArticle.NewsThumbImg = await SearchArticleImageAsync(newsArticle.ArticleLinkUrl);
             if (string.IsNullOrEmpty(newsArticle.NewsThumbImg))
             {
-                newsArticle.NewsThumbImg = _imageService.GetAbsoluteImageUri("img/articles/default-img.png"); //await GenerateChatGptImageByText(newsArticle.Title); // 
+                newsArticle.NewsThumbImg = _imageService.GetAbsoluteImageUri("img/articles/default-img.png");
             }
         }
 
-        //var tasks = newsResult.Where(w => string.IsNullOrEmpty(w.NewsThumbImg))
-        //                      .Select(async newsArticle =>
-        //                      {
-        //                         var img = await GetMainArticleImageAsync(newsArticle.ArticleLinkUrl);
-        //                          newsArticle.NewsThumbImg = !string.IsNullOrEmpty(img) ? img
-        //                                                                                : await GetGeneratedChatGptImageByText(newsArticle.Title);
-        //                                                                               //: _imageService.GetAbsoluteImageUri("img/articles/default-img.png");
-        //                      });
-
-        //await Task.WhenAll(tasks);
-
-        string jsonContent = JsonSerializer.Serialize(newsResult, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
-
-        // Upload the JSON content to blob storage
+        string jsonContent = JsonSerializer.Serialize(newsResult, _jsonSerializerOptions);
         await _blobStorageService.UploadTextAsync(_newsContainerName, _newsBlobName, jsonContent);
-
-        // Update the cache
-        _cache.Set(CacheKeys.TodayBitcoinNewsCacheKey, newsResult, TimeSpan.FromHours(1));
     }
 
     public async Task<string> GenerateChatGptImageByText(string prompt)
