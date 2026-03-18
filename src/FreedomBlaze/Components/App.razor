@@ -56,6 +56,18 @@
             };
         };
 
+        window.darkModeHelper = {
+            getSystemPreference: function () {
+                return window.matchMedia('(prefers-color-scheme: dark)').matches;
+            },
+            watchSystemPreference: function (dotNetHelper) {
+                const mq = window.matchMedia('(prefers-color-scheme: dark)');
+                mq.addEventListener('change', (e) => {
+                    dotNetHelper.invokeMethodAsync('SystemPreferenceChanged', e.matches);
+                });
+            }
+        };
+
         window.scrollToElement = (elementId) => {
             const el = document.getElementById(elementId);
             if (el) {

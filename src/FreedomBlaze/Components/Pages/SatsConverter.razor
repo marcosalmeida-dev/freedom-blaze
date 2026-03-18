@@ -12,7 +12,6 @@
 @using FreedomBlaze.Models;
 @using System.Globalization;
 @using FreedomBlaze.Services
-@using Microsoft.ApplicationInsights
 @using Microsoft.AspNetCore.Localization
 @using Microsoft.Extensions.Localization
 
@@ -152,7 +151,6 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Resources.Localization> Localizer
 @inject IHttpContextAccessor ContextAccessor
-@inject TelemetryClient Telemetry
 @inject IExchangeRateProvider ExchangeRateProvider
 @inject CultureService CultureService
 @inject ISnackbar Snackbar

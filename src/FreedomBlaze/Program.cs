@@ -1,9 +1,6 @@
-using Azure.Identity;
-using Azure.Storage;
 using FreedomBlaze;
 using FreedomBlaze.Client.Services;
 using FreedomBlaze.Components;
-using FreedomBlaze.Configuration;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
 using FreedomBlaze.ServiceDefaults;
@@ -11,7 +8,6 @@ using FreedomBlaze.Services;
 using FreedomBlaze.WebClients;
 using FreedomBlaze.WebClients.CurrencyExchanges;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.Extensions.Azure;
 using MudBlazor.Services;
 using Phoenixd.NET.Hubs;
 
@@ -92,8 +88,6 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 builder.Services.AddHttpContextAccessor();
 
-builder.Services.AddApplicationInsightsTelemetry();
-
 builder.AddServiceDefaults();
 
 //builder.Services.ConfigurePhoenixdServices(builder.Configuration);
@@ -120,7 +114,7 @@ else
 //           .AllowAnyMethod());
 
 
-app.UseStaticFiles();
+app.MapStaticAssets();
 
 var localizationOptions = new RequestLocalizationOptions()
     .SetDefaultCulture(supportedCultures[0]) 

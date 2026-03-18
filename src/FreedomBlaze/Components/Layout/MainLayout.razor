@@ -2,7 +2,6 @@
 @using FreedomBlaze.Models
 @using FreedomBlaze.Services
 @using FreedomBlaze.WebClients
-@using Microsoft.ApplicationInsights
 @using Microsoft.AspNetCore.Localization
 @using System.Globalization
 
@@ -59,7 +58,7 @@
 </MudLayout>
 
 @inject IJSRuntime JS
-@inject TelemetryClient TelemetryClient
+@inject ILogger<MainLayout> Logger
 @inject NavigationManager Navigation
 @inject IConfiguration Configuration
 @inject IHttpContextAccessor ContextAccessor
@@ -87,6 +86,8 @@
 
     private MudThemeProvider _mudThemeProvider;
 
+    private DotNetObjectReference<MainLayout>? _dotNetRef;
+
     private string _darkModeCookieName = "darkModeCookie";
 
     private bool _drawerOpen = false;
@@ -99,30 +100,35 @@
     {
         if (firstRender)
         {
-            CultureService.OnCurrencyCultureChanged += (sender, args) => OnCurrencyChanged();
-            AppState.OnChange += OnAppStateChanged;
-            ThemeManager.OnThemeChanged += ThemeChanged;
-
-            await _mudThemeProvider.WatchSystemPreference(OnSystemPreferenceChanged);
-            var savedDarkMode = await JS.InvokeAsync<string>("cookieHelper.getCookie", _darkModeCookieName);
-            if (!string.IsNullOrEmpty(savedDarkMode))
+            try
             {
-                ThemeManager.IsDarkMode = bool.Parse(savedDarkMode);
-            }
-            else
-            {
-                ThemeManager.IsDarkMode = await _mudThemeProvider.GetSystemPreference();
-            }
+                CultureService.OnCurrencyCultureChanged += (sender, args) => OnCurrencyChanged();
+                AppState.OnChange += OnAppStateChanged;
+                ThemeManager.OnThemeChanged += ThemeChanged;
 
-            await InvokeAsync(StateHasChanged);
+                _dotNetRef = DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("darkModeHelper.watchSystemPreference", cancellationTokenSource.Token, _dotNetRef);
+                var savedDarkMode = await JS.InvokeAsync<string>("cookieHelper.getCookie", cancellationTokenSource.Token, _darkModeCookieName);
+                if (!string.IsNullOrEmpty(savedDarkMode))
+                {
+                    ThemeManager.IsDarkMode = bool.Parse(savedDarkMode);
+                }
+                else
+                {
+                    ThemeManager.IsDarkMode = await JS.InvokeAsync<bool>("darkModeHelper.getSystemPreference", cancellationTokenSource.Token);
+                }
 
-            await TrackEvents();
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (JSDisconnectedException) { }
+            catch (OperationCanceledException) { }
         }
 
         await base.OnAfterRenderAsync(firstRender);
     }
 
-    private Task OnSystemPreferenceChanged(bool isDark)
+    [JSInvokable]
+    public Task SystemPreferenceChanged(bool isDark)
     {
         ThemeManager.IsDarkMode = isDark;
         StateHasChanged();
@@ -131,7 +137,12 @@
 
     private async Task ThemeChanged(bool isDarkMode)
     {
-        await JS.InvokeVoidAsync("cookieHelper.setCookie", _darkModeCookieName, isDarkMode.ToString(), 365);
+        try
+        {
+            await JS.InvokeVoidAsync("cookieHelper.setCookie", cancellationTokenSource.Token, _darkModeCookieName, isDarkMode.ToString(), 365);
+        }
+        catch (JSDisconnectedException) { }
+        catch (OperationCanceledException) { }
     }
 
     private async Task OnAppStateChanged()
@@ -177,37 +188,12 @@
         }
     }
 
-    private async Task TrackEvents()
-    {
-        // Capture user environment data (language, platform, user agent)
-        var userEnvironment = await JS.InvokeAsync<UserEnvironment>("getUserEnvironment");
-
-        var properties = new Dictionary<string, string>
-        {
-            { "Language", userEnvironment.Language },
-            { "Platform", userEnvironment.Platform },
-            { "UserAgent", userEnvironment.UserAgent }
-        };
-
-        // Track Page View
-        var pageViewTelemetry = new Microsoft.ApplicationInsights.DataContracts.PageViewTelemetry
-            {
-                Name = Navigation.Uri,  // Page name based on the current URL
-                Url = new Uri(Navigation.Uri)  // The actual page URL
-            };
-
-        foreach (var property in properties)
-        {
-            pageViewTelemetry.Properties.Add(property.Key, property.Value);
-        }
-
-        TelemetryClient.TrackPageView(pageViewTelemetry);
-    }
-
     public void Dispose()
     {
         CultureService.OnCurrencyCultureChanged -= (sender, args) => OnCurrencyChanged();
         AppState.OnChange -= OnAppStateChanged;
+
+        _dotNetRef?.Dispose();
 
         if (cancellationTokenSource != null && !cancellationTokenSource.IsCancellationRequested)
         {
