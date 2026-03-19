@@ -24,11 +24,18 @@
     --bs-nav-link-hover-color: var(--mud-palette-primary-darken) !important;
 }
 
+/* Dark mode preload - prevents FOUC when dark mode is saved in cookie */
+html.dark-mode-preload {
+    background-color: #1a1a27;
+    color-scheme: dark;
+}
+
 /* MudAppBar */
 .select-container {
     display: flex;
     align-items: center;
-    min-width: calc(6% + 30px); /* Adjust based on your preference */
+    min-width: 160px;
+    max-width: 220px;
 }
     .select-container select {
         flex: 1;
@@ -56,18 +63,28 @@
         display: inline-block; /* Show only the app logo */
     }
 
-    /* Adjust switch label */
-    .toggle-switch .mud-switch-label {
-        content: "L/D"; /* Change label to 'L/D' on small screens */
-    }
-
-    /* Move switch under select */
-    .select-container {
-        flex-direction: column;
-    }
-
+    /* Hide dark mode toggle from AppBar on mobile — it lives in the drawer instead */
     .toggle-switch {
-        margin-top: 10px;
+        display: none;
+    }
+}
+
+/* Show drawer dark mode toggle only on mobile */
+.drawer-dark-toggle {
+    display: none;
+}
+
+.drawer-toggle-divider {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .drawer-dark-toggle {
+        display: block;
+    }
+
+    .drawer-toggle-divider {
+        display: block;
     }
 }
 

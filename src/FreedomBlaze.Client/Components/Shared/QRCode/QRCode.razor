@@ -1,4 +1,4 @@
-﻿@using FreedomBlaze.Client.Enums
+@using FreedomBlaze.Client.Enums
 @using FreedomBlaze.Client.Helpers
 @using QRCoder
 
@@ -25,22 +25,22 @@
     [Parameter]
     public BtcAddressType BtcAddressType { get; set; } = BtcAddressType.BitcoinLightning;
 
+    [Parameter]
+    public bool IsDarkMode { get; set; } = false;
+
     private string addressTypeIcon = "bitcoin.svg";
 
     private string GetQRCodeData(string data, decimal? amount)
     {
         addressTypeIcon = BtcAddressType == BtcAddressType.BitcoinOnChain ? "bitcoin.svg" : "bitcoin-lightning.svg";
 
-        string dataWithAmount = data;
-        // if (amount.HasValue && BtcAddressType == BtcAddressType.BitcoinOnChain)
-        // {
-        //     dataWithAmount = $"{data}?amount={amount.Value / CurrencyConverterHelper.SatoshiPerBitcoin}";
-        // }
-
         var qrGenerator = new QRCodeGenerator();
-        var qrCodeData = qrGenerator.CreateQrCode(dataWithAmount, QRCodeGenerator.ECCLevel.Q);
+        var qrCodeData = qrGenerator.CreateQrCode(data, QRCodeGenerator.ECCLevel.Q);
         var qrCode = new PngByteQRCode(qrCodeData);
-        var bytes = qrCode.GetGraphic(5, new byte[] { 0, 0, 0, 255 }, new byte[] { 0xf5, 0xf5, 0xf7, 255 });
+
+        var fg = IsDarkMode ? new byte[] { 0xf5, 0xf5, 0xf7, 255 } : new byte[] { 0, 0, 0, 255 };
+        var bg = IsDarkMode ? new byte[] { 30, 30, 30, 255 } : new byte[] { 0xf5, 0xf5, 0xf7, 255 };
+        var bytes = qrCode.GetGraphic(5, fg, bg);
         return $"data:image/png;base64,{Convert.ToBase64String(bytes)}";
     }
 }

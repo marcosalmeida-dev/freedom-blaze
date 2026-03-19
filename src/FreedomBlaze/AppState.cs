@@ -1,5 +1,6 @@
 ﻿using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
+using FreedomBlaze.WebClients;
 
 namespace FreedomBlaze;
 
@@ -9,13 +10,13 @@ public class AppState : IDisposable
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private readonly IExchangeRateProvider _exchangeRateProvider;
     private readonly ILogger<AppState> _logger;
+    private readonly TimeProvider _timeProvider;
 
-    public AppState(IExchangeRateProvider exchangeRateProvider, ILogger<AppState> logger)
+    public AppState(IExchangeRateProvider exchangeRateProvider, ILogger<AppState> logger, TimeProvider timeProvider)
     {
         _exchangeRateProvider = exchangeRateProvider;
         _logger = logger;
-
-        // Initialize the timer to call UpdateExchangeRate every minute
+        _timeProvider = timeProvider;
         _timer = new Timer(async _ => await UpdateExchangeRateAsync(), null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
     }
 
@@ -47,6 +48,8 @@ public class AppState : IDisposable
         }
     }
 
+    public List<BitcoinExchangeStatusModel> ExchangeStatusList { get; private set; } = [];
+
     public event Func<Task>? OnChange;
 
     private void NotifyStateChanged() => OnChange?.Invoke();
@@ -58,7 +61,9 @@ public class AppState : IDisposable
             BitcoinExchangeRate = await _exchangeRateProvider.GetExchangeRateAsync(_cancellationTokenSource.Token);
             if (BitcoinExchangeRate != null)
             {
-                LastUpdate = DateTime.Now;
+                LastUpdate = _timeProvider.GetLocalNow().DateTime;
+                if (_exchangeRateProvider is ExchangeRateProvider concreteProvider)
+                    ExchangeStatusList = concreteProvider.BitcoinExchangeStatusList;
             }
         }
         catch (OperationCanceledException)

@@ -14,6 +14,7 @@ public class ChatGptService
     private readonly ImageService _imageService;
     private readonly BlobStorageService _blobStorageService;
     private readonly IMemoryCache _cache;
+    private readonly ILogger<ChatGptService> _logger;
     private readonly string _apiKey;
 
     private readonly string _promptContainerName = "prompts";
@@ -23,12 +24,13 @@ public class ChatGptService
 
     private readonly JsonSerializerOptions _jsonSerializerOptions;
 
-    public ChatGptService(HttpClient httpClient, BlobStorageService blobStorageService, ImageService imageService, IMemoryCache memoryCache, IConfiguration configuration)
+    public ChatGptService(HttpClient httpClient, BlobStorageService blobStorageService, ImageService imageService, IMemoryCache memoryCache, IConfiguration configuration, ILogger<ChatGptService> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _blobStorageService = blobStorageService ?? throw new ArgumentNullException(nameof(blobStorageService));
         _imageService = imageService ?? throw new ArgumentNullException(nameof(imageService));
         _cache = memoryCache;
+        _logger = logger;
         _apiKey = configuration["ChatGptApiKey"] ?? throw new ArgumentNullException("ChatGptApiKey");
 
         _jsonSerializerOptions = new JsonSerializerOptions
@@ -56,7 +58,7 @@ public class ChatGptService
         // Upload the image to blob storage
         var blobUrl = await _blobStorageService.UploadImageAsync(_newsContainerName, blobName, imageBytes);
 
-        Console.WriteLine($"Image uploaded to blob storage: {blobUrl}");
+        _logger.LogInformation("Image uploaded to blob storage: {BlobUrl}", blobUrl);
     }
 
     public async Task<List<NewsArticleModel>?> GetTodayBitcoinNewsAsync()
@@ -227,14 +229,12 @@ public class ChatGptService
         }
         catch (HttpRequestException ex)
         {
-            // Handle HTTP request errors (e.g., 404, 500).
-            Console.WriteLine($"Error fetching article: {ex.Message}");
+            _logger.LogWarning(ex, "Error fetching article from {Url}", articleLinkUrl);
             return null;
         }
         catch (Exception ex)
         {
-            // Handle other exceptions (e.g., parsing errors).
-            Console.WriteLine($"An error occurred: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error parsing article from {Url}", articleLinkUrl);
             return null;
         }
     }

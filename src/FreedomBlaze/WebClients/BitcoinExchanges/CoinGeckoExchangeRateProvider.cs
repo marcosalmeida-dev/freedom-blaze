@@ -7,20 +7,15 @@ using System.Text.Json.Serialization;
 
 namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
-public class CoinGeckoExchangeRateProvider : IExchangeRateProvider
+public class CoinGeckoExchangeRateProvider(IHttpClientFactory httpClientFactory) : IExchangeRateProvider
 {
-    public string ExchangeName { get => "CoinGecko"; }
+    public string ExchangeName => "CoinGecko";
 
-    public static readonly Version ClientVersion = new(2, 0, 5, 0);
     public async Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
         try
         {
-            using var httpClient = new HttpClient
-            {
-                BaseAddress = new Uri("https://api.coingecko.com")
-            };
-            httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("aa", ClientVersion.ToString()));
+            var httpClient = httpClientFactory.CreateClient(ExchangeName);
             using var response = await httpClient.GetAsync("api/v3/coins/markets?vs_currency=usd&ids=bitcoin", cancellationToken);
             using var content = response.Content;
             var rates = await content.ReadAsJsonAsync<CoinGeckoExchangeRate[]>();

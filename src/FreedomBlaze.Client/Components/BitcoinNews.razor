@@ -1,4 +1,4 @@
-﻿@page "/bitcoinnews"
+@page "/bitcoinnews"
 @rendermode InteractiveAuto
 
 @using System.Globalization
@@ -7,44 +7,49 @@
 @using FreedomBlaze.Models
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    @* <MudGrid Justify="Justify.Center" Class="mt-8">
-        <MudText Typo="Typo.h3" GutterBottom="true">World Crypto News Today</MudText>
-        <MudDivider></MudDivider>
-        <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="@_loading" />
-    </MudGrid>
-    <MudGrid Justify="Justify.FlexStart">
-        <MudItem xs="12" sm="6" md="2">
-            <MudSelect T="string" Label="Select GPT Model" @bind-Value="_selectedModel">
-                @foreach (var model in GptModels)
-                {
-                    <MudSelectItem Value="@model">@model</MudSelectItem>
-                }
-            </MudSelect>
+    <MudGrid Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="Center.Center">
+        <MudItem>
+            <MudText Typo="Typo.h5">Bitcoin News</MudText>
         </MudItem>
-        <MudItem xs="12" sm="6" md="3" Class="d-flex align-center">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GetRefrehedBitcoinNews">
-                Refresh
-            </MudButton>
+        <MudItem>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary"
+                           aria-label="Refresh news"
+                           Disabled="_loading" OnClick="RefreshNewsAsync" />
         </MudItem>
     </MudGrid>
-    <MudDivider></MudDivider> *@
 
-    @if (_newsArticles?.Count > 0)
+    @if (_loading)
+    {
+        <MudGrid Justify="Justify.Center" Class="mt-4">
+            @for (var i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Class="d-flex flex-column h-100">
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="150px" />
+                        <MudCardContent>
+                            <MudSkeleton Width="90%" />
+                            <MudSkeleton Width="60%" Class="mt-1" />
+                            <MudSkeleton Width="40%" Class="mt-1" />
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (_newsArticles?.Count > 0)
     {
         <MudGrid Justify="Justify.Center" Class="mt-4">
             @foreach (var article in _newsArticles)
             {
                 <MudItem xs="12" sm="6" md="4">
-                    <!-- 3 columns on medium and larger screens -->
                     <MudCard Class="d-flex flex-column h-100" Style="height: 100%;">
-                        <!-- Ensures equal height -->
                         @if (!string.IsNullOrEmpty(article.NewsThumbImg))
                         {
                             <MudCardMedia Image="@article.NewsThumbImg" Height="150" />
                         }
                         <MudCardHeader>
                             <CardHeaderContent>
-                                <MudText Typo="Typo.h5">@(article.Title.Length > 50 ? article.Title.Substring(0, 50) + "..." : article.Title)</MudText>
+                                <MudText Typo="Typo.h5">@(article.Title.Length > 50 ? article.Title[..50] + "..." : article.Title)</MudText>
                                 <MudText Typo="Typo.body1" Color="Color.Secondary">
                                     <MudIcon Icon="@Icons.Material.Filled.Public" Class="mt-1 me-1" Size="Size.Small" />
                                     @article.Source
@@ -56,14 +61,12 @@
                             </CardHeaderContent>
                         </MudCardHeader>
                         <MudCardContent Class="flex-grow-1">
-                            <!-- Makes content expand to fit -->
-                            <MudText>@(article.Text.Length > 150 ? article.Text.Substring(0, 150) + "..." : article.Text)</MudText>
+                            <MudText>@(article.Text.Length > 150 ? article.Text[..150] + "..." : article.Text)</MudText>
                             <MudText Typo="Typo.body2" Color="Color.Secondary">
                                 @article.Date.ToString("MMMM dd, yyyy")
                             </MudText>
                         </MudCardContent>
                         <MudCardActions Class="mt-auto">
-                            <!-- Pushes actions to the bottom -->
                             <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@article.ArticleLinkUrl" Target="_blank">Read More</MudButton>
                         </MudCardActions>
                     </MudCard>
@@ -74,9 +77,7 @@
     else
     {
         <MudGrid Justify="Justify.Center" Class="mt-8">
-            <MudCard>
-                <MudAlert>No news found!</MudAlert>
-            </MudCard>
+            <MudAlert Severity="Severity.Info">No news found!</MudAlert>
         </MudGrid>
     }
 </MudContainer>
@@ -86,43 +87,34 @@
 @inject BitcoinNewsService Service
 
 @code {
-    private List<string> GptModels = new() { "gpt-4.1", "gpt-4.1-mini", "gpt-4o", "gpt-4o-mini" };
-    private string _selectedModel = "gpt-4.1"; // Default selected model
-
-    private List<NewsArticleModel> _newsArticles = new List<NewsArticleModel>();
-
+    private List<NewsArticleModel> _newsArticles = [];
     private bool _loading = false;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
-        if (firstRender)
-        {
-            try
-            {
-                _loading = true;
-                StateHasChanged();
-
-                _newsArticles = await Service.GetBtcNews();
-            }
-            catch
-            {
-                Snackbar.SnackMessage("Some error ocurred while trying to get bitcoin news, sorry!", Defaults.Classes.Position.TopCenter, Severity.Error);
-            }
-            finally
-            {
-                _loading = false;
-                StateHasChanged();
-            }
-        }
-
-        await base.OnAfterRenderAsync(firstRender);
+        await LoadNewsAsync();
+        await base.OnInitializedAsync();
     }
 
-    private async Task GetRefrehedBitcoinNews()
+    private async Task LoadNewsAsync()
     {
-        if (!string.IsNullOrEmpty(_selectedModel))
+        try
         {
-            _newsArticles = await Service.GetRefrehedBitcoinNews(_selectedModel);
+            _loading = true;
+            _newsArticles = await Service.GetBtcNews();
         }
+        catch
+        {
+            Snackbar.SnackMessage("Some error occurred while trying to get bitcoin news, sorry!", Defaults.Classes.Position.TopCenter, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RefreshNewsAsync()
+    {
+        await LoadNewsAsync();
     }
 }

@@ -6,51 +6,42 @@ using FreedomBlaze.Models;
 
 namespace FreedomBlaze.WebClients;
 
-public class ExchangeRateApiProvider : ICurrencyExchangeProvider
+public class ExchangeRateApiProvider(
+    IHttpClientFactory httpClientFactory,
+    IConfiguration configuration,
+    IHostEnvironment environment,
+    ILogger<ExchangeRateApiProvider> logger) : ICurrencyExchangeProvider
 {
-    private readonly string _apiKey;
-    public ExchangeRateApiProvider(IConfiguration configuration)
-    {
-        _apiKey = configuration["CurrencyExchangeRateApi"];
-    }
+    private readonly string _apiKey = configuration["CurrencyExchangeRateApi"] ?? string.Empty;
+    private readonly bool _isDevelopment = environment.IsDevelopment();
+
     public async Task<CurrencyExchangeRateModel> GetCurrencyRate(CancellationToken cancellationToken)
     {
-        if (_apiKey == null)
+        if (string.IsNullOrEmpty(_apiKey))
         {
-            throw new ArgumentNullException("CurrencyExchangeRateApi key is missing in the configuration file");
+            if (!_isDevelopment)
+                throw new InvalidOperationException("CurrencyExchangeRateApi key is required in production. Configure it in appsettings.");
+
+            logger.LogWarning("CurrencyExchangeRateApi key is not configured. Using stub data for development.");
         }
 
         CurrencyExchangeApiModel currencyRates;
 
         if (string.IsNullOrEmpty(_apiKey))
         {
-            // Return test result in debug mode
-            currencyRates = new CurrencyExchangeApiModel()
+            // Stub rates for development only
+            currencyRates = new CurrencyExchangeApiModel
             {
                 Success = true,
                 Timestamp = 1620000000,
                 Base = "EUR",
-                Date = "2021-05-03",
-                Rates = new Rates()
-                {
-                    USD = 1.2m,
-                    EUR = 1,
-                    GBP = 0.8m,
-                    CHF = 1.1m,
-                    AUD = 1.5m,
-                    JPY = 130m,
-                    ZAR = 20m,
-                    ARS = 100m,
-                    BRL = 7.25m //6.75m = R$5,63
-                }
+                Date = DateTime.Today.ToString("yyyy-MM-dd"),
+                Rates = new Rates { USD = 1.2m, EUR = 1, GBP = 0.8m, CHF = 1.1m, AUD = 1.5m, JPY = 130m, ZAR = 20m, ARS = 100m, BRL = 7.25m }
             };
         }
         else
         {
-            using var httpClient = new HttpClient
-            {
-                BaseAddress = new Uri("https://api.exchangeratesapi.io")
-            };
+            var httpClient = httpClientFactory.CreateClient("ExchangeRateApi");
             using var response = await httpClient.GetAsync($"v1/latest?access_key={_apiKey}&symbols=USD,EUR,GBP,CHF,AUD,JPY,ZAR,ARS,BRL", cancellationToken);
             using var content = response.Content;
             if (response.StatusCode != HttpStatusCode.OK)
@@ -64,57 +55,22 @@ public class ExchangeRateApiProvider : ICurrencyExchangeProvider
         DateTime dateTime = DateTime.Now;
         DateTime.TryParse(currencyRates.Date, out dateTime);
         //The base rate for this provider is EUR, so we have to convert it to USD to calculate with the btc exchanges providers which default is USD
-        var resultModel = new CurrencyExchangeRateModel()
+        var eurUsd = currencyRates.Rates.EUR / currencyRates.Rates.USD;
+        var resultModel = new CurrencyExchangeRateModel
         {
             Date = dateTime,
-            Rates = new List<CurrencyRate>()
-            {
-                new CurrencyRate()
-                {
-                    Currency = "USD",
-                    Rate = 1
-                },
-                new CurrencyRate()
-                {
-                    Currency = nameof(currencyRates.Rates.EUR),
-                    Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD)
-                },
-                new CurrencyRate()
-                {
-                    Currency = nameof(currencyRates.Rates.GBP),
-                    Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.GBP)
-                },
-                new CurrencyRate()
-                {
-                    Currency = nameof(currencyRates.Rates.CHF),
-                    Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.CHF)
-                },
-                new CurrencyRate()
-                {
-                    Currency = nameof(currencyRates.Rates.AUD),
-                    Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.AUD)
-                },
-                new CurrencyRate()
-                {
-                    Currency = nameof(currencyRates.Rates.JPY),
-                    Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.JPY)
-                },
-                 new CurrencyRate()
-                {
-                    Currency = nameof(currencyRates.Rates.ZAR),
-                    Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.ZAR)
-                },
-                new CurrencyRate()
-                {
-                    Currency = nameof(currencyRates.Rates.ARS),
-                    Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.ARS)
-                },
-                new CurrencyRate()
-                {
-                    Currency = nameof(currencyRates.Rates.BRL),
-                    Rate = (double)(currencyRates.Rates.EUR / currencyRates.Rates.USD * currencyRates.Rates.BRL)
-                }
-            }
+            Rates =
+            [
+                new CurrencyRate { Currency = "USD", Rate = 1 },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.EUR), Rate = (double)eurUsd },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.GBP), Rate = (double)(eurUsd * currencyRates.Rates.GBP) },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.CHF), Rate = (double)(eurUsd * currencyRates.Rates.CHF) },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.AUD), Rate = (double)(eurUsd * currencyRates.Rates.AUD) },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.JPY), Rate = (double)(eurUsd * currencyRates.Rates.JPY) },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.ZAR), Rate = (double)(eurUsd * currencyRates.Rates.ZAR) },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.ARS), Rate = (double)(eurUsd * currencyRates.Rates.ARS) },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.BRL), Rate = (double)(eurUsd * currencyRates.Rates.BRL) },
+            ]
         };
 
         return resultModel;
@@ -127,7 +83,7 @@ public class Rates
     public decimal USD { get; set; }
 
     [JsonPropertyName("EUR")]
-    public int EUR { get; set; }
+    public decimal EUR { get; set; }
 
     [JsonPropertyName("GBP")]
     public decimal GBP { get; set; }

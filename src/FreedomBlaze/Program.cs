@@ -6,6 +6,7 @@ using FreedomBlaze.Models;
 using FreedomBlaze.ServiceDefaults;
 using FreedomBlaze.Services;
 using FreedomBlaze.WebClients;
+using FreedomBlaze.WebClients.BitcoinExchanges;
 using FreedomBlaze.WebClients.CurrencyExchanges;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
@@ -53,8 +54,28 @@ builder.Services.AddHttpClient<ContactService>(c =>
 //    }
 //});
 
-builder.Services.AddScoped<IExchangeRateProvider, ExchangeRateProvider>();
-builder.Services.AddScoped<ICurrencyExchangeProvider, CurrencyExchangeRateProviders>();
+// Named HttpClients for each Bitcoin exchange provider (pooled handlers, DNS refresh)
+builder.Services.AddHttpClient("BlockchainInfo", c => c.BaseAddress = new Uri("https://blockchain.info"))
+    .AddStandardResilienceHandler();
+builder.Services.AddHttpClient("Bitstamp", c => c.BaseAddress = new Uri("https://www.bitstamp.net"))
+    .AddStandardResilienceHandler();
+builder.Services.AddHttpClient("CoinGecko", c =>
+{
+    c.BaseAddress = new Uri("https://api.coingecko.com");
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("FreedomBlaze/1.0");
+}).AddStandardResilienceHandler();
+builder.Services.AddHttpClient("Coinbase", c => c.BaseAddress = new Uri("https://api.coinbase.com"))
+    .AddStandardResilienceHandler();
+builder.Services.AddHttpClient("Gemini", c => c.BaseAddress = new Uri("https://api.gemini.com"))
+    .AddStandardResilienceHandler();
+builder.Services.AddHttpClient("Coingate", c => c.BaseAddress = new Uri("https://api.coingate.com"))
+    .AddStandardResilienceHandler();
+builder.Services.AddHttpClient("ExchangeRateApi", c => c.BaseAddress = new Uri("https://api.exchangeratesapi.io"))
+    .AddStandardResilienceHandler();
+
+builder.Services.AddSingleton<ExchangeRateApiProvider>();
+builder.Services.AddSingleton<IExchangeRateProvider, ExchangeRateProvider>();
+builder.Services.AddSingleton<ICurrencyExchangeProvider, CurrencyExchangeRateProviders>();
 
 //builder.Services.AddSingleton<BlobStorageService>();
 
@@ -62,10 +83,17 @@ builder.Services.AddScoped<CultureService>();
 //builder.Services.AddScoped<ImageService>();
 //builder.Services.AddScoped<ChatGptService>();
 
-builder.Services.AddScoped<AppState>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<AppState>();
 builder.Services.AddScoped<ThemeManager>();
 
 builder.Services.AddMemoryCache();
+builder.Services.AddResponseCompression(opts =>
+{
+    opts.EnableForHttps = true;
+    opts.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+    opts.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+});
 
 builder.Services.AddControllers();
 
@@ -103,7 +131,7 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    //app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
@@ -114,6 +142,8 @@ else
 //           .AllowAnyMethod());
 
 
+app.UseResponseCompression();
+
 app.MapStaticAssets();
 
 var localizationOptions = new RequestLocalizationOptions()
@@ -123,7 +153,6 @@ var localizationOptions = new RequestLocalizationOptions()
 
 app.UseRequestLocalization(localizationOptions);
 
-app.UseExceptionHandler(options => { });
 
 app.UseRouting();
 

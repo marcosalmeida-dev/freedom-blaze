@@ -9,15 +9,11 @@
 @inject NavigationManager NavManager
 
 @code {
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
         {
-            var returnUrl = "/" + NavManager?.ToBaseRelativePath(NavManager.Uri);
-
-            NavManager?.NavigateTo($"/satsconverter", false);
+            NavManager.NavigateTo("/satsconverter", replace: true);
         }
-
-        return Task.CompletedTask;
     }
 }

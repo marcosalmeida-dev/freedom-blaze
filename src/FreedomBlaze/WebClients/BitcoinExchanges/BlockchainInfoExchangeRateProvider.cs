@@ -6,18 +6,15 @@ using FreedomBlaze.Models;
 
 namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
-public class BlockchainInfoExchangeRateProvider : IExchangeRateProvider
+public class BlockchainInfoExchangeRateProvider(IHttpClientFactory httpClientFactory) : IExchangeRateProvider
 {
-    public string ExchangeName { get => "BlockchainInfo"; }
+    public string ExchangeName => "BlockchainInfo";
 
     public async Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
         try
         {
-            using var httpClient = new HttpClient
-            {
-                BaseAddress = new Uri("https://blockchain.info")
-            };
+            var httpClient = httpClientFactory.CreateClient(ExchangeName);
             using var response = await httpClient.GetAsync("/ticker", cancellationToken);
             using var content = response.Content;
             var rates = await content.ReadAsJsonAsync<BlockchainInfoExchangeRates>();

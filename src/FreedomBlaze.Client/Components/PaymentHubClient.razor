@@ -58,7 +58,7 @@
 
     private async Task OpenDialogAsync()
     {
-        var options = new DialogOptions { CloseOnEscapeKey = true };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small };
         var parameters = new DialogParameters<ReceiveLightningPaymentForm> { { x => x.ConnectionId, _connectionId } };
         _paymentDialogReference = await DialogService.ShowAsync<ReceiveLightningPaymentForm>("Lightning Dialog", parameters);
 
@@ -68,8 +68,8 @@
     {
         // Initialize the SignalR connection
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/paymentHub")) // Adjust the URL to match your server setup
-            .WithAutomaticReconnect() // Automatically reconnect if connection is lost
+            .WithUrl(Navigation.ToAbsoluteUri("/paymentHub"))
+            .WithAutomaticReconnect([TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(10)])
             .Build();
 
         _hubConnection.On<string>("Receive_connectionId", (id) =>
@@ -155,7 +155,6 @@
         if (_hubConnection is not null)
         {
             await _hubConnection.DisposeAsync();
-            Console.WriteLine("Hub connection disposed"); // Log to console
         }
     }
 }

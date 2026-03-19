@@ -1,11 +1,12 @@
-﻿<MudNavMenu >
-    @* <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home" IconColor="Color.Primary">Home</MudNavLink> *@
-    @* <MudNavLink Href="counter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Add" IconColor="Color.Primary">Counter</MudNavLink> *@ @* <MudNavLink Href="weather" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List" IconColor="Color.Primary">Weather</MudNavLink> *@
-    @* <MudNavLink Href="weather" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List" IconColor="Color.Primary">Weather</MudNavLink> *@
-
-    <MudNavLink Href="bitcoinnews" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Public" IconColor="Color.Primary">Bitcoin News</MudNavLink>
+<MudNavMenu>
+    @* <MudNavLink Href="bitcoinnews" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Public" IconColor="Color.Primary">Bitcoin News</MudNavLink> *@
     <MudNavLink Href="satsconverter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CurrencyBitcoin" IconColor="Color.Primary">Sats Converter</MudNavLink>
+    @* <MudNavLink Href="paymenthubclient" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ElectricBolt" IconColor="Color.Primary">Lightning Payments</MudNavLink> *@
     <MudNavLink Href="about" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Info" IconColor="Color.Primary">About</MudNavLink>
+    <MudDivider Class="my-2 drawer-toggle-divider" />
+    <div class="px-4 drawer-dark-toggle">
+        <MudSwitch @bind-Value="@ThemeManager.IsDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" T="bool" Label="Dark Mode" />
+    </div>
 </MudNavMenu>
 
-
+@inject ThemeManager ThemeManager

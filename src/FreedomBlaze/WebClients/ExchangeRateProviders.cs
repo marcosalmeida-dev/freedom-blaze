@@ -9,91 +9,72 @@ namespace FreedomBlaze.WebClients;
 
 public class ExchangeRateProvider : IExchangeRateProvider
 {
-    private readonly IExchangeRateProvider[] _exchangeRateProviders =
-    {
-        new BlockchainInfoExchangeRateProvider(),
-        new BitstampExchangeRateProvider(),
-        new CoinGeckoExchangeRateProvider(),
-        new CoinbaseExchangeRateProvider(),
-        new GeminiExchangeRateProvider(),
-        new CoingateExchangeRateProvider()
-    };
-
     private readonly IMemoryCache _cache;
     private readonly ICurrencyExchangeProvider _currencyExchangeProvider;
+    private readonly IExchangeRateProvider[] _exchangeRateProviders;
 
     public string ExchangeName => "ExchangeRateProvider";
 
-    public static List<BitcoinExchangeStatusModel> BitcoinExchangeStatusList = new List<BitcoinExchangeStatusModel>();
+    public List<BitcoinExchangeStatusModel> BitcoinExchangeStatusList { get; private set; } = [];
 
-    public ExchangeRateProvider(IMemoryCache cache, ICurrencyExchangeProvider currencyExchangeProvider)
+    public ExchangeRateProvider(
+        IMemoryCache cache,
+        ICurrencyExchangeProvider currencyExchangeProvider,
+        IHttpClientFactory httpClientFactory)
     {
         _cache = cache;
         _currencyExchangeProvider = currencyExchangeProvider;
+        _exchangeRateProviders =
+        [
+            new BlockchainInfoExchangeRateProvider(httpClientFactory),
+            new BitstampExchangeRateProvider(httpClientFactory),
+            new CoinGeckoExchangeRateProvider(httpClientFactory),
+            new CoinbaseExchangeRateProvider(httpClientFactory),
+            new GeminiExchangeRateProvider(httpClientFactory),
+            new CoingateExchangeRateProvider(httpClientFactory)
+        ];
     }
 
-    public Task<BitcoinExchangeRateModel?> GetExchangeRateAsync(CancellationToken cancellationToken)
+    public async Task<BitcoinExchangeRateModel?> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
-        var timeNow = new TimeOnly(DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second);
-        return _cache.GetOrCreateAsync(timeNow, async e =>
+        const string cacheKey = nameof(GetExchangeRateAsync);
+
+        if (!_cache.TryGetValue(cacheKey, out double? exchangeRateAvgResult))
         {
-            e.SetOptions(new MemoryCacheEntryOptions
+            var tasks = new List<Task<BitcoinExchangeRateModel>>();
+
+            foreach (var provider in _exchangeRateProviders)
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(15)
-            });
-
-            var cacheKey = nameof(GetExchangeRateAsync);
-
-            if (!_cache.TryGetValue(cacheKey, out double? exchangeRateAvgResult))
-            {
-                var tasks = new List<Task<BitcoinExchangeRateModel>>();
-
-                foreach (var provider in _exchangeRateProviders)
-                {
-                    tasks.Add(provider.GetExchangeRateAsync(cancellationToken));
-                }
-
-                var exchangeRates = await tasks.WhenAllOrException();
-
-                if (exchangeRates != null)
-                {
-                    exchangeRateAvgResult = exchangeRates.Where(w => w.IsSuccess && w.Result != null && w.Result.BitcoinRateInUSD > 0)
-                                                         .Average(a => a.Result.BitcoinRateInUSD);
-                    
-                    var cacheEntryOptions = new MemoryCacheEntryOptions()
-                        .SetAbsoluteExpiration(TimeSpan.FromSeconds(30));
-
-                    _cache.Set(cacheKey, exchangeRateAvgResult, cacheEntryOptions);
-
-                    BitcoinExchangeStatusList = exchangeRates.Select(s => new BitcoinExchangeStatusModel
-                    {
-                        ExchangeName = s.IsSuccess ? s.Result.ExchangeName : (s.Exception?.InnerException as ExchangeIntegrationException)?.ExchangeName,
-                        IsExchangeAvailable = s.IsSuccess
-                    }).ToList();
-
-                    var failedExchangesTasks = exchangeRates.Where(w => w.IsSuccess == false).ToList();
-                    foreach (var failedTask in failedExchangesTasks)
-                    {
-                        ExchangeIntegrationException? exchangeRateEx = failedTask?.Exception?.InnerException as ExchangeIntegrationException;
-                    }
-                }
+                tasks.Add(provider.GetExchangeRateAsync(cancellationToken));
             }
 
-            BitcoinExchangeRateModel? exchangeRateModelResult = null;
-            if (exchangeRateAvgResult.HasValue)
+            var exchangeRates = await tasks.WhenAllOrException();
+
+            if (exchangeRates != null)
             {
-                var currentCurrency = CurrencyModel.CurrentAppCurrency.Value;
-                CurrencyExchangeRateModel currencyRatesResult = await _currencyExchangeProvider.GetCurrencyRate(cancellationToken);
+                exchangeRateAvgResult = exchangeRates.Where(w => w.IsSuccess && w.Result != null && w.Result.BitcoinRateInUSD > 0)
+                                                     .Average(a => a.Result.BitcoinRateInUSD);
 
-                exchangeRateModelResult = new BitcoinExchangeRateModel()
+                _cache.Set(cacheKey, exchangeRateAvgResult, TimeSpan.FromSeconds(55));
+
+                BitcoinExchangeStatusList = exchangeRates.Select(s => new BitcoinExchangeStatusModel
                 {
-                    BitcoinRateInUSD = exchangeRateAvgResult.Value,
-                    CurrencyExchangeRate = currencyRatesResult
-                };
+                    ExchangeName = s.IsSuccess ? s.Result.ExchangeName : (s.Exception?.InnerException as ExchangeIntegrationException)?.ExchangeName,
+                    IsExchangeAvailable = s.IsSuccess
+                }).ToList();
             }
+        }
 
-            return exchangeRateModelResult;
-        });
+        if (!exchangeRateAvgResult.HasValue)
+            return null;
+
+        var currentCurrency = CurrencyModel.CurrentAppCurrency.Value;
+        CurrencyExchangeRateModel currencyRatesResult = await _currencyExchangeProvider.GetCurrencyRate(cancellationToken);
+
+        return new BitcoinExchangeRateModel
+        {
+            BitcoinRateInUSD = exchangeRateAvgResult.Value,
+            CurrencyExchangeRate = currencyRatesResult
+        };
     }
-
 }

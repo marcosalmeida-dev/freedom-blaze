@@ -127,7 +127,10 @@
 
     <MudPaper Class="mt-4">
         <MudStack Spacing="2">
-            <MudButton OnClick="OnExpandBitcoinInfoCollapseClick">@(_bitcoinInfoExpanded ? "Bitcoin Info-" : "Bitcon Info+")</MudButton>
+            <MudButton OnClick="OnExpandBitcoinInfoCollapseClick"
+                       StartIcon="@(_bitcoinInfoExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
+                Bitcoin Info
+            </MudButton>
             <MudDivider />
             <MudCollapse Expanded="_bitcoinInfoExpanded" id="bitcoin-info-section">
                 <SatsInfo />
@@ -137,10 +140,13 @@
 
     <MudPaper Class="mt-4">
         <MudStack Spacing="2">
-            <MudButton OnClick="OnExpandExchangesCollapseClick">@(_exchangeListExpanded ? "Exchanges-" : "Exchanges+")</MudButton>
+            <MudButton OnClick="OnExpandExchangesCollapseClick"
+                       StartIcon="@(_exchangeListExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
+                Exchanges
+            </MudButton>
             <MudDivider />
             <MudCollapse Expanded="_exchangeListExpanded" id="exchanges-section">
-                <BitcoinExchangeStatusList ExchangeStatusList="FreedomBlaze.WebClients.ExchangeRateProvider.BitcoinExchangeStatusList" />
+                <BitcoinExchangeStatusList ExchangeStatusList="AppState.ExchangeStatusList" />
             </MudCollapse>
         </MudStack>
     </MudPaper>
@@ -466,5 +472,6 @@
         }
 
         AppState.OnChange -= OnAppStateChanged;
+        ThemeManager.OnThemeChanged -= ThemeChanged;
     }
 }

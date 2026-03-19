@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using FreedomBlaze.Models;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Http.Extensions;
@@ -11,17 +7,15 @@ using FreedomBlaze.Exceptions;
 
 namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
-public class CoinbaseExchangeRateProvider : IExchangeRateProvider
+public class CoinbaseExchangeRateProvider(IHttpClientFactory httpClientFactory) : IExchangeRateProvider
 {
-    public string ExchangeName { get => "Coinbase"; }
+    public string ExchangeName => "Coinbase";
+
     public async Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
         try
         {
-            using var httpClient = new HttpClient
-            {
-                BaseAddress = new Uri("https://api.coinbase.com")
-            };
+            var httpClient = httpClientFactory.CreateClient(ExchangeName);
             using var response = await httpClient.GetAsync("/v2/exchange-rates?currency=BTC", cancellationToken);
             using var content = response.Content;
             var wrapper = await content.ReadAsJsonAsync<DataWrapper>();
@@ -33,7 +27,6 @@ public class CoinbaseExchangeRateProvider : IExchangeRateProvider
             throw new ExchangeIntegrationException(ExchangeName);
         }
     }
-
 
     private class DataWrapper
     {

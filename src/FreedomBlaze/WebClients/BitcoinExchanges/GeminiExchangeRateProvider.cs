@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using FreedomBlaze.Models;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Http.Extensions;
@@ -11,18 +7,15 @@ using FreedomBlaze.Exceptions;
 
 namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
-public class GeminiExchangeRateProvider : IExchangeRateProvider
+public class GeminiExchangeRateProvider(IHttpClientFactory httpClientFactory) : IExchangeRateProvider
 {
-    public string ExchangeName { get => "Gemini"; }
+    public string ExchangeName => "Gemini";
 
     public async Task<BitcoinExchangeRateModel> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
         try
         {
-            using var httpClient = new HttpClient
-            {
-                BaseAddress = new Uri("https://api.gemini.com")
-            };
+            var httpClient = httpClientFactory.CreateClient(ExchangeName);
             using var response = await httpClient.GetAsync("/v1/pubticker/btcusd", cancellationToken);
             using var content = response.Content;
             var data = await content.ReadAsJsonAsync<GeminiExchangeRateInfo>();

@@ -19,7 +19,7 @@
 
 <MudLayout>
     <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" aria-label="Toggle navigation menu" />
         <MudImage Src="/img/freedom-blaze-logo-3-4-small.png" Class="app-icon" Alt="Freedom Blaze logo" Height="40" Width="30" />
         <MudText Typo="Typo.h5" Class="app-name ml-3">Freedom Blaze</MudText>
         <MudSpacer />
@@ -94,6 +94,8 @@
 
     private string? _btcPriceCulture;
 
+    private EventHandler _cultureChangedHandler = default!;
+
     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -102,7 +104,8 @@
         {
             try
             {
-                CultureService.OnCurrencyCultureChanged += (sender, args) => OnCurrencyChanged();
+                _cultureChangedHandler = (_, _) => OnCurrencyChanged();
+                CultureService.OnCurrencyCultureChanged += _cultureChangedHandler;
                 AppState.OnChange += OnAppStateChanged;
                 ThemeManager.OnThemeChanged += ThemeChanged;
 
@@ -190,8 +193,9 @@
 
     public void Dispose()
     {
-        CultureService.OnCurrencyCultureChanged -= (sender, args) => OnCurrencyChanged();
+        CultureService.OnCurrencyCultureChanged -= _cultureChangedHandler;
         AppState.OnChange -= OnAppStateChanged;
+        ThemeManager.OnThemeChanged -= ThemeChanged;
 
         _dotNetRef?.Dispose();
 

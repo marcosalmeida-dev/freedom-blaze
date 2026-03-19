@@ -43,20 +43,13 @@ public class BlobStorageService
 
     public async Task<string?> DownloadTextAsync(string containerName, string blobName)
     {
-        try
-        {
-            var containerClient = await GetContainerAsync(containerName);
-            var blobClient = containerClient.GetBlobClient(blobName);
+        var containerClient = await GetContainerAsync(containerName);
+        var blobClient = containerClient.GetBlobClient(blobName);
 
-            if (await blobClient.ExistsAsync())
-            {
-                var downloadResult = await blobClient.DownloadContentAsync();
-                return downloadResult.Value.Content.ToString();
-            }
-        }
-        catch
+        if (await blobClient.ExistsAsync())
         {
-            throw;
+            var downloadResult = await blobClient.DownloadContentAsync();
+            return downloadResult.Value.Content.ToString();
         }
 
         return null;

@@ -7,7 +7,7 @@
 
 <MudDialog ClassActions="justify-center">
     <TitleContent>
-        Donate in Lightgning
+        Donate in Lightning
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3">
@@ -48,7 +48,7 @@
                 @if (!string.IsNullOrEmpty(_addressValue))
                 {
                     <MudStack>
-                        <QRCode Data="@_addressValue" Amount="@_addressAmountValue" BtcAddressType="@_btcAddressType"></QRCode>
+                        <QRCode Data="@_addressValue" Amount="@_addressAmountValue" BtcAddressType="@_btcAddressType" IsDarkMode="@IsDarkMode"></QRCode>
 
                         <MudButton OnClick="@(() => WriteTextAsync(_addressValue))" ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FileCopy">Copy</MudButton>
                     </MudStack>
@@ -74,6 +74,9 @@
 
     [Parameter]
     public string ConnectionId { get; set; }
+
+    [Parameter]
+    public bool IsDarkMode { get; set; } = false;
 
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; }
