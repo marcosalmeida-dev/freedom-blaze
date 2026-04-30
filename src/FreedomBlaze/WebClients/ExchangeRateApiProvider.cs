@@ -36,7 +36,7 @@ public class ExchangeRateApiProvider(
                 Timestamp = 1620000000,
                 Base = "EUR",
                 Date = DateTime.Today.ToString("yyyy-MM-dd"),
-                Rates = new Rates { USD = 1.2m, EUR = 1, GBP = 0.8m, CHF = 1.1m, AUD = 1.5m, JPY = 130m, ZAR = 20m, ARS = 100m, BRL = 7.25m }
+                Rates = new Rates { USD = 1.2m, EUR = 1, GBP = 0.8m, CHF = 1.1m, AUD = 1.5m, JPY = 130m, ZAR = 20m, ARS = 100m, BRL = 6.25m }
             };
         }
         else
