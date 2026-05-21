@@ -17,109 +17,121 @@
 
 <PageTitle>Freedom Blaze | Sats Converter</PageTitle>
 
+<style>
+    .sats-grid .mud-table-cell {
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+</style>
+
 <MudContainer Class="mt-4" id="main-container">
-    <MudGrid>
-        <MudItem xs="12" sm="6" md="12">
-            <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">@Localizer["SatsConverter.Title"]</MudText>
-            <MudText Align="Align.Center">@Localizer["SatsConverter.Body1"]</MudText>
-        </MudItem>
-    </MudGrid>
     @if (_loading)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
     }
-    <MudGrid Class="mt-2">
-        <MudItem xs="12" sm="12" md="12" Class="d-flex justify-center">
-            <MudStack>
-                <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
-                                 Culture="@CultureService.CurrentCulture" Format="N2" T="decimal?"
-                                 DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToBitcoin"
-                                 HideSpinButtons="true" Variant="Variant.Text"
-                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                                 AdornmentAriaLabel="Copy" AdornmentColor="Color.Primary"
-                                 OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
-
-                <MudNumericField @bind-Value="satsValue" Label="SATS" MaxLength="9"
-                                 HelperText="@($"BTC {(satsValue ?? 0) / 100_000_000m:F8}")" Pattern=""
-                                 DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToCurrency"
-                                 HideSpinButtons="true" Variant="Variant.Text"
-                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                                 AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
-                                 OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
-
-                @if (_lastUpdateFormatted != null)
-                {
-                    <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary">
-                        Last updated: @_lastUpdateFormatted
-                    </MudText>
-                }
-            </MudStack>
+    <MudGrid>
+        <MudItem xs="12">
+            <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-1">@Localizer["SatsConverter.Title"]</MudText>
+            <MudText Align="Align.Center" Class="mb-3">@Localizer["SatsConverter.Body1"]</MudText>
         </MudItem>
-        <MudItem xs="12" sm="12" md="12" Class="d-flex justify-center">
-            <MudPaper>
-                <MudDataGrid T="Currency" Items="@CurrencyList" RowStyleFunc="@_rowStyleFunc" ColumnResizeMode="ResizeMode.Column" Hover="true">
+    </MudGrid>
+    <MudGrid Class="mt-2">
+        <MudItem xs="12" Class="d-flex justify-center">
+            <MudPaper Elevation="2" Class="pa-4 rounded-lg" Style="width: 340px; max-width: 100%;">
+                <MudStack Spacing="3">
+                    <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
+                                     Culture="@CultureService.CurrentCulture" Format="N2" T="decimal?"
+                                     DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToBitcoin"
+                                     HideSpinButtons="true" Variant="Variant.Outlined"
+                                     Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
+                                     AdornmentAriaLabel="Copy" AdornmentColor="Color.Primary"
+                                     OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
+
+                    <MudNumericField @bind-Value="satsValue" Label="SATS" MaxLength="9"
+                                     HelperText="@($"BTC {(satsValue ?? 0) / 100_000_000m:F8}")" Pattern=""
+                                     DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToCurrency"
+                                     HideSpinButtons="true" Variant="Variant.Outlined"
+                                     Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
+                                     AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
+                                     OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
+
+                    @if (_lastUpdateFormatted != null)
+                    {
+                        <MudText Typo="Typo.caption" Align="Align.Center" Class="mt-1 opacity-70">
+                            Last updated: @_lastUpdateFormatted
+                        </MudText>
+                    }
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12">
+            <div style="max-width: 700px; width: 100%; margin: 0 auto; overflow-x: auto;">
+                <MudDataGrid T="Currency" Items="@CurrencyList" RowStyleFunc="@_rowStyleFunc"
+                             ColumnResizeMode="ResizeMode.Column" Hover="true" Dense="true" Elevation="2"
+                             Class="sats-grid">
                     <Columns>
-                        <PropertyColumn Title="Region" Property="x => x.Name">
+                        <PropertyColumn Title="Region" Property="x => x.Name" HeaderStyle="width: 72px;">
                             <CellTemplate>
                                 <MudTooltip Text="@context.Item.Name">
-                                    <MudAvatar>
-                                        <MudImage Src="@context.Item.FlagSvgPath" Alt="@context.Item.Name"></MudImage>
+                                    <MudAvatar Size="Size.Small">
+                                        <MudImage Src="@context.Item.FlagSvgPath" Alt="@context.Item.Name" />
                                     </MudAvatar>
                                 </MudTooltip>
                             </CellTemplate>
                         </PropertyColumn>
-                        <PropertyColumn Title="BTC Price" Property="x => x.BitcoinPrice">
+                        <PropertyColumn Title="BTC Price" Property="x => x.BitcoinPrice" HeaderClass="text-right" CellClass="text-right" HeaderStyle="min-width: 175px;">
                             <CellTemplate>
                                 @if (_loading)
                                 {
-                                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                                    <MudSkeleton Width="140px" Height="29px" Animation="Animation.Wave" />
                                 }
                                 else
                                 {
                                     <MudTooltip Text="Copy BTC Price">
-                                        <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", @context.Item.CultureInfo)</MudLink>
+                                        <MudLink Color="Color.Primary" Style="font-size: 1.56rem; white-space: nowrap;" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", context.Item.CultureInfo)</MudLink>
                                     </MudTooltip>
                                 }
                             </CellTemplate>
                         </PropertyColumn>
-                        <PropertyColumn Title="@currencyValueInCurrencyLabel" Property="x => x.CurrencyValueInCurrency">
+                        <PropertyColumn Title="@currencyValueInCurrencyLabel" Property="x => x.CurrencyValueInCurrency" HeaderClass="text-right" CellClass="text-right" HeaderStyle="min-width: 175px;">
                             <CellTemplate>
                                 @if (_loading)
                                 {
-                                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                                    <MudSkeleton Width="140px" Height="29px" Animation="Animation.Wave" />
                                 }
                                 else
                                 {
                                     <MudTooltip Text="Copy Currency">
-                                        <MudLink Color="Color.Primary" Typo="Typo.h6" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", @context.Item.CultureInfo)</MudLink>
+                                        <MudLink Color="Color.Primary" Style="font-size: 1.56rem; white-space: nowrap;" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", context.Item.CultureInfo)</MudLink>
                                     </MudTooltip>
                                 }
                             </CellTemplate>
                         </PropertyColumn>
-                        <PropertyColumn Title="@currencyValuePerUSDLabel" Property="x => x.CurrencyRateInUSD">
+                        <PropertyColumn Title="@currencyValuePerUSDLabel" Property="x => x.CurrencyRateInUSD" HeaderClass="text-right" CellClass="text-right" HeaderStyle="min-width: 140px;">
                             <CellTemplate>
                                 @if (_loading)
                                 {
-                                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                                    <MudSkeleton Width="110px" Height="29px" Animation="Animation.Wave" />
                                 }
                                 else
                                 {
-                                    <MudText Color="Color.Primary">@context.Item.CurrencyRateInUSD.ToString("C", @context.Item.CultureInfo)</MudText>
+                                    <MudText Style="font-size: 1.56rem; white-space: nowrap;" Color="Color.Default">@context.Item.CurrencyRateInUSD.ToString("C", context.Item.CultureInfo)</MudText>
                                 }
                             </CellTemplate>
                         </PropertyColumn>
                     </Columns>
                 </MudDataGrid>
-            </MudPaper>
+            </div>
         </MudItem>
     </MudGrid>
 </MudContainer>
 
-<MudContainer id="content-area" MaxWidth="MaxWidth.Medium">
+<MudContainer id="content-area" Style="max-width: 700px;">
 
     <MudPaper Class="mt-4">
         <MudStack Spacing="2">
-            <MudButton OnClick="OnExpandBitcoinInfoCollapseClick"
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                       OnClick="OnExpandBitcoinInfoCollapseClick"
                        StartIcon="@(_bitcoinInfoExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
                 Bitcoin Info
             </MudButton>
@@ -132,7 +144,8 @@
 
     <MudPaper Class="mt-4">
         <MudStack Spacing="2">
-            <MudButton OnClick="OnExpandExchangesCollapseClick"
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                       OnClick="OnExpandExchangesCollapseClick"
                        StartIcon="@(_exchangeListExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
                 Exchanges
             </MudButton>
@@ -191,8 +204,16 @@
             AppState.OnChange += OnAppStateChanged;
 
             currencyCultureName = CultureService.CurrentCulture.Name;
-            await GetExchangeRates();
-            await RefreshLastUpdatedAsync();
+            await ThemeChanged(ThemeManager.IsDarkMode);
+
+            _ = Task.Run(async () =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    await GetExchangeRates();
+                    await RefreshLastUpdatedAsync();
+                });
+            });
         }
 
         await base.OnAfterRenderAsync(firstRender);
@@ -381,9 +402,9 @@
         _rowStyleFunc = (x, i) =>
         {
             if (x.CultureName == currencyCultureName)
-            {
-                return isDarkMode ? $"background-color:{Colors.Shades.Black}" : $"background-color:{Colors.Gray.Lighten2}";
-            }
+                return isDarkMode
+                    ? "background-color: rgba(255,152,0,0.15); font-weight: 600;"
+                    : "background-color: rgba(230,81,0,0.08); font-weight: 600;";
             return "";
         };
         StateHasChanged();
