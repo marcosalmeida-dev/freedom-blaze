@@ -45,10 +45,10 @@ public class Currency
     public string FlagSvgPath { get; set; }
     public CultureInfo CultureInfo { get; set; }
 
-    public double CurrencyRateInUSD { get; set; }
-    public double BitcoinPrice { get; set; }
-    public double CurrencyValueInCurrency { get; set; }
-    public double SatoshisInFiat { get; set; }
+    public decimal CurrencyRateInUSD { get; set; }
+    public decimal BitcoinPrice { get; set; }
+    public decimal CurrencyValueInCurrency { get; set; }
+    public decimal SatoshisInFiat { get; set; }
 
     // Updated Equals method to fix CS8765 diagnostic
     public override bool Equals(object? obj) // Updated parameter to be nullable

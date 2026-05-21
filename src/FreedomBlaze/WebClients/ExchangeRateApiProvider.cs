@@ -61,15 +61,15 @@ public class ExchangeRateApiProvider(
             Date = dateTime,
             Rates =
             [
-                new CurrencyRate { Currency = "USD", Rate = 1 },
-                new CurrencyRate { Currency = nameof(currencyRates.Rates.EUR), Rate = (double)eurUsd },
-                new CurrencyRate { Currency = nameof(currencyRates.Rates.GBP), Rate = (double)(eurUsd * currencyRates.Rates.GBP) },
-                new CurrencyRate { Currency = nameof(currencyRates.Rates.CHF), Rate = (double)(eurUsd * currencyRates.Rates.CHF) },
-                new CurrencyRate { Currency = nameof(currencyRates.Rates.AUD), Rate = (double)(eurUsd * currencyRates.Rates.AUD) },
-                new CurrencyRate { Currency = nameof(currencyRates.Rates.JPY), Rate = (double)(eurUsd * currencyRates.Rates.JPY) },
-                new CurrencyRate { Currency = nameof(currencyRates.Rates.ZAR), Rate = (double)(eurUsd * currencyRates.Rates.ZAR) },
-                new CurrencyRate { Currency = nameof(currencyRates.Rates.ARS), Rate = (double)(eurUsd * currencyRates.Rates.ARS) },
-                new CurrencyRate { Currency = nameof(currencyRates.Rates.BRL), Rate = (double)(eurUsd * currencyRates.Rates.BRL) },
+                new CurrencyRate { Currency = "USD", Rate = 1m },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.EUR), Rate = eurUsd },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.GBP), Rate = eurUsd * currencyRates.Rates.GBP },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.CHF), Rate = eurUsd * currencyRates.Rates.CHF },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.AUD), Rate = eurUsd * currencyRates.Rates.AUD },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.JPY), Rate = eurUsd * currencyRates.Rates.JPY },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.ZAR), Rate = eurUsd * currencyRates.Rates.ZAR },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.ARS), Rate = eurUsd * currencyRates.Rates.ARS },
+                new CurrencyRate { Currency = nameof(currencyRates.Rates.BRL), Rate = eurUsd * currencyRates.Rates.BRL },
             ]
         };
 

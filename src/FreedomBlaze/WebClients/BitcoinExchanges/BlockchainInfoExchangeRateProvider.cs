@@ -6,7 +6,7 @@ using FreedomBlaze.Models;
 
 namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
-public class BlockchainInfoExchangeRateProvider(IHttpClientFactory httpClientFactory) : IExchangeRateProvider
+public class BlockchainInfoExchangeRateProvider(IHttpClientFactory httpClientFactory) : IBitcoinExchangeRateProvider
 {
     public string ExchangeName => "BlockchainInfo";
 
@@ -29,17 +29,8 @@ public class BlockchainInfoExchangeRateProvider(IHttpClientFactory httpClientFac
 
     public class USD
     {
-        [JsonPropertyName("15m")]
-        public double _15m { get; set; }
-
-        [JsonPropertyName("last")]
-        public double Last { get; set; }
-
-        [JsonPropertyName("buy")]
-        public double Buy { get; set; }
-
         [JsonPropertyName("sell")]
-        public double Sell { get; set; }
+        public decimal Sell { get; set; }
 
         [JsonPropertyName("symbol")]
         public string Symbol { get; set; }

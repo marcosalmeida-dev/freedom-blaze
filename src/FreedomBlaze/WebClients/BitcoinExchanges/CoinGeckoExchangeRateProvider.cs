@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 
 namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
-public class CoinGeckoExchangeRateProvider(IHttpClientFactory httpClientFactory) : IExchangeRateProvider
+public class CoinGeckoExchangeRateProvider(IHttpClientFactory httpClientFactory) : IBitcoinExchangeRateProvider
 {
     public string ExchangeName => "CoinGecko";
 
@@ -32,5 +32,5 @@ public class CoinGeckoExchangeRateProvider(IHttpClientFactory httpClientFactory)
 public class CoinGeckoExchangeRate
 {
     [JsonPropertyName("current_price")]
-    public double Rate { get; set; }
+    public decimal Rate { get; set; }
 }

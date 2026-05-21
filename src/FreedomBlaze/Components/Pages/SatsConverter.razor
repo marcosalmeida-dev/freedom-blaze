@@ -24,43 +24,35 @@
             <MudText Align="Align.Center">@Localizer["SatsConverter.Body1"]</MudText>
         </MudItem>
     </MudGrid>
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
     <MudGrid Class="mt-2">
         <MudItem xs="12" sm="12" md="12" Class="d-flex justify-center">
             <MudStack>
-                <MudSelect id="currency" Label="Currency" Variant="Variant.Filled" @bind-Value="CultureService.CurrencyCultureName" 
-                           AdornmentColor="Color.Primary" >
-                    @foreach (var currency in CurrencyModel.CurrencyListStatic)
-                    {
-                        <MudSelectItem Value="@currency.CultureName" @key="@currency.CultureName">
-                            <img src="@currency.FlagSvgPath" height="14" class="mr-1" />
-                            @currency.Value (@currency.Symbol)
-                        </MudSelectItem>
-                    }
-                </MudSelect>
-
                 <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
-                                 Culture="@CultureService.CurrentCulture" Format="N2" T="double?"
+                                 Culture="@CultureService.CurrentCulture" Format="N2" T="decimal?"
                                  DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToBitcoin"
-                                 HideSpinButtons="true" Variant="Variant.Text" 
+                                 HideSpinButtons="true" Variant="Variant.Text"
                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
                                  AdornmentAriaLabel="Copy" AdornmentColor="Color.Primary"
                                  OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
 
                 <MudNumericField @bind-Value="satsValue" Label="SATS" MaxLength="9"
-                                 HelperText="@($"BTC {(satsValue ?? 0) / 100_000_000:F8}")" Pattern=""
+                                 HelperText="@($"BTC {(satsValue ?? 0) / 100_000_000m:F8}")" Pattern=""
                                  DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToCurrency"
-                                 HideSpinButtons="true" Variant="Variant.Text" 
+                                 HideSpinButtons="true" Variant="Variant.Text"
                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
                                  AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
                                  OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
 
-                @* <MudButton @onclick="ConvertToBitcoin"
-                           StartIcon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary"
-                           Size="Size.Large"
-                           Variant="Variant.Filled"
-                           ButtonType="ButtonType.Button">
-                    @Localizer["SatsConverter.ConvertButtonText"]
-                </MudButton> *@
+                @if (AppState.LastUpdate != default)
+                {
+                    <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary">
+                        Last updated: @AppState.LastUpdate.ToString("HH:mm:ss")
+                    </MudText>
+                }
             </MudStack>
         </MudItem>
         <MudItem xs="12" sm="12" md="12" Class="d-flex justify-center">
@@ -176,19 +168,19 @@
     private bool _loading = false;
     private List<Currency> CurrencyList = new List<Currency>();
 
-    public string currencyCultureName;
+    private string? currencyCultureName;
 
     private string currencyValueLabelName = "USD";
     private string currencyValueInCurrencyLabel = "Rate in Currency";
     private string currencyValuePerUSDLabel = "1,00 in USD";
 
-    private double? currencyValue;
-    private double? lastCurrencyValue;
-    private double? satsValue;
-    private double? lastSatsValue;
-    private Func<Currency, int, string> _rowStyleFunc;
+    private decimal? currencyValue;
+    private decimal? lastCurrencyValue;
+    private decimal? satsValue;
+    private decimal? lastSatsValue;
+    private Func<Currency, int, string>? _rowStyleFunc;
 
-    BitcoinExchangeRateModel _bitcoinExchangeRateModel;
+    BitcoinExchangeRateModel? _bitcoinExchangeRateModel;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -227,12 +219,12 @@
                 if (!string.IsNullOrEmpty(localizationValue))
                 {
                     var lastConversionType = await GetValueFromCookie(LastConversionTypeCookieName);
-                    if (lastConversionType == ConversionType.BitcoinToCurrency.ToString() && double.TryParse(await GetValueFromCookie(SatsCookieName) ?? "0", out var sats))
+                    if (lastConversionType == ConversionType.BitcoinToCurrency.ToString() && decimal.TryParse(await GetValueFromCookie(SatsCookieName) ?? "0", out var sats))
                     {
                         satsValue = sats;
                         conversionType = ConversionType.BitcoinToCurrency;
                     }
-                    if (lastConversionType == ConversionType.CurrencyToBitcoin.ToString() && double.TryParse(await GetValueFromCookie(CurrencyCookieName) ?? "0", out var currency))
+                    if (lastConversionType == ConversionType.CurrencyToBitcoin.ToString() && decimal.TryParse(await GetValueFromCookie(CurrencyCookieName) ?? "0", out var currency))
                     {
                         currencyValue = currency;
                         conversionType = ConversionType.CurrencyToBitcoin;
@@ -244,8 +236,6 @@
             }
 
             await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName ?? "en-US", conversionType);
-
-            SnackMessage($"Exchanges prices updated!", Defaults.Classes.Position.BottomCenter, Severity.Success);
         }
         catch (Exception ex)
         {
@@ -314,14 +304,6 @@
 
         try
         {
-            // // Track the custom event using TelemetryClient
-            // var properties = new Dictionary<string, string>
-            // {
-            //     { "currencyValue", currencyValue.Value.ToString() },
-            //     { "currencyCultureName", currencyCultureName }
-            // };
-            // Telemetry.TrackEvent("ConvertToBitcoin", properties);
-
             await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName, ConversionType.CurrencyToBitcoin);
 
             await SetValueCookie(CurrencyCookieName, currencyValue?.ToString());
@@ -330,9 +312,6 @@
         catch (Exception ex)
         {
             SnackMessage($"Exception occurred converting to Bitcoin: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
-        }
-        finally
-        {
         }
     }
 
@@ -353,14 +332,10 @@
 
             if (satsValue.HasValue && satsValue.Value > 0)
             {
-                // // Track the custom event using TelemetryClient
-                // var properties = new Dictionary<string, string>
-                // {
-                //     { "satsValue", satsValue.Value.ToString() }
-                // };
-                // Telemetry.TrackEvent("ConvertToCurrency", properties);
-
                 var btcPrice = CurrencyList.FirstOrDefault(f => f.CultureName == currencyCultureName && f.BitcoinPrice > 0)?.BitcoinPrice;
+                if (btcPrice is null or 0m)
+                    return;
+
                 currencyValue = CurrencyConverterHelper.ConvertSatsToCurrency(satsValue.Value, btcPrice.Value);
 
                 await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName, ConversionType.BitcoinToCurrency);
@@ -372,9 +347,6 @@
         catch (Exception ex)
         {
             SnackMessage($"Exception occurred converting to Currency: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
-        }
-        finally
-        {
         }
     }
 

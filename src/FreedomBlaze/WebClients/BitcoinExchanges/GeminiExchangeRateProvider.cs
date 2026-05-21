@@ -7,7 +7,7 @@ using FreedomBlaze.Exceptions;
 
 namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
-public class GeminiExchangeRateProvider(IHttpClientFactory httpClientFactory) : IExchangeRateProvider
+public class GeminiExchangeRateProvider(IHttpClientFactory httpClientFactory) : IBitcoinExchangeRateProvider
 {
     public string ExchangeName => "Gemini";
 
@@ -20,7 +20,7 @@ public class GeminiExchangeRateProvider(IHttpClientFactory httpClientFactory) : 
             using var content = response.Content;
             var data = await content.ReadAsJsonAsync<GeminiExchangeRateInfo>();
 
-            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = double.Parse(data.Bid.ToRemoveDecimalCase()) };
+            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = decimal.Parse(data.Bid.ToRemoveDecimalCase()) };
         }
         catch
         {

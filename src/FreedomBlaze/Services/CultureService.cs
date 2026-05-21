@@ -5,7 +5,8 @@ namespace FreedomBlaze.Services;
 
 public class CultureService
 {
-    public CultureInfo CurrentCulture;
+    public CultureInfo CurrentCulture { get; private set; } = CultureInfo.InvariantCulture;
+
     public CultureService(IHttpContextAccessor contextAccessor)
     {
         var localizationValue = contextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;

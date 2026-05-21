@@ -25,9 +25,9 @@
         <MudSpacer />
 
         <div class="select-container">
-            <MudSelect T="string" Label="" @bind-Value="CultureService.CurrencyCultureName"
+            <MudSelect T="string" Label="Currency" @bind-Value="CultureService.CurrencyCultureName"
             AdornmentColor="Color.Primary" AnchorOrigin="Origin.BottomCenter" AdornmentIcon="@Icons.Material.Filled.ArrowDropDown"
-            Variant="Variant.Outlined">
+            Variant="Variant.Outlined" aria-label="Select currency">
                 @foreach (var currency in CurrencyModel.CurrencyListStatic)
                 {
                     <MudSelectItem Value="@currency.CultureName" @key="@currency.CultureName">
@@ -52,7 +52,14 @@
     </MudDrawer>
     <MudMainContent>
         <MudContainer>
-            @Body
+            <ErrorBoundary>
+                <ChildContent>@Body</ChildContent>
+                <ErrorContent Context="ex">
+                    <MudAlert Severity="Severity.Error" Class="ma-4">
+                        An unexpected error occurred. Please refresh the page.
+                    </MudAlert>
+                </ErrorContent>
+            </ErrorBoundary>
         </MudContainer>
     </MudMainContent>
 </MudLayout>
@@ -84,7 +91,7 @@
         }
     };
 
-    private MudThemeProvider _mudThemeProvider;
+    private MudThemeProvider _mudThemeProvider = null!;
 
     private DotNetObjectReference<MainLayout>? _dotNetRef;
 
@@ -151,6 +158,9 @@
     private async Task OnAppStateChanged()
     {
         var currentCurrencyInfo = CurrencyModel.GetCurrencyList(CultureService.CurrencyCultureName).FirstOrDefault();
+        if (currentCurrencyInfo is null || AppState.BitcoinExchangeRate is null)
+            return;
+
         _btcPriceCulture = (currentCurrencyInfo.CurrencyRateInUSD * AppState.BitcoinExchangeRate.BitcoinRateInUSD).ToString("C", currentCurrencyInfo.CultureInfo);
 
         await InvokeAsync(StateHasChanged);
@@ -186,8 +196,9 @@
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
             SnackMessage($"{text} Copied to clipboard!", position: Defaults.Classes.Position.TopRight, severity: Severity.Success);
         }
-        catch
+        catch (Exception ex)
         {
+            SnackMessage($"Error copying to clipboard: {ex.Message}", severity: Severity.Error);
         }
     }
 

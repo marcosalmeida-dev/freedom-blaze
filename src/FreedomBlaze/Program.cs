@@ -3,6 +3,7 @@ using FreedomBlaze.Client.Services;
 using FreedomBlaze.Components;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
+using FreedomBlaze.Options;
 using FreedomBlaze.ServiceDefaults;
 using FreedomBlaze.Services;
 using FreedomBlaze.WebClients;
@@ -16,43 +17,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<IConfiguration>(provider => builder.Configuration);
 
-var baseUrl = builder.Configuration["BaseUrl"];
-if (string.IsNullOrEmpty(baseUrl))
-{
-    throw new InvalidOperationException("BaseUrl configuration is missing or empty.");
-}
+builder.Services.Configure<TelegramOptions>(builder.Configuration);
+builder.Services.AddProblemDetails();
+
+var baseUrl = builder.Configuration["BaseUrl"] ?? throw new InvalidOperationException("BaseUrl configuration is missing or empty.");
 var baseUrlAddress = new Uri(baseUrl);
 
-//builder.Services.AddHttpClient<BitcoinNewsService>(c =>
-//{
-//    c.BaseAddress = baseUrlAddress;
-//});
 builder.Services.AddHttpClient<ContactService>(c =>
 {
     c.BaseAddress = baseUrlAddress;
 });
-
-//var blobStorageOptions = builder.Configuration.GetSection("BlobStorage").Get<BlobStorageOptions>();
-//builder.Services.AddAzureClients(clientBuilder =>
-//{
-//    var blobUri = new Uri($"https://{blobStorageOptions?.AccountName}.blob.core.windows.net");
-//    if (!string.IsNullOrEmpty(blobStorageOptions?.AccessKey))
-//    {
-//        var credential = new StorageSharedKeyCredential(blobStorageOptions.AccountName, blobStorageOptions.AccessKey);
-//        clientBuilder.AddBlobServiceClient(blobUri, credential);
-//    }
-//    else
-//    {
-//        clientBuilder.AddBlobServiceClient(blobUri);
-//        clientBuilder.UseCredential(new DefaultAzureCredential());
-//    }
-
-//    var useKeyVault = builder.Configuration.GetValue<bool?>("UseKeyVault");
-//    if (useKeyVault.HasValue && useKeyVault == true)
-//    {
-//        clientBuilder.AddSecretClient(new Uri($"https://{builder.Configuration["KeyVaultName"]}.vault.azure.net/"));
-//    }
-//});
 
 // Named HttpClients for each Bitcoin exchange provider (pooled handlers, DNS refresh)
 builder.Services.AddHttpClient("BlockchainInfo", c => c.BaseAddress = new Uri("https://blockchain.info"))
@@ -72,20 +46,24 @@ builder.Services.AddHttpClient("Coingate", c => c.BaseAddress = new Uri("https:/
     .AddStandardResilienceHandler();
 builder.Services.AddHttpClient("ExchangeRateApi", c => c.BaseAddress = new Uri("https://api.exchangeratesapi.io"))
     .AddStandardResilienceHandler();
+builder.Services.AddHttpClient("Telegram", c => c.BaseAddress = new Uri("https://api.telegram.org"))
+    .AddStandardResilienceHandler();
 
 builder.Services.AddSingleton<ExchangeRateApiProvider>();
+builder.Services.AddSingleton<IBitcoinExchangeRateProvider, BlockchainInfoExchangeRateProvider>();
+builder.Services.AddSingleton<IBitcoinExchangeRateProvider, BitstampExchangeRateProvider>();
+builder.Services.AddSingleton<IBitcoinExchangeRateProvider, CoinGeckoExchangeRateProvider>();
+builder.Services.AddSingleton<IBitcoinExchangeRateProvider, CoinbaseExchangeRateProvider>();
+builder.Services.AddSingleton<IBitcoinExchangeRateProvider, GeminiExchangeRateProvider>();
+builder.Services.AddSingleton<IBitcoinExchangeRateProvider, CoingateExchangeRateProvider>();
 builder.Services.AddSingleton<IExchangeRateProvider, ExchangeRateProvider>();
 builder.Services.AddSingleton<ICurrencyExchangeProvider, CurrencyExchangeRateProviders>();
 
-//builder.Services.AddSingleton<BlobStorageService>();
-
 builder.Services.AddScoped<CultureService>();
-//builder.Services.AddScoped<ImageService>();
-//builder.Services.AddScoped<ChatGptService>();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<AppState>();
-builder.Services.AddScoped<ThemeManager>();
+builder.Services.AddSingleton<ThemeManager>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddResponseCompression(opts =>
@@ -97,7 +75,6 @@ builder.Services.AddResponseCompression(opts =>
 
 builder.Services.AddControllers();
 
-// Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
@@ -107,24 +84,15 @@ builder.Services.AddMudServices();
 builder.Services.AddLocalization(options => options.ResourcesPath = "");
 
 var supportedCultures = CurrencyModel.GetCurrencyList().Select(s => s.CultureName).ToArray();
-builder.Services.Configure<RequestLocalizationOptions>(options =>
-{
-    options.SetDefaultCulture(supportedCultures[0])
-           .AddSupportedCultures(supportedCultures)
-           .AddSupportedUICultures(supportedCultures);
-});
 
 builder.Services.AddHttpContextAccessor();
 
 builder.AddServiceDefaults();
 
-//builder.Services.ConfigurePhoenixdServices(builder.Configuration);
-
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
@@ -132,33 +100,24 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
-//app.UseCors(builder =>
-//    builder.AllowAnyOrigin()
-//           .AllowAnyHeader()
-//           .AllowAnyMethod());
-
-
+app.UseHttpsRedirection();
 app.UseResponseCompression();
 
 app.MapStaticAssets();
 
 var localizationOptions = new RequestLocalizationOptions()
-    .SetDefaultCulture(supportedCultures[0]) 
+    .SetDefaultCulture(supportedCultures[0])
     .AddSupportedCultures(supportedCultures)
     .AddSupportedUICultures(supportedCultures);
 
 app.UseRequestLocalization(localizationOptions);
 
-
 app.UseRouting();
 
 app.UseAntiforgery();
-
-app.UseHttpsRedirection();
 
 app.MapControllers();
 

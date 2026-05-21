@@ -52,7 +52,7 @@ public class AppState : IDisposable
 
     public event Func<Task>? OnChange;
 
-    private void NotifyStateChanged() => OnChange?.Invoke();
+    private void NotifyStateChanged() => _ = OnChange?.Invoke();
 
     private async Task UpdateExchangeRateAsync()
     {

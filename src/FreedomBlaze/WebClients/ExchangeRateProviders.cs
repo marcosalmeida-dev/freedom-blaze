@@ -2,7 +2,6 @@ using FreedomBlaze.Exceptions;
 using FreedomBlaze.Extensions;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
-using FreedomBlaze.WebClients.BitcoinExchanges;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace FreedomBlaze.WebClients;
@@ -11,7 +10,7 @@ public class ExchangeRateProvider : IExchangeRateProvider
 {
     private readonly IMemoryCache _cache;
     private readonly ICurrencyExchangeProvider _currencyExchangeProvider;
-    private readonly IExchangeRateProvider[] _exchangeRateProviders;
+    private readonly IEnumerable<IBitcoinExchangeRateProvider> _exchangeRateProviders;
 
     public string ExchangeName => "ExchangeRateProvider";
 
@@ -20,40 +19,27 @@ public class ExchangeRateProvider : IExchangeRateProvider
     public ExchangeRateProvider(
         IMemoryCache cache,
         ICurrencyExchangeProvider currencyExchangeProvider,
-        IHttpClientFactory httpClientFactory)
+        IEnumerable<IBitcoinExchangeRateProvider> exchangeRateProviders)
     {
         _cache = cache;
         _currencyExchangeProvider = currencyExchangeProvider;
-        _exchangeRateProviders =
-        [
-            new BlockchainInfoExchangeRateProvider(httpClientFactory),
-            new BitstampExchangeRateProvider(httpClientFactory),
-            new CoinGeckoExchangeRateProvider(httpClientFactory),
-            new CoinbaseExchangeRateProvider(httpClientFactory),
-            new GeminiExchangeRateProvider(httpClientFactory),
-            new CoingateExchangeRateProvider(httpClientFactory)
-        ];
+        _exchangeRateProviders = exchangeRateProviders;
     }
 
     public async Task<BitcoinExchangeRateModel?> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
         const string cacheKey = nameof(GetExchangeRateAsync);
 
-        if (!_cache.TryGetValue(cacheKey, out double? exchangeRateAvgResult))
+        if (!_cache.TryGetValue(cacheKey, out decimal? exchangeRateAvgResult))
         {
-            var tasks = new List<Task<BitcoinExchangeRateModel>>();
-
-            foreach (var provider in _exchangeRateProviders)
-            {
-                tasks.Add(provider.GetExchangeRateAsync(cancellationToken));
-            }
-
+            var tasks = _exchangeRateProviders.Select(p => p.GetExchangeRateAsync(cancellationToken));
             var exchangeRates = await tasks.WhenAllOrException();
 
             if (exchangeRates != null)
             {
-                exchangeRateAvgResult = exchangeRates.Where(w => w.IsSuccess && w.Result != null && w.Result.BitcoinRateInUSD > 0)
-                                                     .Average(a => a.Result.BitcoinRateInUSD);
+                var successRates = exchangeRates.Where(w => w.IsSuccess && w.Result != null && w.Result.BitcoinRateInUSD > 0).ToList();
+                if (successRates.Count > 0)
+                    exchangeRateAvgResult = successRates.Average(a => a.Result.BitcoinRateInUSD);
 
                 _cache.Set(cacheKey, exchangeRateAvgResult, TimeSpan.FromSeconds(55));
 

@@ -26,5 +26,5 @@ public class CurrencyExchangeRateModel
 public class CurrencyRate
 {
     public string Currency { get; set; }
-    public double Rate { get; set; }
+    public decimal Rate { get; set; }
 }

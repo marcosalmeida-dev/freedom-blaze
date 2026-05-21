@@ -5,6 +5,7 @@
 @using FreedomBlaze.Client.Helpers
 @using FreedomBlaze.Client.Services
 @using FreedomBlaze.Models
+@using static FreedomBlaze.Client.Helpers.StringHelper
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudGrid Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="Center.Center">
@@ -49,7 +50,7 @@
                         }
                         <MudCardHeader>
                             <CardHeaderContent>
-                                <MudText Typo="Typo.h5">@(article.Title.Length > 50 ? article.Title[..50] + "..." : article.Title)</MudText>
+                                <MudText Typo="Typo.h5">@article.Title.Truncate(50)</MudText>
                                 <MudText Typo="Typo.body1" Color="Color.Secondary">
                                     <MudIcon Icon="@Icons.Material.Filled.Public" Class="mt-1 me-1" Size="Size.Small" />
                                     @article.Source
@@ -61,7 +62,7 @@
                             </CardHeaderContent>
                         </MudCardHeader>
                         <MudCardContent Class="flex-grow-1">
-                            <MudText>@(article.Text.Length > 150 ? article.Text[..150] + "..." : article.Text)</MudText>
+                            <MudText>@article.Text.Truncate(150)</MudText>
                             <MudText Typo="Typo.body2" Color="Color.Secondary">
                                 @article.Date.ToString("MMMM dd, yyyy")
                             </MudText>

@@ -7,7 +7,7 @@ using FreedomBlaze.Exceptions;
 
 namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
-public class CoinbaseExchangeRateProvider(IHttpClientFactory httpClientFactory) : IExchangeRateProvider
+public class CoinbaseExchangeRateProvider(IHttpClientFactory httpClientFactory) : IBitcoinExchangeRateProvider
 {
     public string ExchangeName => "Coinbase";
 
@@ -20,7 +20,7 @@ public class CoinbaseExchangeRateProvider(IHttpClientFactory httpClientFactory) 
             using var content = response.Content;
             var wrapper = await content.ReadAsJsonAsync<DataWrapper>();
 
-            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = double.Parse(wrapper.Data.Rates.USD.ToRemoveDecimalCase()) };
+            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = decimal.Parse(wrapper.Data.Rates.USD.ToRemoveDecimalCase()) };
         }
         catch
         {

@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace FreedomBlaze.WebClients.BitcoinExchanges;
 
-public class BitstampExchangeRateProvider(IHttpClientFactory httpClientFactory) : IExchangeRateProvider
+public class BitstampExchangeRateProvider(IHttpClientFactory httpClientFactory) : IBitcoinExchangeRateProvider
 {
     public string ExchangeName => "Bitstamp";
 
@@ -19,7 +19,7 @@ public class BitstampExchangeRateProvider(IHttpClientFactory httpClientFactory) 
             using var content = response.Content;
             var rate = await content.ReadAsJsonAsync<BitstampExchangeRate>();
 
-            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = double.Parse(rate.Rate) };
+            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = decimal.Parse(rate.Rate) };
         }
         catch
         {
