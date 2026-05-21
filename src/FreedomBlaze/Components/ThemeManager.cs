@@ -11,7 +11,7 @@ public class ThemeManager
         set
         {
             _isDarkMode = value;
-            OnThemeChanged?.Invoke(_isDarkMode);
+            _ = OnThemeChanged?.Invoke(_isDarkMode);
         }
     }
 

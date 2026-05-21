@@ -421,8 +421,7 @@
     private Task ThemeChanged(bool isDarkMode)
     {
         _rowClassFunc = (x, i) => x.CultureName == currencyCultureName ? "selected-row" : "";
-        StateHasChanged();
-        return Task.CompletedTask;
+        return InvokeAsync(StateHasChanged);
     }
 
     async Task WriteTextAsync(string text)
