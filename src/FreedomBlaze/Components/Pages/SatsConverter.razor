@@ -19,143 +19,164 @@
 
 <style>
     .sats-grid .mud-table-cell {
-        padding-top: 5px;
-        padding-bottom: 5px;
+        padding: 10px 16px;
+        border-bottom: 1px solid rgba(128,128,128,0.1);
+    }
+    .sats-grid .mud-table-head .mud-table-cell {
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--mud-palette-text-secondary);
+        border-bottom: 2px solid rgba(128,128,128,0.15);
+    }
+    .sats-grid tr.selected-row > td:first-child {
+        border-left: 3px solid #f7931a;
+    }
+    .sats-grid .mud-table-cell.text-right {
+        font-variant-numeric: tabular-nums;
+    }
+    .converter-card {
+        border-radius: 16px !important;
     }
 </style>
 
-<MudContainer Class="mt-4" id="main-container">
+<MudContainer Class="mt-4 pb-6" id="main-container">
     @if (_loading)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-3" />
     }
-    <MudGrid>
-        <MudItem xs="12">
-            <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-1">@Localizer["SatsConverter.Title"]</MudText>
-            <MudText Align="Align.Center" Class="mb-3">@Localizer["SatsConverter.Body1"]</MudText>
-        </MudItem>
-    </MudGrid>
-    <MudGrid Class="mt-2">
+
+    <MudGrid Class="mt-2" Justify="Justify.Center">
         <MudItem xs="12" Class="d-flex justify-center">
-            <MudPaper Elevation="2" Class="pa-4 rounded-lg" Style="width: 340px; max-width: 100%;">
-                <MudStack Spacing="3">
-                    <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
-                                     Culture="@CultureService.CurrentCulture" Format="N2" T="decimal?"
-                                     DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToBitcoin"
-                                     HideSpinButtons="true" Variant="Variant.Outlined"
-                                     Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                                     AdornmentAriaLabel="Copy" AdornmentColor="Color.Primary"
-                                     OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
+            <MudPaper Elevation="3" Class="pa-5 converter-card" Style="width: 360px; max-width: 100%;">
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-3 d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.SwapVert" Size="Size.Small" Class="mr-1" />
+                    Convert
+                </MudText>
 
-                    <MudNumericField @bind-Value="satsValue" Label="SATS" MaxLength="9"
-                                     HelperText="@($"BTC {(satsValue ?? 0) / 100_000_000m:F8}")" Pattern=""
-                                     DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToCurrency"
-                                     HideSpinButtons="true" Variant="Variant.Outlined"
-                                     Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                                     AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
-                                     OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
+                <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
+                                 Culture="@CultureService.CurrentCulture" Format="N2" T="decimal?"
+                                 DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToBitcoin"
+                                 HideSpinButtons="true" Variant="Variant.Outlined"
+                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
+                                 AdornmentAriaLabel="Copy" AdornmentColor="Color.Primary"
+                                 OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
 
+                <div class="d-flex align-center my-2">
+                    <MudDivider Class="flex-grow-1" />
+                    <MudIconButton Icon="@Icons.Material.Filled.SwapVert" Color="Color.Primary"
+                                   Size="Size.Small" Variant="Variant.Outlined" Class="mx-2" Style="border-radius: 50%;" />
+                    <MudDivider Class="flex-grow-1" />
+                </div>
+
+                <MudNumericField @bind-Value="satsValue" Label="Satoshis (SATS)" MaxLength="9"
+                                 DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToCurrency"
+                                 HideSpinButtons="true" Variant="Variant.Outlined"
+                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
+                                 AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
+                                 OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
+
+                <div class="d-flex justify-space-between align-center mt-3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        BTC @(((satsValue ?? 0) / 100_000_000m).ToString("F8"))
+                    </MudText>
                     @if (_lastUpdateFormatted != null)
                     {
-                        <MudText Typo="Typo.caption" Align="Align.Center" Class="mt-1 opacity-70">
-                            Last updated: @_lastUpdateFormatted
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="opacity-70">
+                            Updated @_lastUpdateFormatted
                         </MudText>
                     }
-                </MudStack>
+                </div>
             </MudPaper>
         </MudItem>
-        <MudItem xs="12">
-            <div style="max-width: 700px; width: 100%; margin: 0 auto; overflow-x: auto;">
-                <MudDataGrid T="Currency" Items="@CurrencyList" RowStyleFunc="@_rowStyleFunc"
-                             ColumnResizeMode="ResizeMode.Column" Hover="true" Dense="true" Elevation="2"
-                             Class="sats-grid">
-                    <Columns>
-                        <PropertyColumn Title="Region" Property="x => x.Name" HeaderStyle="width: 72px;">
-                            <CellTemplate>
-                                <MudTooltip Text="@context.Item.Name">
-                                    <MudAvatar Size="Size.Small">
-                                        <MudImage Src="@context.Item.FlagSvgPath" Alt="@context.Item.Name" />
-                                    </MudAvatar>
+
+        <MudItem xs="12" Class="mt-2" Style="overflow-x: auto;">
+            <MudDataGrid T="Currency" Items="@CurrencyList" RowClassFunc="@_rowClassFunc"
+                         Hover="true" Dense="true" Elevation="0" Class="sats-grid" Style="width: 100%;">
+                <Columns>
+                    <PropertyColumn Title="Currency" Property="x => x.Name" HeaderStyle="min-width: 180px;">
+                        <CellTemplate>
+                            <div class="d-flex align-center">
+                                <MudAvatar Size="Size.Small" Class="mr-2">
+                                    <MudImage Src="@context.Item.FlagSvgPath" Alt="@context.Item.Name" />
+                                </MudAvatar>
+                                <MudText Typo="Typo.body2" Style="font-weight: 500;">@context.Item.Value</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-1">@context.Item.Symbol</MudText>
+                            </div>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="BTC Price" Property="x => x.BitcoinPrice" HeaderClass="text-right" CellClass="text-right" HeaderStyle="min-width: 175px;">
+                        <CellTemplate>
+                            @if (_loading)
+                            {
+                                <MudSkeleton Width="140px" Height="29px" Animation="Animation.Wave" />
+                            }
+                            else
+                            {
+                                <MudTooltip Text="Copy">
+                                    <MudLink Color="Color.Primary" Style="font-size: 1.56rem; white-space: nowrap;" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", context.Item.CultureInfo)</MudLink>
                                 </MudTooltip>
-                            </CellTemplate>
-                        </PropertyColumn>
-                        <PropertyColumn Title="BTC Price" Property="x => x.BitcoinPrice" HeaderClass="text-right" CellClass="text-right" HeaderStyle="min-width: 175px;">
-                            <CellTemplate>
-                                @if (_loading)
-                                {
-                                    <MudSkeleton Width="140px" Height="29px" Animation="Animation.Wave" />
-                                }
-                                else
-                                {
-                                    <MudTooltip Text="Copy BTC Price">
-                                        <MudLink Color="Color.Primary" Style="font-size: 1.56rem; white-space: nowrap;" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", context.Item.CultureInfo)</MudLink>
-                                    </MudTooltip>
-                                }
-                            </CellTemplate>
-                        </PropertyColumn>
-                        <PropertyColumn Title="@currencyValueInCurrencyLabel" Property="x => x.CurrencyValueInCurrency" HeaderClass="text-right" CellClass="text-right" HeaderStyle="min-width: 175px;">
-                            <CellTemplate>
-                                @if (_loading)
-                                {
-                                    <MudSkeleton Width="140px" Height="29px" Animation="Animation.Wave" />
-                                }
-                                else
-                                {
-                                    <MudTooltip Text="Copy Currency">
-                                        <MudLink Color="Color.Primary" Style="font-size: 1.56rem; white-space: nowrap;" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", context.Item.CultureInfo)</MudLink>
-                                    </MudTooltip>
-                                }
-                            </CellTemplate>
-                        </PropertyColumn>
-                        <PropertyColumn Title="@currencyValuePerUSDLabel" Property="x => x.CurrencyRateInUSD" HeaderClass="text-right" CellClass="text-right" HeaderStyle="min-width: 140px;">
-                            <CellTemplate>
-                                @if (_loading)
-                                {
-                                    <MudSkeleton Width="110px" Height="29px" Animation="Animation.Wave" />
-                                }
-                                else
-                                {
-                                    <MudText Style="font-size: 1.56rem; white-space: nowrap;" Color="Color.Default">@context.Item.CurrencyRateInUSD.ToString("C", context.Item.CultureInfo)</MudText>
-                                }
-                            </CellTemplate>
-                        </PropertyColumn>
-                    </Columns>
-                </MudDataGrid>
-            </div>
+                            }
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="@currencyValueInCurrencyLabel" Property="x => x.CurrencyValueInCurrency" HeaderClass="text-right" CellClass="text-right" HeaderStyle="min-width: 175px;">
+                        <CellTemplate>
+                            @if (_loading)
+                            {
+                                <MudSkeleton Width="140px" Height="29px" Animation="Animation.Wave" />
+                            }
+                            else
+                            {
+                                <MudTooltip Text="Copy">
+                                    <MudLink Color="Color.Primary" Style="font-size: 1.56rem; white-space: nowrap;" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", context.Item.CultureInfo)</MudLink>
+                                </MudTooltip>
+                            }
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="@currencyValuePerUSDLabel" Property="x => x.CurrencyRateInUSD" HeaderClass="text-right" CellClass="text-right" HeaderStyle="min-width: 140px;">
+                        <CellTemplate>
+                            @if (_loading)
+                            {
+                                <MudSkeleton Width="110px" Height="29px" Animation="Animation.Wave" />
+                            }
+                            else
+                            {
+                                <MudText Style="font-size: 1.56rem; white-space: nowrap;" Color="Color.Default">@context.Item.CurrencyRateInUSD.ToString("C", context.Item.CultureInfo)</MudText>
+                            }
+                        </CellTemplate>
+                    </PropertyColumn>
+                </Columns>
+            </MudDataGrid>
+        </MudItem>
+
+        <MudItem xs="12" Class="mt-4">
+            <MudExpansionPanels MultiExpansion="true">
+                <MudExpansionPanel>
+                    <TitleContent>
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" Color="Color.Primary" />
+                            <MudText Typo="Typo.subtitle1">Bitcoin Denominations</MudText>
+                        </div>
+                    </TitleContent>
+                    <ChildContent>
+                        <SatsInfo />
+                    </ChildContent>
+                </MudExpansionPanel>
+                <MudExpansionPanel>
+                    <TitleContent>
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.BarChart" Class="mr-2" Color="Color.Primary" />
+                            <MudText Typo="Typo.subtitle1">Exchange Status</MudText>
+                        </div>
+                    </TitleContent>
+                    <ChildContent>
+                        <BitcoinExchangeStatusList ExchangeStatusList="AppState.ExchangeStatusList" />
+                    </ChildContent>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
         </MudItem>
     </MudGrid>
-</MudContainer>
-
-<MudContainer id="content-area" Style="max-width: 700px;">
-
-    <MudPaper Class="mt-4">
-        <MudStack Spacing="2">
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
-                       OnClick="OnExpandBitcoinInfoCollapseClick"
-                       StartIcon="@(_bitcoinInfoExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
-                Bitcoin Info
-            </MudButton>
-            <MudDivider />
-            <MudCollapse Expanded="_bitcoinInfoExpanded" id="bitcoin-info-section">
-                <SatsInfo />
-            </MudCollapse>
-        </MudStack>
-    </MudPaper>
-
-    <MudPaper Class="mt-4">
-        <MudStack Spacing="2">
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
-                       OnClick="OnExpandExchangesCollapseClick"
-                       StartIcon="@(_exchangeListExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
-                Exchanges
-            </MudButton>
-            <MudDivider />
-            <MudCollapse Expanded="_exchangeListExpanded" id="exchanges-section">
-                <BitcoinExchangeStatusList ExchangeStatusList="AppState.ExchangeStatusList" />
-            </MudCollapse>
-        </MudStack>
-    </MudPaper>
-
 </MudContainer>
 
 @inject IJSRuntime JS
@@ -192,7 +213,7 @@
     private decimal? lastCurrencyValue;
     private decimal? satsValue;
     private decimal? lastSatsValue;
-    private Func<Currency, int, string>? _rowStyleFunc;
+    private Func<Currency, int, string>? _rowClassFunc;
 
     BitcoinExchangeRateModel? _bitcoinExchangeRateModel;
 
@@ -399,14 +420,7 @@
 
     private Task ThemeChanged(bool isDarkMode)
     {
-        _rowStyleFunc = (x, i) =>
-        {
-            if (x.CultureName == currencyCultureName)
-                return isDarkMode
-                    ? "background-color: rgba(255,152,0,0.15); font-weight: 600;"
-                    : "background-color: rgba(230,81,0,0.08); font-weight: 600;";
-            return "";
-        };
+        _rowClassFunc = (x, i) => x.CultureName == currencyCultureName ? "selected-row" : "";
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -442,36 +456,6 @@
     async Task RemoveCookie(string cookieName)
     {
         await JS.InvokeVoidAsync("cookieHelper.setCookie", cookieName, 0, -1);
-    }
-
-    bool _exchangeListExpanded = false;
-
-    private async Task OnExpandExchangesCollapseClick()
-    {
-        _exchangeListExpanded = !_exchangeListExpanded;
-        if (_exchangeListExpanded)
-        {
-            await InvokeAsync(async () =>
-            {
-                await Task.Delay(300);
-                await JS.InvokeVoidAsync("scrollToElement", "exchanges-section");
-            });
-        }
-    }
-
-    bool _bitcoinInfoExpanded = false;
-
-    private async Task OnExpandBitcoinInfoCollapseClick()
-    {
-        _bitcoinInfoExpanded = !_bitcoinInfoExpanded;
-        if (_bitcoinInfoExpanded)
-        {
-            await InvokeAsync(async () =>
-            {
-                await Task.Delay(300);
-                await JS.InvokeVoidAsync("scrollToElement", "bitcoin-info-section");
-            });
-        }
     }
 
     public void Dispose()

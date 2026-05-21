@@ -1,38 +1,19 @@
-﻿@using FreedomBlaze.Models
+@using FreedomBlaze.Models
 @using MudBlazor
 
-<MudContainer Class="mt-12">
-    <MudGrid Class="d-flex justify-center">
-        <MudItem xs="12" sm="4" md="4" Class="d-flex justify-center">
-            <MudDataGrid Items="@ExchangeStatusList" ColumnResizeMode="ResizeMode.None" Hover="true" Dense="true">
-                <Columns>
-                    <PropertyColumn Title="Exchange" Property="x => x.ExchangeName">
-                        <CellTemplate>
-                            @context.Item.ExchangeName
-                        </CellTemplate>
-                    </PropertyColumn>
-                    <PropertyColumn Title="Status" Property="x => x.IsExchangeAvailable">
-                        <CellTemplate>
-                            <MudIcon Icon="@GetIcon(context.Item.IsExchangeAvailable)"
-                                     Color="@GetColor(context.Item.IsExchangeAvailable)" />
-                        </CellTemplate>
-                    </PropertyColumn>
-                </Columns>
-            </MudDataGrid>
-        </MudItem>
-    </MudGrid>
-</MudContainer>
+<div class="d-flex flex-wrap gap-2 pa-3">
+    @foreach (var exchange in ExchangeStatusList)
+    {
+        <MudChip T="string"
+                 Icon="@(exchange.IsExchangeAvailable ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                 Color="@(exchange.IsExchangeAvailable ? Color.Success : Color.Error)"
+                 Variant="Variant.Outlined" Size="Size.Small">
+            @exchange.ExchangeName
+        </MudChip>
+    }
+</div>
 
 @code {
     [Parameter]
     public List<BitcoinExchangeStatusModel> ExchangeStatusList { get; set; } = new();
-
-    private string GetIcon(bool isAvailable) => isAvailable ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel;
-
-    private Color GetColor(bool isAvailable) => isAvailable ? Color.Success : Color.Error;
-
-    protected override Task OnInitializedAsync()
-    {
-        return base.OnInitializedAsync();
-    }
 }

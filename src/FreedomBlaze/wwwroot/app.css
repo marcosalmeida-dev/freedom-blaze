@@ -30,27 +30,22 @@ html.dark-mode-preload {
     color-scheme: dark;
 }
 
-/* MudAppBar */
-.select-container {
-    display: flex;
-    align-items: center;
-    min-width: 160px;
-    max-width: 220px;
+/* MudAppBar currency select */
+.appbar-currency-select {
+    min-width: 155px;
+    max-width: 180px;
 }
-    .select-container select {
-        flex: 1;
-    }
 
-    .select-container .mud-select-input {
-        color: white !important;
-    }
+.appbar-currency-select .mud-select-input,
+.appbar-currency-select .mud-input-slot,
+.appbar-currency-select .mud-input-adornment,
+.appbar-currency-select .mud-svg-icon {
+    color: white !important;
+}
 
-    .select-container .mud-input.mud-input-outlined .mud-input-outlined-border {
-        border-color: black !important;
-    }
-/* Custom switch label style for small screens */
-.toggle-switch .mud-switch-label {
-    content: "L/D"; /* Default text for smaller screens */
+/* Dropdown popup — wide enough for longest currency label */
+.currency-dropdown {
+    min-width: 220px !important;
 }
 
 /* Hide app name and adjust layout for small screens */

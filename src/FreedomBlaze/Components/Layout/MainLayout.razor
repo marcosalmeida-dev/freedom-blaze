@@ -24,28 +24,30 @@
         <MudText Typo="Typo.h5" Class="app-name ml-3">Freedom Blaze</MudText>
         <MudSpacer />
 
-        <div class="select-container">
-            <MudSelect T="string" Label="Currency" @bind-Value="CultureService.CurrencyCultureName"
-            AdornmentColor="Color.Primary" AnchorOrigin="Origin.BottomCenter" AdornmentIcon="@Icons.Material.Filled.ArrowDropDown"
-            Variant="Variant.Outlined" aria-label="Select currency">
-                @foreach (var currency in CurrencyModel.CurrencyListStatic)
-                {
-                    <MudSelectItem Value="@currency.CultureName" @key="@currency.CultureName">
-                        <img src="@currency.FlagSvgPath" height="14" class="mr-1" />
-                        @currency.Value (@currency.Symbol)
-                    </MudSelectItem>
-                }
-            </MudSelect>
-        </div>
+        <MudSelect T="string" @bind-Value="CultureService.CurrencyCultureName"
+                   Variant="Variant.Text" Margin="Margin.Dense"
+                   Class="appbar-currency-select" PopoverClass="currency-dropdown"
+                   AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter"
+                   DisableUnderLine="true" aria-label="Select currency">
+            @foreach (var currency in CurrencyModel.CurrencyListStatic)
+            {
+                <MudSelectItem Value="@currency.CultureName" @key="@currency.CultureName">
+                    <img src="@currency.FlagSvgPath" height="14" class="mr-1" />
+                    @currency.Value (@currency.Symbol)
+                </MudSelectItem>
+            }
+        </MudSelect>
         @if (_btcPriceCulture != null)
         {
-            <MudIcon Icon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary" Size="Size.Small" />
-            <MudButton Variant="Variant.Text" DropShadow="false" Size="Size.Medium" Color="Color.Primary"
-            OnClick="@(() => WriteTextAsync(_btcPriceCulture))">
+            <MudChip T="string" Icon="@Icons.Material.Filled.CurrencyBitcoin"
+                     Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small"
+                     OnClick="@(() => WriteTextAsync(_btcPriceCulture))" Class="ml-2">
                 @_btcPriceCulture
-            </MudButton>
+            </MudChip>
         }
-        <MudSwitch @bind-Value="@ThemeManager.IsDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" Class="toggle-switch ma-4" T="bool" Label="Light/Dark" />
+        <MudIconButton Icon="@(ThemeManager.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit" OnClick="ThemeManager.ToggleTheme"
+                       aria-label="Toggle dark mode" Class="ml-1" />
     </MudAppBar>
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Temporary">
         <NavMenu />
@@ -79,15 +81,22 @@
     {
         PaletteLight = new PaletteLight()
         {
-            Primary = Colors.Orange.Darken2,
+            Primary = "#f7931a",
             Secondary = Colors.BlueGray.Darken1,
-            AppbarBackground = Colors.Shades.Black,
+            AppbarBackground = "#1a1a2e",
+            Background = "#f8fafd",
+            Surface = Colors.Shades.White,
+            DrawerBackground = "#1a1a2e",
+            DrawerText = Colors.Shades.White,
         },
         PaletteDark = new PaletteDark()
         {
-            Primary = Colors.Orange.Darken2,
+            Primary = "#f7931a",
             Secondary = Colors.Green.Lighten1,
-            AppbarBackground = Colors.Shades.Black
+            AppbarBackground = "#0d0d0f",
+            Background = "#13131a",
+            Surface = "#1e1e2a",
+            DrawerBackground = "#0d0d0f",
         }
     };
 
