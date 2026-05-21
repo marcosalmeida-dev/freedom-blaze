@@ -50,11 +50,17 @@ public class ExchangeRateApiProvider(
             }
 
             currencyRates = await content.ReadAsJsonAsync<CurrencyExchangeApiModel>();
+
+            if (!currencyRates.Success || currencyRates.Rates == null)
+            {
+                throw new HttpRequestException(
+                    $"Currency exchange API returned success=false. Check if your API plan supports HTTPS or if the key is valid. Base URL: {httpClient.BaseAddress}");
+            }
         }
 
         DateTime dateTime = DateTime.Now;
         DateTime.TryParse(currencyRates.Date, out dateTime);
-        //The base rate for this provider is EUR, so we have to convert it to USD to calculate with the btc exchanges providers which default is USD
+        // The base rate for this provider is EUR; convert to USD to match BTC exchange providers
         var eurUsd = currencyRates.Rates.EUR / currencyRates.Rates.USD;
         var resultModel = new CurrencyExchangeRateModel
         {

@@ -44,7 +44,7 @@ builder.Services.AddHttpClient("Gemini", c => c.BaseAddress = new Uri("https://a
     .AddStandardResilienceHandler();
 builder.Services.AddHttpClient("Coingate", c => c.BaseAddress = new Uri("https://api.coingate.com"))
     .AddStandardResilienceHandler();
-builder.Services.AddHttpClient("ExchangeRateApi", c => c.BaseAddress = new Uri("https://api.exchangeratesapi.io"))
+builder.Services.AddHttpClient("ExchangeRateApi", c => c.BaseAddress = new Uri("http://api.exchangeratesapi.io"))
     .AddStandardResilienceHandler();
 builder.Services.AddHttpClient("Telegram", c => c.BaseAddress = new Uri("https://api.telegram.org"))
     .AddStandardResilienceHandler();

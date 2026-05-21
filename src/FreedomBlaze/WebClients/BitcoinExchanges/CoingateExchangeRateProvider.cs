@@ -16,7 +16,7 @@ public class CoingateExchangeRateProvider(IHttpClientFactory httpClientFactory) 
             var httpClient = httpClientFactory.CreateClient(ExchangeName);
             var response = await httpClient.GetStringAsync("/v2/rates/merchant/BTC/USD", cancellationToken);
 
-            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = decimal.Parse(response.ToRemoveDecimalCase()) };
+            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = decimal.Parse(response.ToRemoveDecimalCase(), System.Globalization.CultureInfo.InvariantCulture) };
         }
         catch
         {

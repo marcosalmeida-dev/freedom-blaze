@@ -279,12 +279,12 @@
                 if (!string.IsNullOrEmpty(localizationValue))
                 {
                     var lastConversionType = await GetValueFromCookie(LastConversionTypeCookieName);
-                    if (lastConversionType == ConversionType.BitcoinToCurrency.ToString() && decimal.TryParse(await GetValueFromCookie(SatsCookieName) ?? "0", out var sats))
+                    if (lastConversionType == ConversionType.BitcoinToCurrency.ToString() && decimal.TryParse(await GetValueFromCookie(SatsCookieName) ?? "0", System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var sats))
                     {
                         satsValue = sats;
                         conversionType = ConversionType.BitcoinToCurrency;
                     }
-                    if (lastConversionType == ConversionType.CurrencyToBitcoin.ToString() && decimal.TryParse(await GetValueFromCookie(CurrencyCookieName) ?? "0", out var currency))
+                    if (lastConversionType == ConversionType.CurrencyToBitcoin.ToString() && decimal.TryParse(await GetValueFromCookie(CurrencyCookieName) ?? "0", System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var currency))
                     {
                         currencyValue = currency;
                         conversionType = ConversionType.CurrencyToBitcoin;
@@ -366,7 +366,7 @@
         {
             await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName, ConversionType.CurrencyToBitcoin);
 
-            await SetValueCookie(CurrencyCookieName, currencyValue?.ToString());
+            await SetValueCookie(CurrencyCookieName, currencyValue?.ToString(System.Globalization.CultureInfo.InvariantCulture));
             await SetValueCookie(LastConversionTypeCookieName, ConversionType.CurrencyToBitcoin.ToString());
         }
         catch (Exception ex)
@@ -400,7 +400,7 @@
 
                 await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName, ConversionType.BitcoinToCurrency);
 
-                await SetValueCookie(SatsCookieName, satsValue?.ToString());
+                await SetValueCookie(SatsCookieName, satsValue?.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 await SetValueCookie(LastConversionTypeCookieName, ConversionType.BitcoinToCurrency.ToString());
             }
         }

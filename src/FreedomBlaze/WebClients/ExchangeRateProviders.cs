@@ -55,7 +55,19 @@ public class ExchangeRateProvider : IExchangeRateProvider
             return null;
 
         var currentCurrency = CurrencyModel.CurrentAppCurrency.Value;
-        CurrencyExchangeRateModel currencyRatesResult = await _currencyExchangeProvider.GetCurrencyRate(cancellationToken);
+
+        CurrencyExchangeRateModel? currencyRatesResult = null;
+        try
+        {
+            currencyRatesResult = await _currencyExchangeProvider.GetCurrencyRate(cancellationToken);
+        }
+        catch (Exception)
+        {
+            // Currency rate failure is non-fatal — BTC/USD price still shows; non-USD rates update next tick
+        }
+
+        if (currencyRatesResult == null)
+            return null;
 
         return new BitcoinExchangeRateModel
         {

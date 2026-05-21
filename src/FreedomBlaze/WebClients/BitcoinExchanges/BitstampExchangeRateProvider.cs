@@ -19,7 +19,7 @@ public class BitstampExchangeRateProvider(IHttpClientFactory httpClientFactory) 
             using var content = response.Content;
             var rate = await content.ReadAsJsonAsync<BitstampExchangeRate>();
 
-            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = decimal.Parse(rate.Rate) };
+            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = decimal.Parse(rate.Rate, System.Globalization.CultureInfo.InvariantCulture) };
         }
         catch
         {

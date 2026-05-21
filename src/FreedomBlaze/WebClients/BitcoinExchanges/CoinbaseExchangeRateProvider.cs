@@ -20,7 +20,7 @@ public class CoinbaseExchangeRateProvider(IHttpClientFactory httpClientFactory) 
             using var content = response.Content;
             var wrapper = await content.ReadAsJsonAsync<DataWrapper>();
 
-            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = decimal.Parse(wrapper.Data.Rates.USD.ToRemoveDecimalCase()) };
+            return new BitcoinExchangeRateModel { ExchangeName = ExchangeName, BitcoinRateInUSD = decimal.Parse(wrapper.Data.Rates.USD.ToRemoveDecimalCase(), System.Globalization.CultureInfo.InvariantCulture) };
         }
         catch
         {
