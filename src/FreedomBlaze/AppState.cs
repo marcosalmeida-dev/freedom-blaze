@@ -34,8 +34,8 @@ public class AppState : IDisposable
         }
     }
 
-    private DateTime _lastUpdate;
-    public DateTime LastUpdate
+    private DateTimeOffset _lastUpdate;
+    public DateTimeOffset LastUpdate
     {
         get => _lastUpdate;
         set
@@ -61,7 +61,7 @@ public class AppState : IDisposable
             BitcoinExchangeRate = await _exchangeRateProvider.GetExchangeRateAsync(_cancellationTokenSource.Token);
             if (BitcoinExchangeRate != null)
             {
-                LastUpdate = _timeProvider.GetLocalNow().DateTime;
+                LastUpdate = _timeProvider.GetUtcNow();
                 if (_exchangeRateProvider is ExchangeRateProvider concreteProvider)
                     ExchangeStatusList = concreteProvider.BitcoinExchangeStatusList;
             }

@@ -47,10 +47,10 @@
                                  AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
                                  OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
 
-                @if (AppState.LastUpdate != default)
+                @if (_lastUpdateFormatted != null)
                 {
                     <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary">
-                        Last updated: @AppState.LastUpdate.ToString("HH:mm:ss")
+                        Last updated: @_lastUpdateFormatted
                     </MudText>
                 }
             </MudStack>
@@ -166,6 +166,7 @@
     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
     private bool _loading = false;
+    private string? _lastUpdateFormatted;
     private List<Currency> CurrencyList = new List<Currency>();
 
     private string? currencyCultureName;
@@ -191,6 +192,7 @@
 
             currencyCultureName = CultureService.CurrentCulture.Name;
             await GetExchangeRates();
+            await RefreshLastUpdatedAsync();
         }
 
         await base.OnAfterRenderAsync(firstRender);
@@ -202,6 +204,22 @@
         {
             await GetExchangeRates(AppState.BitcoinExchangeRate);
         }
+        await RefreshLastUpdatedAsync();
+    }
+
+    private async Task RefreshLastUpdatedAsync()
+    {
+        if (AppState.LastUpdate == default)
+            return;
+        try
+        {
+            _lastUpdateFormatted = await JS.InvokeAsync<string>(
+                "formatLocalTime",
+                AppState.LastUpdate.ToUnixTimeMilliseconds(),
+                CultureService.CurrentCulture.Name);
+        }
+        catch (JSDisconnectedException) { }
+        catch (OperationCanceledException) { }
     }
 
     async Task GetExchangeRates(BitcoinExchangeRateModel bitcoinExchangeRateModel = null)

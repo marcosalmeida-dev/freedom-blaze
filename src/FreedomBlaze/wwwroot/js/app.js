@@ -45,6 +45,14 @@ window.darkModeHelper = {
     }
 };
 
+window.formatLocalTime = function (utcMs, locale) {
+    return new Intl.DateTimeFormat(locale, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    }).format(new Date(utcMs));
+};
+
 window.scrollToElement = (elementId) => {
     const el = document.getElementById(elementId);
     if (el) {
