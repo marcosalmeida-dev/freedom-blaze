@@ -39,16 +39,36 @@
     .converter-card {
         border-radius: 16px !important;
     }
+    /* Page-level guarantee: never let any child create a horizontal scrollbar on the page.
+       The data grid still scrolls horizontally inside its own wrapper (.sats-grid-wrapper). */
+    #main-container {
+        overflow-x: hidden;
+        max-width: 100%;
+    }
+    .sats-grid-wrapper {
+        overflow-x: auto;
+        min-width: 0;
+        max-width: 100%;
+    }
+    @@media (max-width: 600px) {
+        .sats-grid .col-usd-rate {
+            display: none;
+        }
+        .sats-grid .mud-table-cell a,
+        .sats-grid .mud-table-cell .mud-typography {
+            font-size: 1.05rem !important;
+        }
+    }
 </style>
 
-<MudContainer Class="mt-4 pb-6" id="main-container">
+<MudContainer Class="mt-1" id="main-container">
     @if (_loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-3" />
     }
 
-    <MudGrid Class="mt-2" Justify="Justify.Center">
-        <MudItem xs="12" Class="d-flex justify-center">
+    <MudGrid Spacing="0" Justify="Justify.Center">
+        <MudItem xs="12" Class="d-flex justify-center" Style="min-width: 0;">
             <MudPaper Elevation="3" Class="pa-5 converter-card" Style="width: 360px; max-width: 100%;">
                 <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-3 d-flex align-center">
                     <MudIcon Icon="@Icons.Material.Filled.SwapVert" Size="Size.Small" Class="mr-1" />
@@ -91,7 +111,7 @@
             </MudPaper>
         </MudItem>
 
-        <MudItem xs="12" Class="mt-2" Style="overflow-x: auto;">
+        <MudItem xs="12" Class="mt-2 sats-grid-wrapper">
             <MudDataGrid T="Currency" Items="@CurrencyList" RowClassFunc="@_rowClassFunc"
                          Hover="true" Dense="true" Elevation="0" Class="sats-grid" Style="width: 100%;">
                 <Columns>
@@ -134,7 +154,7 @@
                             }
                         </CellTemplate>
                     </PropertyColumn>
-                    <PropertyColumn Title="@currencyValuePerUSDLabel" Property="x => x.CurrencyRateInUSD" HeaderClass="text-right" CellClass="text-right" HeaderStyle="min-width: 140px;">
+                    <PropertyColumn Title="@currencyValuePerUSDLabel" Property="x => x.CurrencyRateInUSD" HeaderClass="text-right col-usd-rate" CellClass="text-right col-usd-rate" HeaderStyle="min-width: 140px;">
                         <CellTemplate>
                             @if (_loading)
                             {

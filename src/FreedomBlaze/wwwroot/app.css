@@ -43,6 +43,13 @@ html.dark-mode-preload {
     color: white !important;
 }
 
+@media (max-width: 600px) {
+    .appbar-currency-select {
+        min-width: 100px;
+        max-width: 130px;
+    }
+}
+
 /* Dropdown popup — wide enough for longest currency label */
 .currency-dropdown {
     min-width: 220px !important;
