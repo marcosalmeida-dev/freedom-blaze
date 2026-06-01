@@ -46,10 +46,11 @@ builder.Services.AddHttpClient("Coingate", c => c.BaseAddress = new Uri("https:/
     .AddStandardResilienceHandler();
 builder.Services.AddHttpClient("ExchangeRateApi", c => c.BaseAddress = new Uri("http://api.exchangeratesapi.io"))
     .AddStandardResilienceHandler();
+builder.Services.AddHttpClient("ExchangeRateApiCom", c => c.BaseAddress = new Uri("https://v6.exchangerate-api.com"))
+    .AddStandardResilienceHandler();
 builder.Services.AddHttpClient("Telegram", c => c.BaseAddress = new Uri("https://api.telegram.org"))
     .AddStandardResilienceHandler();
 
-builder.Services.AddSingleton<ExchangeRateApiProvider>();
 builder.Services.AddSingleton<IBitcoinExchangeRateProvider, BlockchainInfoExchangeRateProvider>();
 builder.Services.AddSingleton<IBitcoinExchangeRateProvider, BitstampExchangeRateProvider>();
 builder.Services.AddSingleton<IBitcoinExchangeRateProvider, CoinGeckoExchangeRateProvider>();
@@ -57,6 +58,11 @@ builder.Services.AddSingleton<IBitcoinExchangeRateProvider, CoinbaseExchangeRate
 builder.Services.AddSingleton<IBitcoinExchangeRateProvider, GeminiExchangeRateProvider>();
 builder.Services.AddSingleton<IBitcoinExchangeRateProvider, CoingateExchangeRateProvider>();
 builder.Services.AddSingleton<IExchangeRateProvider, ExchangeRateProvider>();
+
+// Currency exchange-rate providers — switch the active one via "CurrencyExchange:Provider".
+builder.Services.Configure<CurrencyExchangeOptions>(builder.Configuration.GetSection(CurrencyExchangeOptions.Section));
+builder.Services.AddKeyedSingleton<ICurrencyExchangeProvider, ExchangeRateApiProvider>(CurrencyExchangeProviderType.ExchangeRatesApiIo);
+builder.Services.AddKeyedSingleton<ICurrencyExchangeProvider, ExchangeRateApiComProvider>(CurrencyExchangeProviderType.ExchangeRateApiCom);
 builder.Services.AddSingleton<ICurrencyExchangeProvider, CurrencyExchangeRateProviders>();
 
 builder.Services.AddScoped<CultureService>();
