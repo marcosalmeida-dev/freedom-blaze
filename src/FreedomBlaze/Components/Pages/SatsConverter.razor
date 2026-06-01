@@ -75,27 +75,34 @@
                     Convert
                 </MudText>
 
-                <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
-                                 Culture="@CultureService.CurrentCulture" Format="N2" T="decimal?"
-                                 DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToBitcoin"
-                                 HideSpinButtons="true" Variant="Variant.Outlined"
-                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                                 AdornmentAriaLabel="Copy" AdornmentColor="Color.Primary"
-                                 OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
+                <div class="d-flex flex-column">
+                    <div style="order: @(_satsFieldOnTop ? 3 : 1);">
+                        <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
+                                         Culture="@CultureService.CurrentCulture" Format="N2" T="decimal?"
+                                         DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToBitcoin"
+                                         HideSpinButtons="true" Variant="Variant.Outlined"
+                                         Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
+                                         AdornmentAriaLabel="Copy" AdornmentColor="Color.Primary"
+                                         OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
+                    </div>
 
-                <div class="d-flex align-center my-2">
-                    <MudDivider Class="flex-grow-1" />
-                    <MudIconButton Icon="@Icons.Material.Filled.SwapVert" Color="Color.Primary"
-                                   Size="Size.Small" Variant="Variant.Outlined" Class="mx-2" Style="border-radius: 50%;" />
-                    <MudDivider Class="flex-grow-1" />
+                    <div class="d-flex align-center my-2" style="order: 2;">
+                        <MudDivider Class="flex-grow-1" />
+                        <MudIconButton Icon="@Icons.Material.Filled.SwapVert" Color="Color.Primary"
+                                       Size="Size.Small" Variant="Variant.Outlined" Class="mx-2" Style="border-radius: 50%;"
+                                       OnClick="SwapFields" aria-label="Swap fields" />
+                        <MudDivider Class="flex-grow-1" />
+                    </div>
+
+                    <div style="order: @(_satsFieldOnTop ? 1 : 3);">
+                        <MudNumericField @bind-Value="satsValue" Label="Satoshis (SATS)" MaxLength="9"
+                                         DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToCurrency"
+                                         HideSpinButtons="true" Variant="Variant.Outlined"
+                                         Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
+                                         AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
+                                         OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
+                    </div>
                 </div>
-
-                <MudNumericField @bind-Value="satsValue" Label="Satoshis (SATS)" MaxLength="9"
-                                 DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToCurrency"
-                                 HideSpinButtons="true" Variant="Variant.Outlined"
-                                 Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                                 AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
-                                 OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
 
                 <div class="d-flex justify-space-between align-center mt-3">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">
@@ -234,6 +241,7 @@
     private decimal? satsValue;
     private decimal? lastSatsValue;
     private Func<Currency, int, string>? _rowClassFunc;
+    private bool _satsFieldOnTop;
 
     BitcoinExchangeRateModel? _bitcoinExchangeRateModel;
 
@@ -437,6 +445,8 @@
         Snackbar.Configuration.PositionClass = position;
         Snackbar.Add(message, severity);
     }
+
+    private void SwapFields() => _satsFieldOnTop = !_satsFieldOnTop;
 
     private Task ThemeChanged(bool isDarkMode)
     {
