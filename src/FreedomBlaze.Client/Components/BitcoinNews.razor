@@ -1,74 +1,80 @@
 @page "/bitcoinnews"
 @rendermode InteractiveAuto
 
-@using System.Globalization
 @using FreedomBlaze.Client.Helpers
 @using FreedomBlaze.Client.Services
 @using FreedomBlaze.Models
 @using static FreedomBlaze.Client.Helpers.StringHelper
 
+@inject ISnackbar Snackbar
+@inject IBitcoinNewsApi Api
+
+<PageTitle>Bitcoin News</PageTitle>
+
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudGrid Justify="Justify.SpaceBetween" Class="mb-2" AlignItems="Center.Center">
-        <MudItem>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <div>
             <MudText Typo="Typo.h5">Bitcoin News</MudText>
-        </MudItem>
-        <MudItem>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Around the world · @DateTime.Now.ToString("MMMM d, yyyy")
+            </MudText>
+        </div>
+        <MudTooltip Text="Fetch the latest news">
             <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary"
-                           aria-label="Refresh news"
-                           Disabled="_loading" OnClick="RefreshNewsAsync" />
-        </MudItem>
-    </MudGrid>
+                           aria-label="Refresh news" Disabled="_loading" OnClick="RefreshNewsAsync" />
+        </MudTooltip>
+    </MudStack>
 
     @if (_loading)
     {
-        <MudGrid Justify="Justify.Center" Class="mt-4">
-            @for (var i = 0; i < 6; i++)
+        <MudGrid>
+            @for (var i = 0; i < SkeletonCount; i++)
             {
                 <MudItem xs="12" sm="6" md="4">
-                    <MudCard Class="d-flex flex-column h-100">
-                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="150px" />
+                    <MudCard Class="d-flex flex-column" Style="height: 100%;">
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="160px" />
                         <MudCardContent>
-                            <MudSkeleton Width="90%" />
+                            <MudSkeleton Width="40%" Class="mb-2" />
+                            <MudSkeleton Width="95%" />
+                            <MudSkeleton Width="80%" Class="mt-1" />
                             <MudSkeleton Width="60%" Class="mt-1" />
-                            <MudSkeleton Width="40%" Class="mt-1" />
                         </MudCardContent>
                     </MudCard>
                 </MudItem>
             }
         </MudGrid>
     }
-    else if (_newsArticles?.Count > 0)
+    else if (_newsArticles.Count > 0)
     {
-        <MudGrid Justify="Justify.Center" Class="mt-4">
+        <MudGrid>
             @foreach (var article in _newsArticles)
             {
                 <MudItem xs="12" sm="6" md="4">
-                    <MudCard Class="d-flex flex-column h-100" Style="height: 100%;">
-                        @if (!string.IsNullOrEmpty(article.NewsThumbImg))
-                        {
-                            <MudCardMedia Image="@article.NewsThumbImg" Height="150" />
-                        }
-                        <MudCardHeader>
-                            <CardHeaderContent>
-                                <MudText Typo="Typo.h5">@article.Title.Truncate(50)</MudText>
-                                <MudText Typo="Typo.body1" Color="Color.Secondary">
-                                    <MudIcon Icon="@Icons.Material.Filled.Public" Class="mt-1 me-1" Size="Size.Small" />
-                                    @article.Source
-                                </MudText>
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Class="mt-1 me-1" Size="Size.Small" />
-                                    @article.SourceRegion
-                                </MudText>
-                            </CardHeaderContent>
-                        </MudCardHeader>
+                    <MudCard Class="d-flex flex-column" Style="height: 100%;">
+                        <MudCardMedia Image="@ThumbnailFor(article)" Height="160" />
                         <MudCardContent Class="flex-grow-1">
-                            <MudText>@article.Text.Truncate(150)</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                @article.Date.ToString("MMMM dd, yyyy")
-                            </MudText>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+                                @if (!string.IsNullOrWhiteSpace(article.SourceRegion))
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                             Icon="@Icons.Material.Filled.Public">@article.SourceRegion</MudChip>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(article.Source))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@article.Source</MudText>
+                                }
+                            </MudStack>
+                            <MudText Typo="Typo.subtitle1" Class="mb-1"><b>@article.Title.Truncate(90)</b></MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@article.Text.Truncate(170)</MudText>
                         </MudCardContent>
-                        <MudCardActions Class="mt-auto">
-                            <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@article.ArticleLinkUrl" Target="_blank">Read More</MudButton>
+                        <MudCardActions Class="justify-space-between">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@article.Date.ToString("MMM d, yyyy")</MudText>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary"
+                                       EndIcon="@Icons.Material.Filled.OpenInNew"
+                                       Href="@article.ArticleLinkUrl" Target="_blank"
+                                       Disabled="@string.IsNullOrWhiteSpace(article.ArticleLinkUrl)">
+                                Read more
+                            </MudButton>
                         </MudCardActions>
                     </MudCard>
                 </MudItem>
@@ -77,36 +83,54 @@
     }
     else
     {
-        <MudGrid Justify="Justify.Center" Class="mt-8">
-            <MudAlert Severity="Severity.Info">No news found!</MudAlert>
-        </MudGrid>
+        <MudStack AlignItems="AlignItems.Center" Class="mt-12" Spacing="4">
+            <MudIcon Icon="@Icons.Material.Filled.Newspaper" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.body1" Color="Color.Secondary">No Bitcoin news available right now.</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshNewsAsync">
+                Fetch latest news
+            </MudButton>
+        </MudStack>
     }
 </MudContainer>
 
-
-@inject ISnackbar Snackbar
-@inject BitcoinNewsService Service
-
 @code {
+    private const int SkeletonCount = 9;
+    private const string DefaultThumbnail = "img/articles/default-img.png";
+
     private List<NewsArticleModel> _newsArticles = [];
-    private bool _loading = false;
+    private bool _loading;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadNewsAsync();
-        await base.OnInitializedAsync();
+        // Skip the fetch during prerender and load once the component is interactive
+        // (server-interactive or WASM). This avoids blocking first paint while a slow
+        // web-search generation runs, and prevents a double fetch.
+        if (RendererInfo.IsInteractive)
+        {
+            await LoadNewsAsync();
+        }
+        else
+        {
+            _loading = true; // show skeletons during prerender
+        }
     }
 
-    private async Task LoadNewsAsync()
+    private Task LoadNewsAsync() => RunAsync(Api.GetNewsAsync);
+
+    private Task RefreshNewsAsync() => RunAsync(Api.RefreshNewsAsync);
+
+    private async Task RunAsync(Func<CancellationToken, Task<List<NewsArticleModel>>> action)
     {
         try
         {
             _loading = true;
-            _newsArticles = await Service.GetBtcNews();
+            _newsArticles = await action(CancellationToken.None);
         }
         catch
         {
-            Snackbar.SnackMessage("Some error occurred while trying to get bitcoin news, sorry!", Defaults.Classes.Position.TopCenter, Severity.Error);
+            Snackbar.SnackMessage("Some error occurred while trying to get bitcoin news, sorry!",
+                Defaults.Classes.Position.TopCenter, Severity.Error);
         }
         finally
         {
@@ -114,8 +138,6 @@
         }
     }
 
-    private async Task RefreshNewsAsync()
-    {
-        await LoadNewsAsync();
-    }
+    private static string ThumbnailFor(NewsArticleModel article) =>
+        string.IsNullOrWhiteSpace(article.NewsThumbImg) ? DefaultThumbnail : article.NewsThumbImg;
 }

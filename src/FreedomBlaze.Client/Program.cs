@@ -1,4 +1,5 @@
 using System.Globalization;
+using FreedomBlaze.Client.Services;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.AspNetCore.SignalR.Client;
 using MudBlazor.Services;
@@ -15,8 +16,14 @@ CultureInfo.DefaultThreadCurrentCulture = new CultureInfo(defaultCulture);
 CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo(defaultCulture);
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
-//builder.Services.AddScoped<BitcoinNewsService>();
-//builder.Services.AddScoped<ContactService>();
+
+// In WebAssembly the news API is reached over HTTP (browser origin). The longer timeout covers a
+// cold generation (web search on a reasoning model) that can take ~80s, just over the default 100s.
+builder.Services.AddScoped<IBitcoinNewsApi>(sp => new BitcoinNewsApiClient(new HttpClient
+{
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress),
+    Timeout = TimeSpan.FromMinutes(3),
+}));
 
 builder.Services.AddMudServices();
 builder.Services.AddScoped<HubConnectionBuilder>();

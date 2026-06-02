@@ -1,57 +1,33 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using FreedomBlaze.Models;
+using FreedomBlaze.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace FreedomBlaze.Controllers;
 
 [Route("api/bitcoin-news")]
 [ApiController]
 public class BitcoinNewsController : ControllerBase
 {
-    private readonly ChatGptService _chatGptService;
+    private readonly BitcoinNewsService _newsService;
 
-    public BitcoinNewsController(ChatGptService chatGptService)
+    public BitcoinNewsController(BitcoinNewsService newsService)
     {
-        _chatGptService = chatGptService;
+        _newsService = newsService;
     }
 
+    /// <summary>Returns today's cached Bitcoin news, generating it on the first request of the day.</summary>
     [HttpGet]
-    public async Task<IActionResult> Get()
+    public async Task<ActionResult<IReadOnlyList<NewsArticleModel>>> Get(CancellationToken cancellationToken)
     {
-        var news = await _chatGptService.GetTodayBitcoinNewsAsync();
+        var news = await _newsService.GetTodayBitcoinNewsAsync(cancellationToken);
         return Ok(news);
     }
 
-    [HttpGet]
-    [Route("get-chatgpt-news")]
-    public async Task<IActionResult> GetBitcoinChatGptNews(string model)
+    /// <summary>Forces a fresh web-search generation. Triggers a paid OpenAI call.</summary>
+    [HttpPost("refresh")]
+    public async Task<ActionResult<IReadOnlyList<NewsArticleModel>>> Refresh(CancellationToken cancellationToken)
     {
-        try
-        {
-            await _chatGptService.SearchBitcoinChatGptNews(model ?? "gpt-4o");
-
-            var news = await _chatGptService.GetTodayBitcoinNewsAsync();
-            return Ok(news);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ex.Message);
-        }
-
-        //throw new NotImplementedException();
-    }
-
-    [HttpGet]
-    [Route("generate-img")]
-    public async Task<IActionResult> GetGeneratedChatGptImageByText()
-    {
-        //try
-        //{
-        //    string prompt = @"Bitcoin’s hot supply craters 50% in three month";
-        //    var imageUrl = await _chatGptService.GenerateChatGptImageByText(prompt);
-        //    return Ok(imageUrl);
-        //}
-        //catch (Exception ex)
-        //{
-        //    return StatusCode(500, ex.Message);
-        //}
-
-        throw new NotImplementedException();
+        var news = await _newsService.RefreshBitcoinNewsAsync(cancellationToken);
+        return Ok(news);
     }
 }

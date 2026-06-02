@@ -1,6 +1,11 @@
+using System.ClientModel;
+using Azure.Identity;
+using Azure.Storage;
+using Azure.Storage.Blobs;
 using FreedomBlaze;
 using FreedomBlaze.Client.Services;
 using FreedomBlaze.Components;
+using FreedomBlaze.Configuration;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
 using FreedomBlaze.Options;
@@ -11,6 +16,7 @@ using FreedomBlaze.WebClients.BitcoinExchanges;
 using FreedomBlaze.WebClients.CurrencyExchanges;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
+using OpenAI;
 using Phoenixd.NET.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +33,7 @@ builder.Services.AddHttpClient<ContactService>(c =>
 {
     c.BaseAddress = baseUrlAddress;
 });
+
 
 // Named HttpClients for each Bitcoin exchange provider (pooled handlers, DNS refresh)
 builder.Services.AddHttpClient("BlockchainInfo", c => c.BaseAddress = new Uri("https://blockchain.info"))
@@ -78,6 +85,74 @@ builder.Services.AddResponseCompression(opts =>
     opts.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
     opts.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
 });
+
+// Real-time Bitcoin news via the OpenAI Responses API web-search tool.
+builder.Services.Configure<OpenAiOptions>(builder.Configuration.GetSection(OpenAiOptions.Section));
+
+// Register the official OpenAI SDK client. Per the openai-dotnet docs the OpenAIClient is the
+// recommended entry point and is thread-safe, so it is registered as a singleton (one pooled
+// HTTP connection set for the app). Feature clients (ResponsesClient, etc.) are derived from it.
+// Only registered when a key exists; the news service degrades gracefully otherwise.
+var openAiApiKey = builder.Configuration["OpenAI:ApiKey"];
+if (string.IsNullOrWhiteSpace(openAiApiKey))
+{
+    openAiApiKey = builder.Configuration["ChatGptApiKey"]; // legacy fallback
+}
+if (!string.IsNullOrWhiteSpace(openAiApiKey))
+{
+    // A web-search news call on a reasoning model can take 60-90s, so raise the SDK's
+    // network timeout well above the call duration to avoid spurious cancellations.
+    builder.Services.AddSingleton(_ => new OpenAIClient(
+        new ApiKeyCredential(openAiApiKey),
+        new OpenAIClientOptions { NetworkTimeout = TimeSpan.FromMinutes(3) }));
+}
+
+// HttpClient dedicated to scraping article thumbnails (headers configured once, never mutated).
+builder.Services.AddHttpClient(BitcoinNewsService.ImageScraperHttpClient, c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(8);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36");
+    c.DefaultRequestHeaders.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+    c.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
+});
+
+// News persistence backend. Defaults to local JSON files; set "NewsStorage:Provider" (e.g. the
+// env var NewsStorage__Provider=AzureBlob) to use Azure Blob Storage instead.
+builder.Services.Configure<NewsStorageOptions>(builder.Configuration.GetSection(NewsStorageOptions.Section));
+var newsStorageProvider = builder.Configuration.GetValue(
+    $"{NewsStorageOptions.Section}:Provider", NewsStorageProvider.LocalFile);
+
+if (newsStorageProvider == NewsStorageProvider.AzureBlob)
+{
+    var blobOptions = builder.Configuration.GetSection("BlobStorage").Get<BlobStorageOptions>();
+    if (string.IsNullOrWhiteSpace(blobOptions?.AccountName))
+    {
+        throw new InvalidOperationException(
+            "NewsStorage:Provider is 'AzureBlob' but 'BlobStorage:AccountName' is not configured.");
+    }
+
+    builder.Services.AddSingleton(_ =>
+    {
+        var endpoint = new Uri($"https://{blobOptions.AccountName}.blob.core.windows.net");
+        return string.IsNullOrWhiteSpace(blobOptions.AccessKey)
+            ? new BlobServiceClient(endpoint, new DefaultAzureCredential())
+            : new BlobServiceClient(endpoint, new StorageSharedKeyCredential(blobOptions.AccountName, blobOptions.AccessKey));
+    });
+    builder.Services.AddSingleton<BlobStorageService>();
+    builder.Services.AddSingleton<INewsStore, BlobNewsStore>();
+}
+else
+{
+    builder.Services.AddSingleton<INewsStore, LocalFileNewsStore>();
+}
+
+builder.Services.AddSingleton<OpenAiNewsClient>();
+builder.Services.AddScoped<BitcoinNewsService>();
+
+// Server-side rendering (prerender / InteractiveServer) calls the service directly instead of
+// making a loopback HTTP request to the app's own API.
+builder.Services.AddScoped<IBitcoinNewsApi, ServerBitcoinNewsApi>();
 
 builder.Services.AddControllers();
 

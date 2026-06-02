@@ -1,0 +1,25 @@
+using System.Text.Json;
+using FreedomBlaze.Models;
+
+namespace FreedomBlaze.Services;
+
+/// <summary>
+/// Persists the generated daily Bitcoin news set so it survives application restarts.
+/// Implementations are best-effort: <see cref="LoadAsync"/> returns <c>null</c> when nothing is
+/// stored or on error, and <see cref="SaveAsync"/> never throws.
+/// </summary>
+public interface INewsStore
+{
+    Task<List<NewsArticleModel>?> LoadAsync(DateTime date, CancellationToken cancellationToken = default);
+
+    Task SaveAsync(DateTime date, IReadOnlyList<NewsArticleModel> articles, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Shared serialization and naming conventions for <see cref="INewsStore"/> backends.</summary>
+internal static class NewsStoreConventions
+{
+    public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    /// <summary>One file/blob per calendar day, e.g. "2026-06-01.json".</summary>
+    public static string EntryName(DateTime date) => $"{date:yyyy-MM-dd}.json";
+}

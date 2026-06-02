@@ -1,6 +1,7 @@
-﻿namespace FreedomBlaze.Constants;
+namespace FreedomBlaze.Constants;
 
 public static class CacheKeys
 {
-    public const string TodayBitcoinNewsCacheKey = "TodayBitcoinNews";
+    /// <summary>Cache key for a day's generated Bitcoin news set (one entry per calendar day).</summary>
+    public static string BitcoinNews(DateTime date) => $"BitcoinNews:{date:yyyy-MM-dd}";
 }
