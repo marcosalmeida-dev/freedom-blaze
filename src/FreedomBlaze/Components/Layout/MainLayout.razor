@@ -1,5 +1,6 @@
 ﻿@using FreedomBlaze.Models
 @using FreedomBlaze.Services
+@using FreedomBlaze.Components.Payments
 
 @inherits LayoutComponentBase
 
@@ -41,6 +42,13 @@
                 @_btcPriceCulture
             </MudChip>
         }
+        @if (PaymentsEnabled)
+        {
+            <MudTooltip Text="Tip in Bitcoin over Lightning">
+                <MudIconButton Icon="@Icons.Material.Filled.Bolt" Color="Color.Inherit"
+                               OnClick="OpenDonateDialogAsync" aria-label="Donate with Lightning" Class="ml-1" />
+            </MudTooltip>
+        }
         <MudIconButton Icon="@(ThemeManager.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                        Color="Color.Inherit" OnClick="ThemeManager.ToggleTheme"
                        aria-label="Toggle dark mode" Class="ml-1" />
@@ -71,6 +79,7 @@
 @inject ISnackbar Snackbar
 @inject AppState AppState
 @inject ThemeManager ThemeManager
+@inject IDialogService DialogService
 
 @code {
     MudTheme _theme = new MudTheme()
@@ -184,6 +193,23 @@
     private void DrawerToggle()
     {
         _drawerOpen = !_drawerOpen;
+    }
+
+    // The donate feature is only available when a phoenixd node is configured.
+    private bool PaymentsEnabled => !string.IsNullOrWhiteSpace(Configuration["PhoenixConfig:Host"]);
+
+    private Task OpenDonateDialogAsync()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            CloseButton = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.ExtraSmall,
+            Position = DialogPosition.Center
+        };
+
+        return DialogService.ShowAsync<DonateDialog>("Donate", options);
     }
 
     private void SnackMessage(string message, string position = Defaults.Classes.Position.TopCenter, Severity severity = Severity.Info)

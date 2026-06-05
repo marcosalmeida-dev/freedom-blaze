@@ -1,0 +1,64 @@
+@implements IDisposable
+
+@* tabular-nums keeps every digit the same width and nowrap/inline-block fixes the box, so the
+   ticking value can never change the surrounding layout (which caused the dialog to jitter). *@
+<span style="font-variant-numeric: tabular-nums; white-space: nowrap; display: inline-block;">@_display</span>
+
+@code {
+    [Parameter] public int Seconds { get; set; }
+
+    /// <summary>Invoked once when the countdown reaches zero.</summary>
+    [Parameter] public EventCallback OnElapsed { get; set; }
+
+    private int _remaining;
+    private string _display = "00:00";
+    private Timer? _timer;
+
+    // This component owns its 1-second tick so the countdown text updates in isolation. Because only
+    // this component re-renders, the surrounding dialog (and the QR image) are never re-rendered,
+    // which prevents the dialog from reflowing/jittering while waiting for payment.
+    protected override void OnInitialized()
+    {
+        _remaining = Seconds;
+        _display = Format(_remaining);
+        _timer = new Timer(_ => _ = TickAsync(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private async Task TickAsync()
+    {
+        try
+        {
+            _remaining--;
+
+            if (_remaining <= 0)
+            {
+                _remaining = 0;
+                _display = Format(0);
+                _timer?.Dispose();
+                _timer = null;
+                await InvokeAsync(StateHasChanged);
+                await OnElapsed.InvokeAsync();
+                return;
+            }
+
+            _display = Format(_remaining);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // The component/renderer was disposed (dialog closed) between ticks.
+        }
+    }
+
+    private static string Format(int totalSeconds)
+    {
+        if (totalSeconds < 0)
+        {
+            totalSeconds = 0;
+        }
+
+        return $"{totalSeconds / 60:00}:{totalSeconds % 60:00}";
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

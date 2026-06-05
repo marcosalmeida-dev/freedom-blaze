@@ -17,6 +17,7 @@ using FreedomBlaze.WebClients.CurrencyExchanges;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 using OpenAI;
+using Phoenixd.NET;
 using Phoenixd.NET.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -156,6 +157,16 @@ builder.Services.AddScoped<IBitcoinNewsApi, ServerBitcoinNewsApi>();
 
 builder.Services.AddControllers();
 
+// Lightning payments via phoenixd. Only registered when a phoenixd host is configured, so the app
+// (and its CI/dev runs) work fine without a payment backend. The donate UI is hidden when absent.
+var phoenixdHost = builder.Configuration["PhoenixConfig:Host"];
+var phoenixdEnabled = !string.IsNullOrWhiteSpace(phoenixdHost);
+if (phoenixdEnabled)
+{
+    builder.Services.AddSignalR();
+    builder.Services.ConfigurePhoenixdServices(builder.Configuration);
+}
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
@@ -207,6 +218,9 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(FreedomBlaze.Client._Imports).Assembly);
 
-app.MapHub<PaymentHub>("/paymentHub");
+if (phoenixdEnabled)
+{
+    app.MapHub<PaymentHub>("/paymentHub");
+}
 
 app.Run();

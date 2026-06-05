@@ -9,6 +9,10 @@
     --btcpay-white-rgb: 255, 255, 255;
 }
 
+.donate-dialog-content {
+    overflow-y: hidden !important;
+}
+
 .btn-primary {
     text-transform: uppercase;
     --bs-btn-bg: var(--mud-palette-primary) !important;

@@ -1,20 +1,19 @@
 @using FreedomBlaze.Client.Enums
-@using FreedomBlaze.Client.Helpers
 @using QRCoder
 
-@if (!string.IsNullOrEmpty(Data))
+@if (!string.IsNullOrEmpty(_imageSrc))
 {
     <div class="tab-pane payment-box" id="link-tab" role="tabpanel">
         <div class="qr-container" data-clipboard="12">
-            <img style="image-rendering:pixelated;image-rendering:-moz-crisp-edges;min-width:@(Size)px;min-height:@(Size)px" src="@GetQRCodeData(Data, Amount)" class="qr-code" />
-            <img src="/img/@addressTypeIcon" class="qr-icon" alt="address-type-icon" />
+            <img style="image-rendering:pixelated;image-rendering:-moz-crisp-edges;min-width:@(Size)px;min-height:@(Size)px" src="@_imageSrc" class="qr-code" />
+            <img src="/img/@_addressTypeIcon" class="qr-icon" alt="address-type-icon" />
         </div>
     </div>
 }
 
 @code {
     [Parameter]
-    public string Data { get; set; }
+    public string Data { get; set; } = string.Empty;
 
     [Parameter]
     public decimal? Amount { get; set; }
@@ -28,12 +27,42 @@
     [Parameter]
     public bool IsDarkMode { get; set; } = false;
 
-    private string addressTypeIcon = "bitcoin.svg";
+    private string _imageSrc = string.Empty;
+    private string _addressTypeIcon = "bitcoin.svg";
+    private string? _cacheKey;
+    private bool _needsRender = true;
 
-    private string GetQRCodeData(string data, decimal? amount)
+    // The QR image is relatively expensive to generate and must stay byte-for-byte stable while the
+    // parent re-renders (e.g. a payment countdown ticking once a second). We regenerate it only when
+    // an input actually changes, and otherwise short-circuit rendering so the <img> is never touched
+    // — which previously caused the dialog to reflow and the QR to "shake".
+    protected override void OnParametersSet()
     {
-        addressTypeIcon = BtcAddressType == BtcAddressType.BitcoinOnChain ? "bitcoin.svg" : "bitcoin-lightning.svg";
+        var key = $"{Data}|{Amount}|{Size}|{(int)BtcAddressType}|{IsDarkMode}";
+        if (key == _cacheKey)
+        {
+            return;
+        }
 
+        _cacheKey = key;
+        _addressTypeIcon = BtcAddressType == BtcAddressType.BitcoinOnChain ? "bitcoin.svg" : "bitcoin-lightning.svg";
+        _imageSrc = string.IsNullOrEmpty(Data) ? string.Empty : GenerateQrCode(Data);
+        _needsRender = true;
+    }
+
+    protected override bool ShouldRender()
+    {
+        if (!_needsRender)
+        {
+            return false;
+        }
+
+        _needsRender = false;
+        return true;
+    }
+
+    private string GenerateQrCode(string data)
+    {
         var qrGenerator = new QRCodeGenerator();
         var qrCodeData = qrGenerator.CreateQrCode(data, QRCodeGenerator.ECCLevel.Q);
         var qrCode = new PngByteQRCode(qrCodeData);

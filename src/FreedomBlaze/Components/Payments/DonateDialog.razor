@@ -1,0 +1,368 @@
+@using FreedomBlaze.Client.Components.Shared.QRCode
+@using FreedomBlaze.Client.Enums
+@using FreedomBlaze.Models
+@using FreedomBlaze.Services
+@using Phoenixd.NET.Models
+@using Phoenixd.NET.Services
+@implements IAsyncDisposable
+
+@inject PhoenixdManagerService Manager
+@inject ThemeManager Theme
+@inject AppState AppState
+@inject CultureService Culture
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject ILogger<DonateDialog> Logger
+
+<MudDialog ContentClass="donate-dialog-content">
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Bolt" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Support Freedom Blaze</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        @switch (_state)
+        {
+            case DonateState.Input:
+                <MudStack Spacing="4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Send a Lightning tip. Pick an amount or enter your own.
+                    </MudText>
+
+                    <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                        @foreach (var preset in QuickAmounts)
+                        {
+                            <MudButton Size="Size.Small" Color="Color.Primary"
+                                       Variant="@(_amount == preset ? Variant.Filled : Variant.Outlined)"
+                                       OnClick="@(() => _amount = preset)">
+                                @(preset.ToString("N0"))
+                            </MudButton>
+                        }
+                    </MudStack>
+
+                    <MudNumericField T="long" @bind-Value="_amount" Label="Amount (sats)" Min="1"
+                                     Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Bolt" />
+
+                    @{
+                        var fiat = FiatEstimate(_amount);
+                    }
+                    @if (fiat is not null)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-n2">≈ @fiat</MudText>
+                    }
+
+                    <MudTextField T="string" @bind-Value="_message" Label="Message (optional)"
+                                  Variant="Variant.Outlined" MaxLength="128" Immediate="false" />
+
+                    <MudButton OnClick="GenerateAsync" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                               Disabled="_amount <= 0" StartIcon="@Icons.Material.Filled.QrCode2">
+                        Generate invoice
+                    </MudButton>
+                </MudStack>
+                break;
+
+            case DonateState.Generating:
+                <MudStack AlignItems="AlignItems.Center" Class="py-8" Spacing="4">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Creating your invoice…</MudText>
+                </MudStack>
+                break;
+
+            case DonateState.Awaiting:
+                <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                    <QRCode Data="@_invoice!.Serialized" BtcAddressType="BtcAddressType.BitcoinLightning"
+                            IsDarkMode="@Theme.IsDarkMode" Size="240" />
+
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudText Typo="Typo.h6">@(_amount.ToString("N0")) sats</MudText>
+                        @{
+                            var awaitingFiat = FiatEstimate(_amount);
+                        }
+                        @if (awaitingFiat is not null)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">(≈ @awaitingFiat)</MudText>
+                        }
+                    </MudStack>
+
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-2" Style="width:100%;word-break:break-all">
+                        <MudText Typo="Typo.caption" Style="font-family:monospace">@_invoice!.Serialized</MudText>
+                    </MudPaper>
+
+                    <MudButton OnClick="CopyAsync" Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                               StartIcon="@Icons.Material.Filled.ContentCopy">
+                        Copy invoice
+                    </MudButton>
+
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Style="white-space:nowrap">
+                            Waiting for payment… expires in <CountdownTimer Seconds="ExpirySeconds" OnElapsed="OnExpiredAsync" />
+                        </MudText>
+                    </MudStack>
+                </MudStack>
+                break;
+
+            case DonateState.Paid:
+                <MudStack AlignItems="AlignItems.Center" Class="py-6" Spacing="3">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Style="font-size:4rem" />
+                    <MudText Typo="Typo.h6">Payment received!</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">
+                        Thank you for your @(_paidAmountSat.ToString("N0")) sat tip ⚡
+                    </MudText>
+                </MudStack>
+                break;
+
+            case DonateState.Expired:
+                <MudStack AlignItems="AlignItems.Center" Class="py-6" Spacing="3">
+                    <MudIcon Icon="@Icons.Material.Filled.Timer" Color="Color.Warning" Style="font-size:3rem" />
+                    <MudText Typo="Typo.body1">This invoice has expired.</MudText>
+                </MudStack>
+                break;
+
+            case DonateState.Error:
+                <MudStack Class="py-4" Spacing="3">
+                    <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+                </MudStack>
+                break;
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_state is DonateState.Awaiting or DonateState.Expired or DonateState.Error)
+        {
+            <MudButton OnClick="Reset" StartIcon="@Icons.Material.Filled.Refresh">New invoice</MudButton>
+        }
+        <MudButton OnClick="Close">@(_state == DonateState.Paid ? "Done" : "Close")</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private enum DonateState { Input, Generating, Awaiting, Paid, Expired, Error }
+
+    private const string DefaultDescription = "Donation to Freedom Blaze";
+    private const int ExpirySeconds = 3600;
+    private static readonly long[] QuickAmounts = { 1_000, 5_000, 21_000, 100_000 };
+
+    private DonateState _state = DonateState.Input;
+    private long _amount = 1_000;
+    private string? _message;
+    private string? _errorMessage;
+
+    private Invoice? _invoice;
+    private long _paidAmountSat;
+    private int _completed; // 0 = pending, 1 = completed (paid/expired); set via Interlocked.
+    private CancellationTokenSource? _cts;
+
+    private async Task GenerateAsync()
+    {
+        if (_amount <= 0)
+        {
+            return;
+        }
+
+        _state = DonateState.Generating;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            _cts = new CancellationTokenSource();
+            var description = string.IsNullOrWhiteSpace(_message) ? DefaultDescription : _message.Trim();
+
+            _invoice = await Manager.PaymentService.ReceiveLightningPaymentAsync(
+                description, _amount, expirySeconds: ExpirySeconds, cancellationToken: _cts.Token);
+
+            _completed = 0;
+            _state = DonateState.Awaiting;
+
+            // Get notified the moment phoenixd reports the payment (in-process event), with a polling
+            // fallback in case the websocket event is missed. The expiry countdown is owned by the
+            // isolated <CountdownTimer>, so neither the dialog nor the QR re-renders every second.
+            Manager.PaymentReceived += OnPaymentReceived;
+            _ = PollLoopAsync(_cts.Token);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to create donation invoice.");
+            _errorMessage = "Could not create an invoice. Please make sure the node is reachable and try again.";
+            _state = DonateState.Error;
+        }
+
+        StateHasChanged();
+    }
+
+    private void OnPaymentReceived(PaymentReceived payment)
+    {
+        if (_invoice is not null &&
+            string.Equals(payment.PaymentHash, _invoice.PaymentHash, StringComparison.OrdinalIgnoreCase))
+        {
+            _ = MarkPaidAsync(payment.AmountSat);
+        }
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        // Fallback for the websocket event: poll the invoice status periodically in case the event is
+        // missed. Deliberately does NOT call StateHasChanged, so it never re-renders the dialog.
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(4));
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await PollOnceAsync(ct);
+                if (_completed != 0)
+                {
+                    return;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Dialog closed or payment completed.
+        }
+    }
+
+    private async Task PollOnceAsync(CancellationToken ct)
+    {
+        if (_invoice is null || _completed != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var info = await Manager.PaymentService.GetIncomingPayment(_invoice.PaymentHash, ct);
+            if (info.IsPaid)
+            {
+                await MarkPaidAsync(info.ReceivedSat);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Polling incoming payment failed; will retry.");
+        }
+    }
+
+    private async Task MarkPaidAsync(long receivedSat)
+    {
+        // Both the websocket event and the polling loop can reach here; only the first wins.
+        if (Interlocked.Exchange(ref _completed, 1) != 0)
+        {
+            return;
+        }
+
+        _paidAmountSat = receivedSat > 0 ? receivedSat : _amount;
+        _state = DonateState.Paid;
+        Manager.PaymentReceived -= OnPaymentReceived;
+        _cts?.Cancel();
+
+        await InvokeAsync(() =>
+        {
+            Snackbar.Add("⚡ Payment received — thank you!", Severity.Success);
+            StateHasChanged();
+        });
+
+        // Let the user see the confirmation, then close automatically.
+        await Task.Delay(3000);
+        await InvokeAsync(() => MudDialog.Close(DialogResult.Ok(true)));
+    }
+
+    private async Task OnExpiredAsync()
+    {
+        if (Interlocked.Exchange(ref _completed, 1) != 0)
+        {
+            return;
+        }
+
+        _state = DonateState.Expired;
+        Manager.PaymentReceived -= OnPaymentReceived;
+        _cts?.Cancel();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void Reset()
+    {
+        Cleanup();
+        _invoice = null;
+        _completed = 0;
+        _errorMessage = null;
+        _state = DonateState.Input;
+    }
+
+    private async Task CopyAsync()
+    {
+        if (_invoice is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _invoice.Serialized);
+            Snackbar.Add("Invoice copied to clipboard!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Clipboard copy failed.");
+        }
+    }
+
+    private void Close() => MudDialog.Close(DialogResult.Ok(_state == DonateState.Paid));
+
+    private string? FiatEstimate(long sats)
+    {
+        try
+        {
+            var rate = AppState.BitcoinExchangeRate;
+            if (rate is null || rate.BitcoinRateInUSD <= 0)
+            {
+                return null;
+            }
+
+            var currency = CurrencyModel.GetCurrencyList(Culture.CurrencyCultureName).FirstOrDefault();
+            if (currency is null)
+            {
+                return null;
+            }
+
+            var btcInLocalCurrency = currency.CurrencyRateInUSD * rate.BitcoinRateInUSD;
+            var value = (decimal)sats / 100_000_000m * btcInLocalCurrency;
+            return value.ToString("C", currency.CultureInfo);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void Cleanup()
+    {
+        Manager.PaymentReceived -= OnPaymentReceived;
+
+        if (_cts is not null)
+        {
+            try
+            {
+                _cts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
+            _cts.Dispose();
+            _cts = null;
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        Cleanup();
+        return ValueTask.CompletedTask;
+    }
+}
