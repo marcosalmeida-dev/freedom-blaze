@@ -19,8 +19,8 @@ public class OpenAiOptions
     public int NewsArticleCount { get; set; } = 9;
 
     /// <summary>
-    /// How long a generated news set is served from cache before a new (paid) web-search
-    /// call is made. Defaults to 6 hours.
+    /// How long a generated news set is served from the in-memory cache before falling back to
+    /// the persistent store. Defaults to 24 hours (news is keyed per day).
     /// </summary>
-    public TimeSpan CacheDuration { get; set; } = TimeSpan.FromHours(6);
+    public TimeSpan CacheDuration { get; set; } = TimeSpan.FromHours(24);
 }

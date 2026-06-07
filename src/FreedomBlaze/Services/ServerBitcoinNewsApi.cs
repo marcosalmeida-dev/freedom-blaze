@@ -18,15 +18,15 @@ public class ServerBitcoinNewsApi : IBitcoinNewsApi
         _newsService = newsService;
     }
 
-    public async Task<List<NewsArticleModel>> GetNewsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<NewsArticleModel>> GetNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
-        var news = await _newsService.GetTodayBitcoinNewsAsync(cancellationToken);
+        var news = await _newsService.GetNewsForDateAsync(date, cancellationToken);
         return [.. news];
     }
 
-    public async Task<List<NewsArticleModel>> RefreshNewsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<NewsArticleModel>> RefreshNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
-        var news = await _newsService.RefreshBitcoinNewsAsync(cancellationToken);
+        var news = await _newsService.RefreshNewsForDateAsync(date, cancellationToken);
         return [.. news];
     }
 }

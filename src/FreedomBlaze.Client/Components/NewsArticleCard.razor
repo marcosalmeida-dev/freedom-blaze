@@ -1,0 +1,39 @@
+@using FreedomBlaze.Models
+@using static FreedomBlaze.Client.Helpers.StringHelper
+
+<MudCard Class="d-flex flex-column" Style="height: 100%;" Elevation="2">
+    <MudCardMedia Image="@Thumbnail" Height="160" />
+    <MudCardContent Class="flex-grow-1">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+            @if (!string.IsNullOrWhiteSpace(Article.SourceRegion))
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                         Icon="@Icons.Material.Filled.Public">@Article.SourceRegion</MudChip>
+            }
+            @if (!string.IsNullOrWhiteSpace(Article.Source))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@Article.Source</MudText>
+            }
+        </MudStack>
+        <MudText Typo="Typo.subtitle1" Class="mb-1"><b>@Article.Title.Truncate(90)</b></MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@Article.Text.Truncate(170)</MudText>
+    </MudCardContent>
+    <MudCardActions Class="justify-space-between">
+        <MudText Typo="Typo.caption" Color="Color.Secondary">@Article.Date.ToString("MMM d, yyyy")</MudText>
+        <MudButton Variant="Variant.Text" Color="Color.Primary"
+                   EndIcon="@Icons.Material.Filled.OpenInNew"
+                   Href="@Article.ArticleLinkUrl" Target="_blank" rel="noopener noreferrer"
+                   Disabled="@string.IsNullOrWhiteSpace(Article.ArticleLinkUrl)">
+            Read more
+        </MudButton>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    private const string DefaultThumbnail = "img/articles/default-img.png";
+
+    [Parameter, EditorRequired] public NewsArticleModel Article { get; set; } = default!;
+
+    private string Thumbnail =>
+        string.IsNullOrWhiteSpace(Article.NewsThumbImg) ? DefaultThumbnail : Article.NewsThumbImg;
+}

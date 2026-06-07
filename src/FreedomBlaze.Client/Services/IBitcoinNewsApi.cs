@@ -9,7 +9,7 @@ namespace FreedomBlaze.Client.Services;
 /// </summary>
 public interface IBitcoinNewsApi
 {
-    Task<List<NewsArticleModel>> GetNewsAsync(CancellationToken cancellationToken = default);
+    Task<List<NewsArticleModel>> GetNewsAsync(DateOnly date, CancellationToken cancellationToken = default);
 
-    Task<List<NewsArticleModel>> RefreshNewsAsync(CancellationToken cancellationToken = default);
+    Task<List<NewsArticleModel>> RefreshNewsAsync(DateOnly date, CancellationToken cancellationToken = default);
 }

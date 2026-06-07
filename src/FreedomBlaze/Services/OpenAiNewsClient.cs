@@ -47,10 +47,10 @@ public class OpenAiNewsClient
     }
 
     /// <summary>
-    /// Performs a live web search and returns the day's most relevant Bitcoin news articles
-    /// from around the world.
+    /// Performs a live web search and returns the most relevant Bitcoin news articles published on
+    /// <paramref name="date"/> from around the world.
     /// </summary>
-    public async Task<List<NewsArticleModel>> GetBitcoinNewsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<NewsArticleModel>> GetBitcoinNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
         if (_responses is null)
         {
@@ -58,8 +58,13 @@ public class OpenAiNewsClient
                 "OpenAI API key is not configured. Set 'OpenAI:ApiKey' (or the legacy 'ChatGptApiKey').");
         }
 
-        var today = _timeProvider.GetLocalNow().Date;
+        var today = DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime);
         var count = Math.Clamp(_options.NewsArticleCount, 1, 20);
+
+        // Phrase the time window relative to whether the requested day is today or in the past.
+        var timeframe = date >= today
+            ? $"published within the last 24 hours (today is {today:yyyy-MM-dd})"
+            : $"published on {date:yyyy-MM-dd}";
 
         var requestOptions = new CreateResponseOptions
         {
@@ -68,7 +73,7 @@ public class OpenAiNewsClient
                 $"""
                 You are a financial news editor specialising in Bitcoin.
                 Use the web_search tool to find {count} distinct, high-quality Bitcoin news stories
-                published within the last 24 hours (today is {today:yyyy-MM-dd}).
+                {timeframe}.
                 Cover a diverse mix of regions around the world (e.g. North America, South America,
                 Europe, Africa, Asia, Oceania) and prefer reputable outlets.
                 Rules:
@@ -89,9 +94,10 @@ public class OpenAiNewsClient
         };
 
         requestOptions.InputItems.Add(ResponseItem.CreateUserMessageItem(
-            $"Give me today's top {count} Bitcoin news stories from around the world."));
+            $"Give me the top {count} Bitcoin news stories from around the world for {date:yyyy-MM-dd}."));
 
-        _logger.LogInformation("Requesting {Count} Bitcoin news articles from OpenAI model {Model}.", count, _options.Model);
+        _logger.LogInformation(
+            "Requesting {Count} Bitcoin news articles for {Date} from OpenAI model {Model}.", count, date, _options.Model);
 
         var result = await _responses.CreateResponseAsync(requestOptions, cancellationToken);
         ResponseResult response = result.Value;
@@ -104,7 +110,7 @@ public class OpenAiNewsClient
             return [];
         }
 
-        var articles = ParseArticles(json, today);
+        var articles = ParseArticles(json, date.ToDateTime(TimeOnly.MinValue));
         BackfillFromCitations(articles, citations);
 
         _logger.LogInformation("Retrieved {Count} Bitcoin news articles.", articles.Count);

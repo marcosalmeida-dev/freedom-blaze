@@ -15,19 +15,22 @@ public class BitcoinNewsController : ControllerBase
         _newsService = newsService;
     }
 
-    /// <summary>Returns today's cached Bitcoin news, generating it on the first request of the day.</summary>
+    /// <summary>
+    /// Returns the Bitcoin news for <paramref name="date"/> (defaults to today), generating and
+    /// persisting it on the first request for a day that isn't already stored.
+    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<NewsArticleModel>>> Get(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<NewsArticleModel>>> Get([FromQuery] DateOnly? date, CancellationToken cancellationToken)
     {
-        var news = await _newsService.GetTodayBitcoinNewsAsync(cancellationToken);
+        var news = await _newsService.GetNewsForDateAsync(date ?? _newsService.Today, cancellationToken);
         return Ok(news);
     }
 
-    /// <summary>Forces a fresh web-search generation. Triggers a paid OpenAI call.</summary>
+    /// <summary>Forces a fresh web-search generation for <paramref name="date"/> (defaults to today). Triggers a paid OpenAI call.</summary>
     [HttpPost("refresh")]
-    public async Task<ActionResult<IReadOnlyList<NewsArticleModel>>> Refresh(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<NewsArticleModel>>> Refresh([FromQuery] DateOnly? date, CancellationToken cancellationToken)
     {
-        var news = await _newsService.RefreshBitcoinNewsAsync(cancellationToken);
+        var news = await _newsService.RefreshNewsForDateAsync(date ?? _newsService.Today, cancellationToken);
         return Ok(news);
     }
 }

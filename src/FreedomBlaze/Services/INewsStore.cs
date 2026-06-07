@@ -10,9 +10,9 @@ namespace FreedomBlaze.Services;
 /// </summary>
 public interface INewsStore
 {
-    Task<List<NewsArticleModel>?> LoadAsync(DateTime date, CancellationToken cancellationToken = default);
+    Task<List<NewsArticleModel>?> LoadAsync(DateOnly date, CancellationToken cancellationToken = default);
 
-    Task SaveAsync(DateTime date, IReadOnlyList<NewsArticleModel> articles, CancellationToken cancellationToken = default);
+    Task SaveAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Shared serialization and naming conventions for <see cref="INewsStore"/> backends.</summary>
@@ -21,5 +21,5 @@ internal static class NewsStoreConventions
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>One file/blob per calendar day, e.g. "2026-06-01.json".</summary>
-    public static string EntryName(DateTime date) => $"{date:yyyy-MM-dd}.json";
+    public static string EntryName(DateOnly date) => $"{date:yyyy-MM-dd}.json";
 }

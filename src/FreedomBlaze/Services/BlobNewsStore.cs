@@ -20,7 +20,7 @@ public class BlobNewsStore : INewsStore
         _logger = logger;
     }
 
-    public async Task<List<NewsArticleModel>?> LoadAsync(DateTime date, CancellationToken cancellationToken = default)
+    public async Task<List<NewsArticleModel>?> LoadAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -36,7 +36,7 @@ public class BlobNewsStore : INewsStore
         }
     }
 
-    public async Task SaveAsync(DateTime date, IReadOnlyList<NewsArticleModel> articles, CancellationToken cancellationToken = default)
+    public async Task SaveAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, CancellationToken cancellationToken = default)
     {
         if (articles.Count == 0)
         {

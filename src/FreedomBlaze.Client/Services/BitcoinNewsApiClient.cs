@@ -16,17 +16,19 @@ public class BitcoinNewsApiClient : IBitcoinNewsApi
         _httpClient = httpClient;
     }
 
-    /// <summary>Gets today's Bitcoin news (served from the server-side daily cache).</summary>
-    public async Task<List<NewsArticleModel>> GetNewsAsync(CancellationToken cancellationToken = default)
+    /// <summary>Gets the Bitcoin news for the given date (served from the server-side daily cache/store).</summary>
+    public async Task<List<NewsArticleModel>> GetNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
-        var result = await _httpClient.GetFromJsonAsync<List<NewsArticleModel>>("api/bitcoin-news", cancellationToken);
+        var result = await _httpClient.GetFromJsonAsync<List<NewsArticleModel>>(
+            $"api/bitcoin-news?date={date:yyyy-MM-dd}", cancellationToken);
         return result ?? [];
     }
 
-    /// <summary>Requests a fresh web-search generation. May take several seconds.</summary>
-    public async Task<List<NewsArticleModel>> RefreshNewsAsync(CancellationToken cancellationToken = default)
+    /// <summary>Requests a fresh web-search generation for the given date. May take several seconds.</summary>
+    public async Task<List<NewsArticleModel>> RefreshNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
-        using var response = await _httpClient.PostAsync("api/bitcoin-news/refresh", content: null, cancellationToken);
+        using var response = await _httpClient.PostAsync(
+            $"api/bitcoin-news/refresh?date={date:yyyy-MM-dd}", content: null, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<List<NewsArticleModel>>(cancellationToken);

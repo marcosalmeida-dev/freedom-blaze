@@ -1,28 +1,32 @@
 @page "/bitcoinnews"
 @rendermode InteractiveAuto
 
-@using FreedomBlaze.Client.Helpers
-@using FreedomBlaze.Client.Services
-@using FreedomBlaze.Models
-@using static FreedomBlaze.Client.Helpers.StringHelper
-
-@inject ISnackbar Snackbar
-@inject IBitcoinNewsApi Api
-
 <PageTitle>Bitcoin News</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween"
+              Spacing="3" Class="mb-4">
         <div>
             <MudText Typo="Typo.h5">Bitcoin News</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Around the world · @DateTime.Now.ToString("MMMM d, yyyy")
+                Around the world · @SelectedDate.ToString("MMMM d, yyyy")@(IsToday ? " · today" : string.Empty)
             </MudText>
         </div>
-        <MudTooltip Text="Fetch the latest news">
-            <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary"
-                           aria-label="Refresh news" Disabled="_loading" OnClick="RefreshNewsAsync" />
-        </MudTooltip>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            @* The width constraint lives on this wrapper (input only). PickerVariant.Dialog renders
+               the calendar as a centered modal, so it is never clipped on mobile or desktop. *@
+            <div style="width: 200px; max-width: 100%;">
+                <MudDatePicker Date="_selectedDate" DateChanged="OnDateChangedAsync"
+                               MinDate="_minDate" MaxDate="_maxDate"
+                               PickerVariant="PickerVariant.Dialog"
+                               Label="Date" Variant="Variant.Outlined" Margin="Margin.Dense"
+                               DateFormat="MMM d, yyyy" Editable="true" Disabled="_loading" />
+            </div>
+            <MudTooltip Text="@(IsToday ? "Fetch the latest news" : "Re-fetch this day's news")">
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary"
+                               aria-label="Refresh news" Disabled="_loading" OnClick="RefreshAsync" />
+            </MudTooltip>
+        </MudStack>
     </MudStack>
 
     @if (_loading)
@@ -31,7 +35,7 @@
             @for (var i = 0; i < SkeletonCount; i++)
             {
                 <MudItem xs="12" sm="6" md="4">
-                    <MudCard Class="d-flex flex-column" Style="height: 100%;">
+                    <MudCard Class="d-flex flex-column" Style="height: 100%;" Elevation="2">
                         <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="160px" />
                         <MudCardContent>
                             <MudSkeleton Width="40%" Class="mb-2" />
@@ -44,100 +48,28 @@
             }
         </MudGrid>
     }
-    else if (_newsArticles.Count > 0)
+    else if (_articles.Count > 0)
     {
         <MudGrid>
-            @foreach (var article in _newsArticles)
+            @foreach (var article in _articles)
             {
                 <MudItem xs="12" sm="6" md="4">
-                    <MudCard Class="d-flex flex-column" Style="height: 100%;">
-                        <MudCardMedia Image="@ThumbnailFor(article)" Height="160" />
-                        <MudCardContent Class="flex-grow-1">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
-                                @if (!string.IsNullOrWhiteSpace(article.SourceRegion))
-                                {
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
-                                             Icon="@Icons.Material.Filled.Public">@article.SourceRegion</MudChip>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(article.Source))
-                                {
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@article.Source</MudText>
-                                }
-                            </MudStack>
-                            <MudText Typo="Typo.subtitle1" Class="mb-1"><b>@article.Title.Truncate(90)</b></MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">@article.Text.Truncate(170)</MudText>
-                        </MudCardContent>
-                        <MudCardActions Class="justify-space-between">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@article.Date.ToString("MMM d, yyyy")</MudText>
-                            <MudButton Variant="Variant.Text" Color="Color.Primary"
-                                       EndIcon="@Icons.Material.Filled.OpenInNew"
-                                       Href="@article.ArticleLinkUrl" Target="_blank"
-                                       Disabled="@string.IsNullOrWhiteSpace(article.ArticleLinkUrl)">
-                                Read more
-                            </MudButton>
-                        </MudCardActions>
-                    </MudCard>
+                    <NewsArticleCard Article="article" />
                 </MudItem>
             }
         </MudGrid>
     }
     else
     {
-        <MudStack AlignItems="AlignItems.Center" Class="mt-12" Spacing="4">
+        <MudStack AlignItems="AlignItems.Center" Spacing="4" Class="mt-12">
             <MudIcon Icon="@Icons.Material.Filled.Newspaper" Size="Size.Large" Color="Color.Secondary" />
-            <MudText Typo="Typo.body1" Color="Color.Secondary">No Bitcoin news available right now.</MudText>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshNewsAsync">
-                Fetch latest news
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center">
+                No Bitcoin news for @SelectedDate.ToString("MMMM d, yyyy").
+            </MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_loading"
+                       StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync">
+                Fetch news for this day
             </MudButton>
         </MudStack>
     }
 </MudContainer>
-
-@code {
-    private const int SkeletonCount = 9;
-    private const string DefaultThumbnail = "img/articles/default-img.png";
-
-    private List<NewsArticleModel> _newsArticles = [];
-    private bool _loading;
-
-    protected override async Task OnInitializedAsync()
-    {
-        // Skip the fetch during prerender and load once the component is interactive
-        // (server-interactive or WASM). This avoids blocking first paint while a slow
-        // web-search generation runs, and prevents a double fetch.
-        if (RendererInfo.IsInteractive)
-        {
-            await LoadNewsAsync();
-        }
-        else
-        {
-            _loading = true; // show skeletons during prerender
-        }
-    }
-
-    private Task LoadNewsAsync() => RunAsync(Api.GetNewsAsync);
-
-    private Task RefreshNewsAsync() => RunAsync(Api.RefreshNewsAsync);
-
-    private async Task RunAsync(Func<CancellationToken, Task<List<NewsArticleModel>>> action)
-    {
-        try
-        {
-            _loading = true;
-            _newsArticles = await action(CancellationToken.None);
-        }
-        catch
-        {
-            Snackbar.SnackMessage("Some error occurred while trying to get bitcoin news, sorry!",
-                Defaults.Classes.Position.TopCenter, Severity.Error);
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
-
-    private static string ThumbnailFor(NewsArticleModel article) =>
-        string.IsNullOrWhiteSpace(article.NewsThumbImg) ? DefaultThumbnail : article.NewsThumbImg;
-}

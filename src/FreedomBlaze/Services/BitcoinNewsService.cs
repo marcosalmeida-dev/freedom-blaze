@@ -54,10 +54,21 @@ public class BitcoinNewsService
         _logger = logger;
     }
 
-    /// <summary>Returns today's Bitcoin news, generating it on first request of the day.</summary>
-    public async Task<IReadOnlyList<NewsArticleModel>> GetTodayBitcoinNewsAsync(CancellationToken cancellationToken = default)
+    /// <summary>The current date in the app's local time zone.</summary>
+    public DateOnly Today => DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime);
+
+    /// <summary>Convenience wrapper for <see cref="GetNewsForDateAsync"/> with today's date.</summary>
+    public Task<IReadOnlyList<NewsArticleModel>> GetTodayBitcoinNewsAsync(CancellationToken cancellationToken = default)
+        => GetNewsForDateAsync(Today, cancellationToken);
+
+    /// <summary>
+    /// Returns the Bitcoin news set for <paramref name="date"/>. It is served from the in-memory
+    /// cache or the persistent store whenever available; a (paid) web-search call is made only when
+    /// neither the cache nor the store already has that day's set.
+    /// </summary>
+    public async Task<IReadOnlyList<NewsArticleModel>> GetNewsForDateAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
-        var date = _timeProvider.GetLocalNow().Date;
+        date = ClampToToday(date);
         var cacheKey = CacheKeys.BitcoinNews(date);
 
         if (TryGetCached(cacheKey, out var cached))
@@ -79,10 +90,18 @@ public class BitcoinNewsService
         await GenerationGate.WaitAsync(CancellationToken.None);
         try
         {
-            // Another caller may have produced the set while we waited for the gate.
+            // Re-check both layers: another caller may have produced/persisted this day while we
+            // waited. This guarantees we never make a redundant (paid) call for an already-saved day.
             if (TryGetCached(cacheKey, out cached))
             {
                 return cached;
+            }
+
+            stored = await _newsStore.LoadAsync(date, CancellationToken.None);
+            if (stored is { Count: > 0 })
+            {
+                _cache.Set(cacheKey, stored, _options.CacheDuration);
+                return stored;
             }
 
             return await GenerateAndStoreAsync(date, cacheKey);
@@ -94,18 +113,17 @@ public class BitcoinNewsService
     }
 
     /// <summary>
-    /// Forces a fresh web-search generation for today, overwriting the cached/persisted set.
-    /// Note: this triggers a paid OpenAI call, so callers should rate-limit user-facing refreshes.
+    /// Forces a fresh web-search generation for <paramref name="date"/>, overwriting the cached and
+    /// persisted set. Triggers a paid OpenAI call, so user-facing refreshes should be rate-limited.
     /// </summary>
-    public async Task<IReadOnlyList<NewsArticleModel>> RefreshBitcoinNewsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<NewsArticleModel>> RefreshNewsForDateAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
-        var date = _timeProvider.GetLocalNow().Date;
-        var cacheKey = CacheKeys.BitcoinNews(date);
+        date = ClampToToday(date);
 
         await GenerationGate.WaitAsync(CancellationToken.None);
         try
         {
-            return await GenerateAndStoreAsync(date, cacheKey);
+            return await GenerateAndStoreAsync(date, CacheKeys.BitcoinNews(date));
         }
         finally
         {
@@ -113,7 +131,13 @@ public class BitcoinNewsService
         }
     }
 
-    private async Task<List<NewsArticleModel>> GenerateAndStoreAsync(DateTime date, string cacheKey)
+    private DateOnly ClampToToday(DateOnly date)
+    {
+        var today = Today;
+        return date > today ? today : date;
+    }
+
+    private async Task<List<NewsArticleModel>> GenerateAndStoreAsync(DateOnly date, string cacheKey)
     {
         // Deliberately decoupled from the inbound request's CancellationToken: this call is
         // expensive (~80s, paid) and its result is cached, so a client disconnect (navigation,
@@ -122,7 +146,7 @@ public class BitcoinNewsService
         using var cts = new CancellationTokenSource(GenerationTimeout);
         var generationToken = cts.Token;
 
-        var articles = await _newsClient.GetBitcoinNewsAsync(generationToken);
+        var articles = await _newsClient.GetBitcoinNewsAsync(date, generationToken);
 
         await ResolveThumbnailsAsync(articles, generationToken);
 
@@ -178,7 +202,7 @@ public class BitcoinNewsService
 
             var ogImage = document.DocumentNode
                 .SelectSingleNode("//meta[@property='og:image' or @name='og:image' or @property='twitter:image']")
-                ?.GetAttributeValue("content", null);
+                ?.GetAttributeValue("content", string.Empty);
 
             if (string.IsNullOrWhiteSpace(ogImage))
             {
