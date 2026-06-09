@@ -1,4 +1,4 @@
-using FreedomBlaze.Models;
+using FreedomBlaze.Client.Models;
 using FreedomBlaze.Services;
 using Microsoft.AspNetCore.Mvc;
 

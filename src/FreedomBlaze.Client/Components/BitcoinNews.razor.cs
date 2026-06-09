@@ -1,6 +1,6 @@
 using FreedomBlaze.Client.Helpers;
 using FreedomBlaze.Client.Interfaces;
-using FreedomBlaze.Models;
+using FreedomBlaze.Client.Models;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
@@ -14,7 +14,7 @@ public partial class BitcoinNews
     /// <summary>How far back the date filter is allowed to go.</summary>
     private static readonly int MaxHistoryDays = 30;
 
-    [Inject] private IBitcoinNewsApi NewsApi { get; set; } = default!;
+    [Inject] private IBitcoinNewsApiService NewsApi { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
 
     private readonly DateTime _maxDate = DateTime.Today;

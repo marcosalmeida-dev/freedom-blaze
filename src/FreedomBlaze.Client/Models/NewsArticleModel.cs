@@ -1,4 +1,4 @@
-﻿namespace FreedomBlaze.Models;
+﻿namespace FreedomBlaze.Client.Models;
 
 public class NewsArticleModel
 {

@@ -1,4 +1,4 @@
-using FreedomBlaze.Models;
+using FreedomBlaze.Client.Models;
 
 namespace FreedomBlaze.Interfaces;
 
@@ -7,7 +7,7 @@ namespace FreedomBlaze.Interfaces;
 /// Open Graph (<c>og:image</c>) metadata. Articles that already carry a thumbnail are left
 /// untouched; any that can't be resolved fall back to a bundled default image.
 /// </summary>
-public interface IArticleThumbnailResolver
+public interface IArticleThumbnailHelper
 {
     /// <summary>
     /// Fills in <see cref="NewsArticleModel.NewsThumbImg"/> for every article that lacks one. Runs

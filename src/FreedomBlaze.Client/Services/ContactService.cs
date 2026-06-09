@@ -1,5 +1,5 @@
 using System.Net.Http.Json;
-using FreedomBlaze.Models;
+using FreedomBlaze.Client.Models;
 
 namespace FreedomBlaze.Client.Services;
 

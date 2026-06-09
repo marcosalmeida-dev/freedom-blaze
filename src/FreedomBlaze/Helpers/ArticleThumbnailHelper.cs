@@ -1,12 +1,12 @@
+using FreedomBlaze.Client.Models;
 using FreedomBlaze.Interfaces;
-using FreedomBlaze.Models;
 using HtmlAgilityPack;
 
-namespace FreedomBlaze.Services;
+namespace FreedomBlaze.Helpers;
 
-/// <inheritdoc cref="IArticleThumbnailResolver"/>
-public class ArticleThumbnailResolver(IHttpClientFactory httpClientFactory, ILogger<ArticleThumbnailResolver> logger)
-    : IArticleThumbnailResolver
+/// <inheritdoc cref="Interfaces.IArticleThumbnailHelper"/>
+public class ArticleThumbnailHelper(IHttpClientFactory httpClientFactory, ILogger<ArticleThumbnailHelper> logger)
+    : Interfaces.IArticleThumbnailHelper
 {
     /// <summary>Named <see cref="HttpClient"/> configured (in <c>Program.cs</c>) for scraping article pages.</summary>
     public const string HttpClientName = "ArticleImageScraper";

@@ -1,7 +1,7 @@
+using FreedomBlaze.Client.Models;
 using FreedomBlaze.Data.Entities;
-using FreedomBlaze.Models;
 
-namespace FreedomBlaze.Data;
+namespace FreedomBlaze.Data.Mappings;
 
 /// <summary>
 /// Maps between the persistence entity (<see cref="NewsArticle"/>) and the wire/UI DTO

@@ -1,14 +1,14 @@
 using System.Net.Http.Json;
 using FreedomBlaze.Client.Interfaces;
-using FreedomBlaze.Models;
+using FreedomBlaze.Client.Models;
 
 namespace FreedomBlaze.Client.Services;
 
 /// <summary>
-/// WebAssembly-side <see cref="IBitcoinNewsApi"/> implementation: reads Bitcoin news from the
+/// WebAssembly-side <see cref="IBitcoinNewsApiService"/> implementation: reads Bitcoin news from the
 /// server API over HTTP (against the browser origin).
 /// </summary>
-public class BitcoinNewsApiClient(HttpClient httpClient) : IBitcoinNewsApi
+public class BitcoinNewsApiService(HttpClient httpClient) : IBitcoinNewsApiService
 {
     /// <summary>Gets the Bitcoin news for the given date (served from the server-side daily cache/store).</summary>
     public async Task<List<NewsArticleModel>> GetNewsAsync(DateOnly date, CancellationToken cancellationToken = default)

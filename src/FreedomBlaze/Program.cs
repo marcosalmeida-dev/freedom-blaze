@@ -8,6 +8,7 @@ using FreedomBlaze.Clients.CurrencyExchanges;
 using FreedomBlaze.Components;
 using FreedomBlaze.Data;
 using FreedomBlaze.Data.Repositories;
+using FreedomBlaze.Helpers;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
 using FreedomBlaze.Options;
@@ -109,7 +110,7 @@ if (!string.IsNullOrWhiteSpace(openAiApiKey))
 }
 
 // HttpClient dedicated to scraping article thumbnails (headers configured once, never mutated).
-builder.Services.AddHttpClient(ArticleThumbnailResolver.HttpClientName, c =>
+builder.Services.AddHttpClient(FreedomBlaze.Helpers.ArticleThumbnailHelper.HttpClientName, c =>
 {
     c.Timeout = TimeSpan.FromSeconds(8);
     c.DefaultRequestHeaders.UserAgent.ParseAdd(
@@ -140,14 +141,14 @@ builder.Services.AddDbContextFactory<FreedomBlazeDbContext>(options =>
 builder.Services.AddSingleton(typeof(IRepository<>), typeof(EfRepository<>));
 
 builder.Services.AddSingleton<INewsStore, NewsStore>();
-builder.Services.AddSingleton<IArticleThumbnailResolver, ArticleThumbnailResolver>();
+builder.Services.AddSingleton<IArticleThumbnailHelper, ArticleThumbnailHelper>();
 
 builder.Services.AddSingleton<OpenAiNewsClient>();
 builder.Services.AddScoped<BitcoinNewsService>();
 
 // Server-side rendering (prerender / InteractiveServer) resolves the news service directly, so it
 // runs in-process with no loopback HTTP request to the app's own API.
-builder.Services.AddScoped<IBitcoinNewsApi>(sp => sp.GetRequiredService<BitcoinNewsService>());
+builder.Services.AddScoped<IBitcoinNewsApiService>(sp => sp.GetRequiredService<BitcoinNewsService>());
 
 builder.Services.AddControllers();
 

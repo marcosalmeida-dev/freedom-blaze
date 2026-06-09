@@ -1,8 +1,8 @@
 using FreedomBlaze.Client.Interfaces;
+using FreedomBlaze.Client.Models;
 using FreedomBlaze.Clients;
 using FreedomBlaze.Constants;
 using FreedomBlaze.Interfaces;
-using FreedomBlaze.Models;
 using FreedomBlaze.Options;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -11,24 +11,24 @@ namespace FreedomBlaze.Services;
 
 /// <summary>
 /// Orchestrates Bitcoin news delivery and is the server-side implementation of
-/// <see cref="IBitcoinNewsApi"/>: when the news component renders on the server it resolves this
+/// <see cref="IBitcoinNewsApiService"/>: when the news component renders on the server it resolves this
 /// directly (no loopback HTTP), and in WebAssembly it resolves <c>BitcoinNewsApiClient</c> instead.
 /// <para>
 /// For a given day it serves the in-memory cache or the database (<see cref="INewsStore"/>) when
 /// available, and otherwise triggers a live web-search generation via <see cref="OpenAiNewsClient"/>.
 /// Every generated set — whether produced on first request or by an explicit refresh — is persisted
 /// so it survives restarts and populates the date filter. Thumbnails are resolved best-effort by
-/// <see cref="IArticleThumbnailResolver"/>.
+/// <see cref="IArticleThumbnailHelper"/>.
 /// </para>
 /// </summary>
 public class BitcoinNewsService(
     OpenAiNewsClient newsClient,
     INewsStore newsStore,
-    IArticleThumbnailResolver thumbnailResolver,
+    IArticleThumbnailHelper thumbnailResolver,
     IMemoryCache cache,
     TimeProvider timeProvider,
     IOptions<OpenAiOptions> options,
-    ILogger<BitcoinNewsService> logger) : IBitcoinNewsApi
+    ILogger<BitcoinNewsService> logger) : IBitcoinNewsApiService
 {
     private readonly OpenAiOptions _options = options.Value;
 

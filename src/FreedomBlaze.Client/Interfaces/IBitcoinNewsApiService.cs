@@ -1,4 +1,4 @@
-using FreedomBlaze.Models;
+using FreedomBlaze.Client.Models;
 
 namespace FreedomBlaze.Client.Interfaces;
 
@@ -7,7 +7,7 @@ namespace FreedomBlaze.Client.Interfaces;
 /// both render modes: on the server it is backed by a direct service call (no loopback HTTP),
 /// and in WebAssembly by an HTTP call to the server API.
 /// </summary>
-public interface IBitcoinNewsApi
+public interface IBitcoinNewsApiService
 {
     Task<List<NewsArticleModel>> GetNewsAsync(DateOnly date, CancellationToken cancellationToken = default);
 

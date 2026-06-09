@@ -1,7 +1,8 @@
+using FreedomBlaze.Client.Models;
 using FreedomBlaze.Data;
 using FreedomBlaze.Data.Entities;
+using FreedomBlaze.Data.Mappings;
 using FreedomBlaze.Interfaces;
-using FreedomBlaze.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace FreedomBlaze.Services;

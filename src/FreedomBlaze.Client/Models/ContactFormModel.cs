@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace FreedomBlaze.Models;
+namespace FreedomBlaze.Client.Models;
 
 /// <summary>
 /// Contact form payload shared by the Blazor UI (<c>Contact.razor</c>) and the server endpoint

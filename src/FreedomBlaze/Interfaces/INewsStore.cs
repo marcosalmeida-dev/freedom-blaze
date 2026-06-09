@@ -1,4 +1,4 @@
-using FreedomBlaze.Models;
+using FreedomBlaze.Client.Models;
 
 namespace FreedomBlaze.Interfaces;
 
