@@ -6,6 +6,8 @@ using FreedomBlaze;
 using FreedomBlaze.Client.Services;
 using FreedomBlaze.Components;
 using FreedomBlaze.Configuration;
+using FreedomBlaze.Data;
+using FreedomBlaze.Data.Repositories;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
 using FreedomBlaze.Options;
@@ -15,6 +17,7 @@ using FreedomBlaze.WebClients;
 using FreedomBlaze.WebClients.BitcoinExchanges;
 using FreedomBlaze.WebClients.CurrencyExchanges;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using OpenAI;
 using Phoenixd.NET;
@@ -118,34 +121,51 @@ builder.Services.AddHttpClient(BitcoinNewsService.ImageScraperHttpClient, c =>
     c.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
 });
 
-// News persistence backend. Defaults to local JSON files; set "NewsStorage:Provider" (e.g. the
-// env var NewsStorage__Provider=AzureBlob) to use Azure Blob Storage instead.
+// News persistence backend. Defaults to a local SQLite database; set "NewsStorage:Provider"
+// (e.g. NewsStorage__Provider=LocalFile or =AzureBlob) to switch backends.
 builder.Services.Configure<NewsStorageOptions>(builder.Configuration.GetSection(NewsStorageOptions.Section));
-var newsStorageProvider = builder.Configuration.GetValue(
-    $"{NewsStorageOptions.Section}:Provider", NewsStorageProvider.LocalFile);
+var newsStorageOptions = builder.Configuration.GetSection(NewsStorageOptions.Section).Get<NewsStorageOptions>()
+    ?? new NewsStorageOptions();
 
-if (newsStorageProvider == NewsStorageProvider.AzureBlob)
+switch (newsStorageOptions.Provider)
 {
-    var blobOptions = builder.Configuration.GetSection("BlobStorage").Get<BlobStorageOptions>();
-    if (string.IsNullOrWhiteSpace(blobOptions?.AccountName))
-    {
-        throw new InvalidOperationException(
-            "NewsStorage:Provider is 'AzureBlob' but 'BlobStorage:AccountName' is not configured.");
-    }
+    case NewsStorageProvider.AzureBlob:
+        var blobOptions = builder.Configuration.GetSection("BlobStorage").Get<BlobStorageOptions>();
+        if (string.IsNullOrWhiteSpace(blobOptions?.AccountName))
+        {
+            throw new InvalidOperationException(
+                "NewsStorage:Provider is 'AzureBlob' but 'BlobStorage:AccountName' is not configured.");
+        }
 
-    builder.Services.AddSingleton(_ =>
-    {
-        var endpoint = new Uri($"https://{blobOptions.AccountName}.blob.core.windows.net");
-        return string.IsNullOrWhiteSpace(blobOptions.AccessKey)
-            ? new BlobServiceClient(endpoint, new DefaultAzureCredential())
-            : new BlobServiceClient(endpoint, new StorageSharedKeyCredential(blobOptions.AccountName, blobOptions.AccessKey));
-    });
-    builder.Services.AddSingleton<BlobStorageService>();
-    builder.Services.AddSingleton<INewsStore, BlobNewsStore>();
-}
-else
-{
-    builder.Services.AddSingleton<INewsStore, LocalFileNewsStore>();
+        builder.Services.AddSingleton(_ =>
+        {
+            var endpoint = new Uri($"https://{blobOptions.AccountName}.blob.core.windows.net");
+            return string.IsNullOrWhiteSpace(blobOptions.AccessKey)
+                ? new BlobServiceClient(endpoint, new DefaultAzureCredential())
+                : new BlobServiceClient(endpoint, new StorageSharedKeyCredential(blobOptions.AccountName, blobOptions.AccessKey));
+        });
+        builder.Services.AddSingleton<BlobStorageService>();
+        builder.Services.AddSingleton<INewsStore, BlobNewsStore>();
+        break;
+
+    case NewsStorageProvider.LocalFile:
+        builder.Services.AddSingleton<INewsStore, LocalFileNewsStore>();
+        break;
+
+    default: // Sqlite
+        var dbPath = Path.IsPathRooted(newsStorageOptions.SqlitePath)
+            ? newsStorageOptions.SqlitePath
+            : Path.Combine(builder.Environment.ContentRootPath, newsStorageOptions.SqlitePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+
+        builder.Services.AddDbContextFactory<FreedomBlazeDbContext>(options => options.UseSqlite($"Data Source={dbPath}"));
+
+        // Generic repository over any entity in the database (backed by the context factory, so it
+        // is safe to use from any Blazor render mode).
+        builder.Services.AddSingleton(typeof(IRepository<>), typeof(EfRepository<>));
+
+        builder.Services.AddSingleton<INewsStore, SqliteNewsStore>();
+        break;
 }
 
 builder.Services.AddSingleton<OpenAiNewsClient>();
@@ -182,6 +202,16 @@ builder.Services.AddHttpContextAccessor();
 builder.AddServiceDefaults();
 
 var app = builder.Build();
+
+// Create the SQLite schema on first run. EnsureCreated suits a disposable local cache; switch to
+// migrations if the news schema ever needs to evolve in place.
+if (newsStorageOptions.Provider == NewsStorageProvider.Sqlite)
+{
+    await using var startupScope = app.Services.CreateAsyncScope();
+    var dbFactory = startupScope.ServiceProvider.GetRequiredService<IDbContextFactory<FreedomBlazeDbContext>>();
+    await using var db = await dbFactory.CreateDbContextAsync();
+    await db.Database.EnsureCreatedAsync();
+}
 
 app.MapDefaultEndpoints();
 

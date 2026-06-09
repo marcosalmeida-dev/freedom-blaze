@@ -34,4 +34,10 @@ public class BitcoinNewsApiClient : IBitcoinNewsApi
         var result = await response.Content.ReadFromJsonAsync<List<NewsArticleModel>>(cancellationToken);
         return result ?? [];
     }
+
+    public async Task<List<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await _httpClient.GetFromJsonAsync<List<DateOnly>>("api/bitcoin-news/dates", cancellationToken);
+        return result ?? [];
+    }
 }

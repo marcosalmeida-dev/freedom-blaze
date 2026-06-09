@@ -28,6 +28,27 @@
     --bs-nav-link-hover-color: var(--mud-palette-primary-darken) !important;
 }
 
+/* Accessibility: keyboard "skip to main content" link, visible only when focused */
+.skip-to-content {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 2100;
+    padding: 8px 16px;
+    background-color: var(--mud-palette-primary, #f7931a);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0 0 6px 0;
+}
+
+.skip-to-content:focus,
+.skip-to-content:focus-visible {
+    left: 0;
+    outline: 2px solid #fff;
+    outline-offset: -4px;
+}
+
 /* Dark mode preload - prevents FOUC when dark mode is saved in cookie */
 html.dark-mode-preload {
     background-color: #1a1a27;

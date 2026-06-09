@@ -27,8 +27,65 @@
             <tr><td>100,000,000 Satoshi</td><td>1.00000000 BTC</td><td>1 Bitcoin (BTC)</td></tr>
         </tbody>
     </MudSimpleTable>
+
+    <MudText Typo="Typo.subtitle1" Class="mt-6 mb-3 d-flex align-center">
+        <MudIcon Icon="@Icons.Material.Filled.QuestionAnswer" Class="mr-2" Color="Color.Primary" />
+        Frequently Asked Questions
+    </MudText>
+
+    <section aria-label="Frequently asked questions about Bitcoin and Satoshis">
+        @foreach (var faq in Faqs)
+        {
+            <div class="mb-3">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">@faq.Question</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@faq.Answer</MudText>
+            </div>
+        }
+    </section>
 </div>
 
+@* FAQPage structured data — generated from the same source as the list above so the two never drift,
+   making these answers eligible for FAQ rich results in search engines. *@
+@FaqStructuredData
+
 @code {
-    
+    private sealed record Faq(string Question, string Answer);
+
+    private static readonly Faq[] Faqs =
+    [
+        new("What is a Satoshi (sat)?",
+            "A Satoshi, or “sat”, is the smallest unit of Bitcoin. One Satoshi equals 0.00000001 BTC, and 100,000,000 Satoshis make up a single Bitcoin. It is named after Bitcoin's pseudonymous creator, Satoshi Nakamoto."),
+        new("How many Satoshis are in one Bitcoin?",
+            "There are exactly 100,000,000 (one hundred million) Satoshis in one Bitcoin (BTC)."),
+        new("How do I convert Satoshis to my local currency?",
+            "Enter an amount in the converter above and Freedom Blaze instantly shows its value in your selected currency using live exchange rates — and the other way around. Switch currencies from the selector in the top bar."),
+        new("Why do Bitcoin prices differ slightly between exchanges?",
+            "Each exchange keeps its own order book and liquidity, so prices vary moment to moment. Freedom Blaze aggregates rates from six providers — Blockchain.info, Bitstamp, CoinGecko, Coinbase, Gemini and Coingate — for a reliable, blended price."),
+        new("Is the Freedom Blaze Sats converter free to use?",
+            "Yes. The converter, live exchange rates and Bitcoin news are completely free, with no sign-up or account required."),
+    ];
+
+    private MarkupString FaqStructuredData => (MarkupString)BuildFaqJsonLd();
+
+    private static string BuildFaqJsonLd()
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["@context"] = "https://schema.org",
+            ["@type"] = "FAQPage",
+            ["mainEntity"] = Faqs.Select(f => new Dictionary<string, object?>
+            {
+                ["@type"] = "Question",
+                ["name"] = f.Question,
+                ["acceptedAnswer"] = new Dictionary<string, object?>
+                {
+                    ["@type"] = "Answer",
+                    ["text"] = f.Answer
+                }
+            }).ToArray()
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(payload);
+        return $"<script type=\"application/ld+json\">{json}</script>";
+    }
 }

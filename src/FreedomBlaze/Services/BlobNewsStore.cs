@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using FreedomBlaze.Models;
 
@@ -36,7 +37,7 @@ public class BlobNewsStore : INewsStore
         }
     }
 
-    public async Task SaveAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, CancellationToken cancellationToken = default)
+    public async Task SaveAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, string? model = null, CancellationToken cancellationToken = default)
     {
         if (articles.Count == 0)
         {
@@ -51,6 +52,33 @@ public class BlobNewsStore : INewsStore
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to persist Bitcoin news to blob storage for {Date}.", date);
+        }
+    }
+
+    public async Task<IReadOnlyList<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var names = await _blobStorage.ListBlobNamesAsync(ContainerName, cancellationToken);
+
+            var dates = new List<DateOnly>();
+            foreach (var name in names)
+            {
+                var stem = Path.GetFileNameWithoutExtension(name);
+                if (DateOnly.TryParseExact(stem, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+                {
+                    dates.Add(date);
+                }
+            }
+
+            dates.Sort();
+            dates.Reverse();
+            return dates;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to list Bitcoin news dates from blob storage.");
+            return [];
         }
     }
 }

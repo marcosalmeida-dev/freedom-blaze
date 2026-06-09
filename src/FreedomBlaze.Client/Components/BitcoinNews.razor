@@ -1,7 +1,9 @@
 @page "/bitcoinnews"
 @rendermode InteractiveAuto
 
-<PageTitle>Bitcoin News</PageTitle>
+<PageSeo Title="Bitcoin News — Daily Headlines from Around the World | Freedom Blaze"
+         Description="Stay current with daily Bitcoin news headlines from around the world, refreshed every day and browsable by date."
+         RelativePath="bitcoinnews" OgType="article" />
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween"
@@ -17,7 +19,7 @@
                the calendar as a centered modal, so it is never clipped on mobile or desktop. *@
             <div style="width: 200px; max-width: 100%;">
                 <MudDatePicker Date="_selectedDate" DateChanged="OnDateChangedAsync"
-                               MinDate="_minDate" MaxDate="_maxDate"
+                               MinDate="_minDate" MaxDate="_maxDate" IsDateDisabledFunc="IsDateDisabled"
                                PickerVariant="PickerVariant.Dialog"
                                Label="Date" Variant="Variant.Outlined" Margin="Margin.Dense"
                                DateFormat="MMM d, yyyy" Editable="true" Disabled="_loading" />

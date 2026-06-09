@@ -33,4 +33,12 @@ public class BitcoinNewsController : ControllerBase
         var news = await _newsService.RefreshNewsForDateAsync(date ?? _newsService.Today, cancellationToken);
         return Ok(news);
     }
+
+    /// <summary>Returns the dates that already have a saved news set (drives the date filter).</summary>
+    [HttpGet("dates")]
+    public async Task<ActionResult<IReadOnlyList<DateOnly>>> GetAvailableDates(CancellationToken cancellationToken)
+    {
+        var dates = await _newsService.GetAvailableDatesAsync(cancellationToken);
+        return Ok(dates);
+    }
 }

@@ -15,6 +15,7 @@
     Position="DialogPosition.Center" />
 
 <MudLayout>
+    <a href="#main-content" class="skip-to-content">Skip to main content</a>
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" aria-label="Toggle navigation menu" />
         <MudImage Src="/img/freedom-blaze-logo-3-4-small.png" Class="app-icon" Alt="Freedom Blaze logo" Height="40" Width="30" />
@@ -56,7 +57,7 @@
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Temporary">
         <NavMenu />
     </MudDrawer>
-    <MudMainContent>
+    <MudMainContent id="main-content">
         <MudContainer>
             <ErrorBoundary>
                 <ChildContent>@Body</ChildContent>

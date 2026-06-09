@@ -57,6 +57,10 @@ public class BitcoinNewsService
     /// <summary>The current date in the app's local time zone.</summary>
     public DateOnly Today => DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime);
 
+    /// <summary>The dates that already have a saved news set (most recent first).</summary>
+    public Task<IReadOnlyList<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default)
+        => _newsStore.GetAvailableDatesAsync(cancellationToken);
+
     /// <summary>Convenience wrapper for <see cref="GetNewsForDateAsync"/> with today's date.</summary>
     public Task<IReadOnlyList<NewsArticleModel>> GetTodayBitcoinNewsAsync(CancellationToken cancellationToken = default)
         => GetNewsForDateAsync(Today, cancellationToken);
@@ -151,7 +155,7 @@ public class BitcoinNewsService
         await ResolveThumbnailsAsync(articles, generationToken);
 
         _cache.Set(cacheKey, articles, _options.CacheDuration);
-        await _newsStore.SaveAsync(date, articles, generationToken);
+        await _newsStore.SaveAsync(date, articles, _options.Model, generationToken);
 
         return articles;
     }

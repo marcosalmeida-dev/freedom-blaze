@@ -12,7 +12,11 @@ public interface INewsStore
 {
     Task<List<NewsArticleModel>?> LoadAsync(DateOnly date, CancellationToken cancellationToken = default);
 
-    Task SaveAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, CancellationToken cancellationToken = default);
+    /// <param name="model">The AI model that produced the set, recorded as metadata where supported.</param>
+    Task SaveAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, string? model = null, CancellationToken cancellationToken = default);
+
+    /// <summary>The dates that currently have a saved news set, most recent first.</summary>
+    Task<IReadOnlyList<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>Shared serialization and naming conventions for <see cref="INewsStore"/> backends.</summary>

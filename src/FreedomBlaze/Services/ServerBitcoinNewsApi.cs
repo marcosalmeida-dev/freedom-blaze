@@ -29,4 +29,10 @@ public class ServerBitcoinNewsApi : IBitcoinNewsApi
         var news = await _newsService.RefreshNewsForDateAsync(date, cancellationToken);
         return [.. news];
     }
+
+    public async Task<List<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default)
+    {
+        var dates = await _newsService.GetAvailableDatesAsync(cancellationToken);
+        return [.. dates];
+    }
 }

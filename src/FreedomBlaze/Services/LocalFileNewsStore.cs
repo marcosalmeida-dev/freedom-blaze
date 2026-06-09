@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using FreedomBlaze.Models;
 using FreedomBlaze.Options;
@@ -45,7 +46,7 @@ public class LocalFileNewsStore : INewsStore
         }
     }
 
-    public async Task SaveAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, CancellationToken cancellationToken = default)
+    public async Task SaveAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, string? model = null, CancellationToken cancellationToken = default)
     {
         if (articles.Count == 0)
         {
@@ -64,5 +65,27 @@ public class LocalFileNewsStore : INewsStore
         {
             _logger.LogWarning(ex, "Failed to write local news file for {Date}.", date);
         }
+    }
+
+    public Task<IReadOnlyList<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default)
+    {
+        if (!Directory.Exists(_directory))
+        {
+            return Task.FromResult<IReadOnlyList<DateOnly>>([]);
+        }
+
+        var dates = new List<DateOnly>();
+        foreach (var file in Directory.EnumerateFiles(_directory, "*.json"))
+        {
+            var name = Path.GetFileNameWithoutExtension(file);
+            if (DateOnly.TryParseExact(name, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+            {
+                dates.Add(date);
+            }
+        }
+
+        dates.Sort();
+        dates.Reverse();
+        return Task.FromResult<IReadOnlyList<DateOnly>>(dates);
     }
 }

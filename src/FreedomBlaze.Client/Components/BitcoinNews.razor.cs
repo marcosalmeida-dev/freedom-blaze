@@ -22,10 +22,12 @@ public partial class BitcoinNews
 
     private DateTime? _selectedDate = DateTime.Today;
     private List<NewsArticleModel> _articles = [];
+    private HashSet<DateOnly> _availableDates = [];
     private bool _loading;
 
+    private static DateOnly TodayDate => DateOnly.FromDateTime(DateTime.Today);
     private DateOnly SelectedDate => DateOnly.FromDateTime(_selectedDate ?? DateTime.Today);
-    private bool IsToday => SelectedDate == DateOnly.FromDateTime(DateTime.Today);
+    private bool IsToday => SelectedDate == TodayDate;
 
     protected override async Task OnInitializedAsync()
     {
@@ -34,6 +36,7 @@ public partial class BitcoinNews
         // web-search generation and prevents a double fetch.
         if (RendererInfo.IsInteractive)
         {
+            await LoadAvailableDatesAsync();
             await LoadAsync();
         }
         else
@@ -63,6 +66,9 @@ public partial class BitcoinNews
         {
             _loading = true;
             _articles = await action(CancellationToken.None);
+
+            // A generation may have produced a new day; keep the selectable dates in sync.
+            await LoadAvailableDatesAsync();
         }
         catch
         {
@@ -73,5 +79,26 @@ public partial class BitcoinNews
         {
             _loading = false;
         }
+    }
+
+    private async Task LoadAvailableDatesAsync()
+    {
+        try
+        {
+            var dates = await NewsApi.GetAvailableDatesAsync(CancellationToken.None);
+            _availableDates = [.. dates];
+        }
+        catch
+        {
+            // Non-fatal: the picker simply falls back to allowing only today.
+        }
+    }
+
+    // Only today (so fresh news can always be fetched) and days that already have saved news
+    // are selectable; everything else is disabled.
+    private bool IsDateDisabled(DateTime date)
+    {
+        var day = DateOnly.FromDateTime(date);
+        return day != TodayDate && !_availableDates.Contains(day);
     }
 }

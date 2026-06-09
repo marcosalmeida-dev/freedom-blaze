@@ -68,4 +68,17 @@ public class BlobStorageService
         var blobClient = containerClient.GetBlobClient(blobName);
         return await blobClient.ExistsAsync();
     }
+
+    public async Task<List<string>> ListBlobNamesAsync(string containerName, CancellationToken cancellationToken = default)
+    {
+        var containerClient = await GetContainerAsync(containerName);
+
+        var names = new List<string>();
+        await foreach (var blob in containerClient.GetBlobsAsync(cancellationToken: cancellationToken))
+        {
+            names.Add(blob.Name);
+        }
+
+        return names;
+    }
 }

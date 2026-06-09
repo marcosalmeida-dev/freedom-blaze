@@ -1,0 +1,51 @@
+@*
+    Centralizes per-page SEO metadata so every route emits a consistent, crawler-friendly head:
+    a descriptive <title>, a unique meta description, a self-referencing canonical link, and
+    Open Graph / Twitter Card tags for rich link previews. Lives in the shared Client project so
+    both server-rendered pages and WebAssembly pages can reuse it.
+*@
+@inject NavigationManager Nav
+
+<PageTitle>@Title</PageTitle>
+
+<HeadContent>
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <meta name="description" content="@Description" />
+        <meta property="og:description" content="@Description" />
+        <meta name="twitter:description" content="@Description" />
+    }
+    <link rel="canonical" href="@CanonicalUrl" />
+    <meta property="og:title" content="@Title" />
+    <meta property="og:type" content="@OgType" />
+    <meta property="og:url" content="@CanonicalUrl" />
+    <meta name="twitter:title" content="@Title" />
+    @if (NoIndex)
+    {
+        <meta name="robots" content="noindex, nofollow" />
+    }
+</HeadContent>
+
+@code {
+    /// <summary>The full document title shown in the browser tab and used for OG/Twitter titles.</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = default!;
+
+    /// <summary>A unique, ~150-character summary of the page for search snippets and social previews.</summary>
+    [Parameter] public string? Description { get; set; }
+
+    /// <summary>Path of this route relative to the site root (e.g. "satsconverter"). Null/empty = home.</summary>
+    [Parameter] public string? RelativePath { get; set; }
+
+    /// <summary>Open Graph object type. "website" for tools/landing pages, "article" for content.</summary>
+    [Parameter] public string OgType { get; set; } = "website";
+
+    /// <summary>When true, asks crawlers not to index the page (e.g. error pages).</summary>
+    [Parameter] public bool NoIndex { get; set; }
+
+    // Build an absolute, query-string-free canonical URL from the request's own base address, so it
+    // stays correct across environments (localhost, staging, production) without hard-coded domains.
+    private string CanonicalUrl =>
+        string.IsNullOrWhiteSpace(RelativePath)
+            ? Nav.BaseUri
+            : new Uri(new Uri(Nav.BaseUri), RelativePath.TrimStart('/')).ToString();
+}

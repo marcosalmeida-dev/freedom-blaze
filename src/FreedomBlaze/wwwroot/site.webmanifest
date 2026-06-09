@@ -1,0 +1,29 @@
+{
+  "name": "Freedom Blaze — Bitcoin Sats Converter",
+  "short_name": "Freedom Blaze",
+  "description": "Real-time Bitcoin Satoshi (Sats) converter with multi-currency support, live exchange rates and daily Bitcoin news.",
+  "id": "/",
+  "start_url": "/satsconverter",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#13131a",
+  "theme_color": "#f7931a",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["finance", "utilities", "news"],
+  "icons": [
+    {
+      "src": "/img/bitcoin.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/freedom-blaze-logo.png",
+      "sizes": "726x726",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

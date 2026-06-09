@@ -12,4 +12,7 @@ public interface IBitcoinNewsApi
     Task<List<NewsArticleModel>> GetNewsAsync(DateOnly date, CancellationToken cancellationToken = default);
 
     Task<List<NewsArticleModel>> RefreshNewsAsync(DateOnly date, CancellationToken cancellationToken = default);
+
+    /// <summary>The dates that already have saved news (drives the date filter), most recent first.</summary>
+    Task<List<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default);
 }
