@@ -3,7 +3,7 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-# Locally generated Bitcoin news cache (LocalFileNewsStore)
+# Local dev data (e.g. legacy SQLite database files)
 App_Data/
 
 # docker-compose secrets (keep .env.example tracked)

@@ -1,30 +1,25 @@
 using FreedomBlaze.Constants;
 using FreedomBlaze.Models;
 using FreedomBlaze.Options;
-using HtmlAgilityPack;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace FreedomBlaze.Services;
 
 /// <summary>
-/// Orchestrates Bitcoin news delivery: serves a cached daily set when possible and otherwise
-/// triggers a live web-search generation via <see cref="OpenAiNewsClient"/>. Generated sets are
-/// cached in memory and persisted through the configured <see cref="INewsStore"/> (local files by
-/// default, optionally Azure Blob) so they survive restarts. Article thumbnails are resolved
-/// best-effort from each source's Open Graph image.
+/// Orchestrates Bitcoin news delivery. For a given day it serves the in-memory cache or the
+/// database (<see cref="INewsStore"/>) when available, and otherwise triggers a live web-search
+/// generation via <see cref="OpenAiNewsClient"/>. Every generated set — whether produced on first
+/// request or by an explicit refresh — is persisted to the database so it survives restarts and
+/// populates the date filter. Thumbnails are resolved best-effort by
+/// <see cref="IArticleThumbnailResolver"/>.
 /// </summary>
 public class BitcoinNewsService
 {
-    /// <summary>Named <see cref="HttpClient"/> used to scrape article thumbnails.</summary>
-    public const string ImageScraperHttpClient = "ArticleImageScraper";
-
-    private const string DefaultImagePath = "img/articles/default-img.png";
-
     private readonly OpenAiNewsClient _newsClient;
     private readonly INewsStore _newsStore;
+    private readonly IArticleThumbnailResolver _thumbnailResolver;
     private readonly IMemoryCache _cache;
-    private readonly IHttpClientFactory _httpClientFactory;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<BitcoinNewsService> _logger;
     private readonly OpenAiOptions _options;
@@ -39,16 +34,16 @@ public class BitcoinNewsService
     public BitcoinNewsService(
         OpenAiNewsClient newsClient,
         INewsStore newsStore,
+        IArticleThumbnailResolver thumbnailResolver,
         IMemoryCache cache,
-        IHttpClientFactory httpClientFactory,
         TimeProvider timeProvider,
         IOptions<OpenAiOptions> options,
         ILogger<BitcoinNewsService> logger)
     {
         _newsClient = newsClient;
         _newsStore = newsStore;
+        _thumbnailResolver = thumbnailResolver;
         _cache = cache;
-        _httpClientFactory = httpClientFactory;
         _timeProvider = timeProvider;
         _options = options.Value;
         _logger = logger;
@@ -67,24 +62,19 @@ public class BitcoinNewsService
 
     /// <summary>
     /// Returns the Bitcoin news set for <paramref name="date"/>. It is served from the in-memory
-    /// cache or the persistent store whenever available; a (paid) web-search call is made only when
-    /// neither the cache nor the store already has that day's set.
+    /// cache or the database whenever available; a (paid) web-search call is made only when neither
+    /// already has that day's set.
     /// </summary>
     public async Task<IReadOnlyList<NewsArticleModel>> GetNewsForDateAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
         date = ClampToToday(date);
         var cacheKey = CacheKeys.BitcoinNews(date);
 
-        if (TryGetCached(cacheKey, out var cached))
+        // Fast path: cache or database, no lock.
+        var existing = await TryGetExistingAsync(date, cacheKey, cancellationToken);
+        if (existing is not null)
         {
-            return cached;
-        }
-
-        var stored = await _newsStore.LoadAsync(date, cancellationToken);
-        if (stored is { Count: > 0 })
-        {
-            _cache.Set(cacheKey, stored, _options.CacheDuration);
-            return stored;
+            return existing;
         }
 
         // Wait on the gate without the request token: a waiting request whose client has
@@ -94,18 +84,12 @@ public class BitcoinNewsService
         await GenerationGate.WaitAsync(CancellationToken.None);
         try
         {
-            // Re-check both layers: another caller may have produced/persisted this day while we
-            // waited. This guarantees we never make a redundant (paid) call for an already-saved day.
-            if (TryGetCached(cacheKey, out cached))
+            // Re-check both layers under the gate: another caller may have produced and persisted
+            // this day while we waited, so we never make a redundant (paid) call for a saved day.
+            existing = await TryGetExistingAsync(date, cacheKey, CancellationToken.None);
+            if (existing is not null)
             {
-                return cached;
-            }
-
-            stored = await _newsStore.LoadAsync(date, CancellationToken.None);
-            if (stored is { Count: > 0 })
-            {
-                _cache.Set(cacheKey, stored, _options.CacheDuration);
-                return stored;
+                return existing;
             }
 
             return await GenerateAndStoreAsync(date, cacheKey);
@@ -141,7 +125,34 @@ public class BitcoinNewsService
         return date > today ? today : date;
     }
 
-    private async Task<List<NewsArticleModel>> GenerateAndStoreAsync(DateOnly date, string cacheKey)
+    /// <summary>
+    /// Returns the cached set, or the persisted set (warming the cache), or <c>null</c> when neither
+    /// has news for the day. Shared by the lock-free fast path and the post-gate re-check.
+    /// </summary>
+    private async Task<IReadOnlyList<NewsArticleModel>?> TryGetExistingAsync(DateOnly date, string cacheKey, CancellationToken cancellationToken)
+    {
+        if (_cache.TryGetValue(cacheKey, out List<NewsArticleModel>? cached) && cached is { Count: > 0 })
+        {
+            return cached;
+        }
+
+        var stored = await _newsStore.LoadAsync(date, cancellationToken);
+        if (stored is { Count: > 0 })
+        {
+            _cache.Set(cacheKey, stored, _options.CacheDuration);
+            return stored;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Generates a fresh set via the OpenAI web-search client, resolves thumbnails, then caches and
+    /// persists it. The result is cached <i>before</i> persisting so an expensive generation is never
+    /// lost if the database write fails. An empty result is neither cached nor saved, so the next
+    /// request retries rather than serving (and storing) nothing.
+    /// </summary>
+    private async Task<IReadOnlyList<NewsArticleModel>> GenerateAndStoreAsync(DateOnly date, string cacheKey)
     {
         // Deliberately decoupled from the inbound request's CancellationToken: this call is
         // expensive (~80s, paid) and its result is cached, so a client disconnect (navigation,
@@ -152,79 +163,17 @@ public class BitcoinNewsService
 
         var articles = await _newsClient.GetBitcoinNewsAsync(date, generationToken);
 
-        await ResolveThumbnailsAsync(articles, generationToken);
+        if (articles.Count == 0)
+        {
+            _logger.LogWarning("News generation for {Date} produced no articles; nothing cached or persisted.", date);
+            return articles;
+        }
+
+        await _thumbnailResolver.ResolveAsync(articles, generationToken);
 
         _cache.Set(cacheKey, articles, _options.CacheDuration);
         await _newsStore.SaveAsync(date, articles, _options.Model, generationToken);
 
         return articles;
-    }
-
-    private bool TryGetCached(string cacheKey, out IReadOnlyList<NewsArticleModel> cached)
-    {
-        if (_cache.TryGetValue(cacheKey, out List<NewsArticleModel>? value) && value is not null)
-        {
-            cached = value;
-            return true;
-        }
-
-        cached = [];
-        return false;
-    }
-
-    private async Task ResolveThumbnailsAsync(List<NewsArticleModel> articles, CancellationToken cancellationToken)
-    {
-        var client = _httpClientFactory.CreateClient(ImageScraperHttpClient);
-
-        await Task.WhenAll(articles
-            .Where(a => string.IsNullOrEmpty(a.NewsThumbImg))
-            .Select(async article =>
-            {
-                article.NewsThumbImg =
-                    await TryGetOpenGraphImageAsync(client, article.ArticleLinkUrl, cancellationToken)
-                    ?? DefaultImagePath;
-            }));
-    }
-
-    private async Task<string?> TryGetOpenGraphImageAsync(HttpClient client, string articleUrl, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(articleUrl) || !Uri.TryCreate(articleUrl, UriKind.Absolute, out var articleUri))
-        {
-            return null;
-        }
-
-        // Per-article timeout so one slow/blocking source can't stall the whole batch.
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(6));
-
-        try
-        {
-            var html = await client.GetStringAsync(articleUri, timeout.Token);
-
-            var document = new HtmlDocument();
-            document.LoadHtml(html);
-
-            var ogImage = document.DocumentNode
-                .SelectSingleNode("//meta[@property='og:image' or @name='og:image' or @property='twitter:image']")
-                ?.GetAttributeValue("content", string.Empty);
-
-            if (string.IsNullOrWhiteSpace(ogImage))
-            {
-                return null;
-            }
-
-            // Resolve protocol-relative or root-relative image URLs against the article URL.
-            return Uri.TryCreate(articleUri, ogImage, out var absolute) ? absolute.ToString() : null;
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
-        {
-            _logger.LogDebug(ex, "Could not fetch Open Graph image for {Url}.", articleUrl);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Unexpected error while parsing article {Url}.", articleUrl);
-            return null;
-        }
     }
 }
