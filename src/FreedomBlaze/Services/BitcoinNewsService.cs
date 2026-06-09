@@ -1,4 +1,7 @@
+using FreedomBlaze.Client.Interfaces;
+using FreedomBlaze.Clients;
 using FreedomBlaze.Constants;
+using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
 using FreedomBlaze.Options;
 using Microsoft.Extensions.Caching.Memory;
@@ -7,22 +10,27 @@ using Microsoft.Extensions.Options;
 namespace FreedomBlaze.Services;
 
 /// <summary>
-/// Orchestrates Bitcoin news delivery. For a given day it serves the in-memory cache or the
-/// database (<see cref="INewsStore"/>) when available, and otherwise triggers a live web-search
-/// generation via <see cref="OpenAiNewsClient"/>. Every generated set — whether produced on first
-/// request or by an explicit refresh — is persisted to the database so it survives restarts and
-/// populates the date filter. Thumbnails are resolved best-effort by
+/// Orchestrates Bitcoin news delivery and is the server-side implementation of
+/// <see cref="IBitcoinNewsApi"/>: when the news component renders on the server it resolves this
+/// directly (no loopback HTTP), and in WebAssembly it resolves <c>BitcoinNewsApiClient</c> instead.
+/// <para>
+/// For a given day it serves the in-memory cache or the database (<see cref="INewsStore"/>) when
+/// available, and otherwise triggers a live web-search generation via <see cref="OpenAiNewsClient"/>.
+/// Every generated set — whether produced on first request or by an explicit refresh — is persisted
+/// so it survives restarts and populates the date filter. Thumbnails are resolved best-effort by
 /// <see cref="IArticleThumbnailResolver"/>.
+/// </para>
 /// </summary>
-public class BitcoinNewsService
+public class BitcoinNewsService(
+    OpenAiNewsClient newsClient,
+    INewsStore newsStore,
+    IArticleThumbnailResolver thumbnailResolver,
+    IMemoryCache cache,
+    TimeProvider timeProvider,
+    IOptions<OpenAiOptions> options,
+    ILogger<BitcoinNewsService> logger) : IBitcoinNewsApi
 {
-    private readonly OpenAiNewsClient _newsClient;
-    private readonly INewsStore _newsStore;
-    private readonly IArticleThumbnailResolver _thumbnailResolver;
-    private readonly IMemoryCache _cache;
-    private readonly TimeProvider _timeProvider;
-    private readonly ILogger<BitcoinNewsService> _logger;
-    private readonly OpenAiOptions _options;
+    private readonly OpenAiOptions _options = options.Value;
 
     // Single-flight guard shared across (scoped) instances: only one generation runs at a time,
     // so concurrent requests await the same web-search call instead of each starting their own.
@@ -31,41 +39,19 @@ public class BitcoinNewsService
     // Upper bound for a single generation, independent of any inbound request's lifetime.
     private static readonly TimeSpan GenerationTimeout = TimeSpan.FromMinutes(4);
 
-    public BitcoinNewsService(
-        OpenAiNewsClient newsClient,
-        INewsStore newsStore,
-        IArticleThumbnailResolver thumbnailResolver,
-        IMemoryCache cache,
-        TimeProvider timeProvider,
-        IOptions<OpenAiOptions> options,
-        ILogger<BitcoinNewsService> logger)
-    {
-        _newsClient = newsClient;
-        _newsStore = newsStore;
-        _thumbnailResolver = thumbnailResolver;
-        _cache = cache;
-        _timeProvider = timeProvider;
-        _options = options.Value;
-        _logger = logger;
-    }
-
     /// <summary>The current date in the app's local time zone.</summary>
-    public DateOnly Today => DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime);
+    public DateOnly Today => DateOnly.FromDateTime(timeProvider.GetLocalNow().DateTime);
 
     /// <summary>The dates that already have a saved news set (most recent first).</summary>
-    public Task<IReadOnlyList<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default)
-        => _newsStore.GetAvailableDatesAsync(cancellationToken);
-
-    /// <summary>Convenience wrapper for <see cref="GetNewsForDateAsync"/> with today's date.</summary>
-    public Task<IReadOnlyList<NewsArticleModel>> GetTodayBitcoinNewsAsync(CancellationToken cancellationToken = default)
-        => GetNewsForDateAsync(Today, cancellationToken);
+    public async Task<List<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default)
+        => [.. await newsStore.GetAvailableDatesAsync(cancellationToken)];
 
     /// <summary>
     /// Returns the Bitcoin news set for <paramref name="date"/>. It is served from the in-memory
     /// cache or the database whenever available; a (paid) web-search call is made only when neither
     /// already has that day's set.
     /// </summary>
-    public async Task<IReadOnlyList<NewsArticleModel>> GetNewsForDateAsync(DateOnly date, CancellationToken cancellationToken = default)
+    public async Task<List<NewsArticleModel>> GetNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
         date = ClampToToday(date);
         var cacheKey = CacheKeys.BitcoinNews(date);
@@ -74,7 +60,7 @@ public class BitcoinNewsService
         var existing = await TryGetExistingAsync(date, cacheKey, cancellationToken);
         if (existing is not null)
         {
-            return existing;
+            return [.. existing];
         }
 
         // Wait on the gate without the request token: a waiting request whose client has
@@ -89,10 +75,10 @@ public class BitcoinNewsService
             existing = await TryGetExistingAsync(date, cacheKey, CancellationToken.None);
             if (existing is not null)
             {
-                return existing;
+                return [.. existing];
             }
 
-            return await GenerateAndStoreAsync(date, cacheKey);
+            return [.. await GenerateAndStoreAsync(date, cacheKey)];
         }
         finally
         {
@@ -104,14 +90,14 @@ public class BitcoinNewsService
     /// Forces a fresh web-search generation for <paramref name="date"/>, overwriting the cached and
     /// persisted set. Triggers a paid OpenAI call, so user-facing refreshes should be rate-limited.
     /// </summary>
-    public async Task<IReadOnlyList<NewsArticleModel>> RefreshNewsForDateAsync(DateOnly date, CancellationToken cancellationToken = default)
+    public async Task<List<NewsArticleModel>> RefreshNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
         date = ClampToToday(date);
 
         await GenerationGate.WaitAsync(CancellationToken.None);
         try
         {
-            return await GenerateAndStoreAsync(date, CacheKeys.BitcoinNews(date));
+            return [.. await GenerateAndStoreAsync(date, CacheKeys.BitcoinNews(date))];
         }
         finally
         {
@@ -131,15 +117,15 @@ public class BitcoinNewsService
     /// </summary>
     private async Task<IReadOnlyList<NewsArticleModel>?> TryGetExistingAsync(DateOnly date, string cacheKey, CancellationToken cancellationToken)
     {
-        if (_cache.TryGetValue(cacheKey, out List<NewsArticleModel>? cached) && cached is { Count: > 0 })
+        if (cache.TryGetValue(cacheKey, out List<NewsArticleModel>? cached) && cached is { Count: > 0 })
         {
             return cached;
         }
 
-        var stored = await _newsStore.LoadAsync(date, cancellationToken);
+        var stored = await newsStore.LoadAsync(date, cancellationToken);
         if (stored is { Count: > 0 })
         {
-            _cache.Set(cacheKey, stored, _options.CacheDuration);
+            cache.Set(cacheKey, stored, _options.CacheDuration);
             return stored;
         }
 
@@ -161,18 +147,18 @@ public class BitcoinNewsService
         using var cts = new CancellationTokenSource(GenerationTimeout);
         var generationToken = cts.Token;
 
-        var articles = await _newsClient.GetBitcoinNewsAsync(date, generationToken);
+        var articles = await newsClient.GetBitcoinNewsAsync(date, generationToken);
 
         if (articles.Count == 0)
         {
-            _logger.LogWarning("News generation for {Date} produced no articles; nothing cached or persisted.", date);
+            logger.LogWarning("News generation for {Date} produced no articles; nothing cached or persisted.", date);
             return articles;
         }
 
-        await _thumbnailResolver.ResolveAsync(articles, generationToken);
+        await thumbnailResolver.ResolveAsync(articles, generationToken);
 
-        _cache.Set(cacheKey, articles, _options.CacheDuration);
-        await _newsStore.SaveAsync(date, articles, _options.Model, generationToken);
+        cache.Set(cacheKey, articles, _options.CacheDuration);
+        await newsStore.SaveAsync(date, articles, _options.Model, generationToken);
 
         return articles;
     }

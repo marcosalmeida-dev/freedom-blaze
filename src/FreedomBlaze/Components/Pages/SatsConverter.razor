@@ -212,7 +212,7 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Resources.Localization> Localizer
 @inject IHttpContextAccessor ContextAccessor
-@inject IExchangeRateProvider ExchangeRateProvider
+@inject IExchangeRateService ExchangeRateService
 @inject CultureService CultureService
 @inject ISnackbar Snackbar
 @inject AppState AppState
@@ -294,7 +294,7 @@
         catch (OperationCanceledException) { }
     }
 
-    async Task GetExchangeRates(BitcoinExchangeRateModel bitcoinExchangeRateModel = null)
+    async Task GetExchangeRates(BitcoinExchangeRateModel? bitcoinExchangeRateModel = null)
     {
         try
         {
@@ -321,11 +321,14 @@
                     }
                 }
 
-                _bitcoinExchangeRateModel = await ExchangeRateProvider.GetExchangeRateAsync(cancellationTokenSource.Token);
+                _bitcoinExchangeRateModel = await ExchangeRateService.GetExchangeRateAsync(cancellationTokenSource.Token);
                 AppState.BitcoinExchangeRate = _bitcoinExchangeRateModel;
             }
 
-            await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName ?? "en-US", conversionType);
+            if (_bitcoinExchangeRateModel is not null)
+            {
+                await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName ?? "en-US", conversionType);
+            }
         }
         catch (Exception ex)
         {
@@ -344,11 +347,14 @@
         CurrencyList = CurrencyModel.GetCurrencyList(currencyCultureName);
 
         var currentCurrency = CurrencyList.FirstOrDefault(f => f.CultureName == currencyCultureName);
+        var currencyRates = currencyRatesResult.CurrencyExchangeRate;
+        if (currentCurrency is null || currencyRates is null)
+            return;
 
         foreach (var currency in CurrencyList)
         {
             // Update each currency's exchange rate to USD
-            currency.CurrencyRateInUSD = currencyRatesResult.CurrencyExchangeRate[currency.Value].Rate;
+            currency.CurrencyRateInUSD = currencyRates[currency.Value].Rate;
 
             // Update Bitcoin price in this currency based on its exchange rate to USD
             currency.BitcoinPrice = currency.CurrencyRateInUSD * currencyRatesResult.BitcoinRateInUSD;
@@ -394,9 +400,12 @@
 
         try
         {
-            await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName, ConversionType.CurrencyToBitcoin);
+            if (_bitcoinExchangeRateModel is null)
+                return;
 
-            await SetValueCookie(CurrencyCookieName, currencyValue?.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName ?? "en-US", ConversionType.CurrencyToBitcoin);
+
+            await SetValueCookie(CurrencyCookieName, currencyValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
             await SetValueCookie(LastConversionTypeCookieName, ConversionType.CurrencyToBitcoin.ToString());
         }
         catch (Exception ex)
@@ -428,9 +437,12 @@
 
                 currencyValue = CurrencyConverterHelper.ConvertSatsToCurrency(satsValue.Value, btcPrice.Value);
 
-                await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName, ConversionType.BitcoinToCurrency);
+                if (_bitcoinExchangeRateModel is null)
+                    return;
 
-                await SetValueCookie(SatsCookieName, satsValue?.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName ?? "en-US", ConversionType.BitcoinToCurrency);
+
+                await SetValueCookie(SatsCookieName, satsValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
                 await SetValueCookie(LastConversionTypeCookieName, ConversionType.BitcoinToCurrency.ToString());
             }
         }
@@ -456,8 +468,11 @@
         return InvokeAsync(StateHasChanged);
     }
 
-    async Task WriteTextAsync(string text)
+    async Task WriteTextAsync(string? text)
     {
+        if (string.IsNullOrEmpty(text))
+            return;
+
         try
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);

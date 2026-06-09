@@ -1,4 +1,4 @@
-using FreedomBlaze.WebClients.CurrencyExchanges;
+using FreedomBlaze.Clients.CurrencyExchanges;
 
 namespace FreedomBlaze.Options;
 
@@ -10,8 +10,8 @@ public class CurrencyExchangeOptions
 {
     public const string Section = "CurrencyExchange";
 
-    /// <summary>The active currency exchange-rate provider. Defaults to exchangerate-api.com.</summary>
-    public CurrencyExchangeProviderType Provider { get; set; } = CurrencyExchangeProviderType.ExchangeRateApiCom;
+    /// <summary>The active currency exchange-rate client. Defaults to exchangerate-api.com.</summary>
+    public CurrencyExchangeClientType Provider { get; set; } = CurrencyExchangeClientType.ExchangeRateApiCom;
 
     /// <summary>How long fetched rates are cached before another upstream API call is made. Defaults to 1 hour.</summary>
     public TimeSpan CacheDuration { get; set; } = TimeSpan.FromHours(1);

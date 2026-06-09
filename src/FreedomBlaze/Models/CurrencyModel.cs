@@ -4,7 +4,7 @@ namespace FreedomBlaze.Models;
 
 public class CurrencyModel
 {
-    private static List<Currency> _currentAppCurrencyList;
+    private static List<Currency>? _currentAppCurrencyList;
     public static Currency CurrentAppCurrency
     {
         get
@@ -38,12 +38,12 @@ public class CurrencyModel
 
 public class Currency
 {
-    public string Name { get; set; }
-    public string Value { get; set; }
-    public string CultureName { get; set; }
-    public string Symbol { get; set; }
-    public string FlagSvgPath { get; set; }
-    public CultureInfo CultureInfo { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+    public string CultureName { get; set; } = string.Empty;
+    public string Symbol { get; set; } = string.Empty;
+    public string FlagSvgPath { get; set; } = string.Empty;
+    public CultureInfo CultureInfo { get; set; } = CultureInfo.InvariantCulture;
 
     public decimal CurrencyRateInUSD { get; set; }
     public decimal BitcoinPrice { get; set; }

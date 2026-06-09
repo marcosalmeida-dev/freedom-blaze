@@ -1,4 +1,5 @@
 using System.Globalization;
+using FreedomBlaze.Client.Interfaces;
 using FreedomBlaze.Client.Services;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.AspNetCore.SignalR.Client;

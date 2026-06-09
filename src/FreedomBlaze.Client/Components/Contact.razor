@@ -1,9 +1,9 @@
 ﻿@page "/contact"
 @rendermode InteractiveAuto
 
-@using System.ComponentModel.DataAnnotations
 @using FreedomBlaze.Client.Helpers
 @using FreedomBlaze.Client.Services
+@using FreedomBlaze.Models
 @using Microsoft.Extensions.Localization
 
 @inject IStringLocalizer<Resources.Localization> Localizer
@@ -50,7 +50,7 @@
 @inject ContactService ContactService
 
 @code {
-    private ContactForm _contactModel = new ContactForm();
+    private ContactFormModel _contactModel = new();
     private bool _submitted = false;
 
     private async Task OnSubmit()
@@ -59,7 +59,7 @@
         if (response.IsSuccessStatusCode)
         {
             _submitted = true;
-            _contactModel = new ContactForm();
+            _contactModel = new ContactFormModel();
         }
         else
         {

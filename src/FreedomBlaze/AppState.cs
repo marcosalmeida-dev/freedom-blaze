@@ -1,6 +1,5 @@
-﻿using FreedomBlaze.Interfaces;
+using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
-using FreedomBlaze.WebClients;
 
 namespace FreedomBlaze;
 
@@ -8,20 +7,20 @@ public class AppState : IDisposable
 {
     private readonly Timer _timer;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
-    private readonly IExchangeRateProvider _exchangeRateProvider;
+    private readonly IExchangeRateService _exchangeRateService;
     private readonly ILogger<AppState> _logger;
     private readonly TimeProvider _timeProvider;
 
-    public AppState(IExchangeRateProvider exchangeRateProvider, ILogger<AppState> logger, TimeProvider timeProvider)
+    public AppState(IExchangeRateService exchangeRateService, ILogger<AppState> logger, TimeProvider timeProvider)
     {
-        _exchangeRateProvider = exchangeRateProvider;
+        _exchangeRateService = exchangeRateService;
         _logger = logger;
         _timeProvider = timeProvider;
         _timer = new Timer(async _ => await UpdateExchangeRateAsync(), null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
     }
 
-    BitcoinExchangeRateModel _bitcoinExchangeRate;
-    public BitcoinExchangeRateModel BitcoinExchangeRate
+    private BitcoinExchangeRateModel? _bitcoinExchangeRate;
+    public BitcoinExchangeRateModel? BitcoinExchangeRate
     {
         get => _bitcoinExchangeRate;
         set
@@ -58,12 +57,11 @@ public class AppState : IDisposable
     {
         try
         {
-            BitcoinExchangeRate = await _exchangeRateProvider.GetExchangeRateAsync(_cancellationTokenSource.Token);
+            BitcoinExchangeRate = await _exchangeRateService.GetExchangeRateAsync(_cancellationTokenSource.Token);
             if (BitcoinExchangeRate != null)
             {
                 LastUpdate = _timeProvider.GetUtcNow();
-                if (_exchangeRateProvider is ExchangeRateProvider concreteProvider)
-                    ExchangeStatusList = concreteProvider.BitcoinExchangeStatusList;
+                ExchangeStatusList = _exchangeRateService.BitcoinExchangeStatusList;
             }
         }
         catch (OperationCanceledException)
@@ -78,7 +76,7 @@ public class AppState : IDisposable
 
     public void Dispose()
     {
-        _timer?.Dispose();
+        _timer.Dispose();
         _cancellationTokenSource.Cancel();
         _cancellationTokenSource.Dispose();
     }

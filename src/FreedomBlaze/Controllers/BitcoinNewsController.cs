@@ -6,15 +6,8 @@ namespace FreedomBlaze.Controllers;
 
 [Route("api/bitcoin-news")]
 [ApiController]
-public class BitcoinNewsController : ControllerBase
+public class BitcoinNewsController(BitcoinNewsService newsService) : ControllerBase
 {
-    private readonly BitcoinNewsService _newsService;
-
-    public BitcoinNewsController(BitcoinNewsService newsService)
-    {
-        _newsService = newsService;
-    }
-
     /// <summary>
     /// Returns the Bitcoin news for <paramref name="date"/> (defaults to today), generating and
     /// persisting it on the first request for a day that isn't already stored.
@@ -22,7 +15,7 @@ public class BitcoinNewsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<NewsArticleModel>>> Get([FromQuery] DateOnly? date, CancellationToken cancellationToken)
     {
-        var news = await _newsService.GetNewsForDateAsync(date ?? _newsService.Today, cancellationToken);
+        var news = await newsService.GetNewsAsync(date ?? newsService.Today, cancellationToken);
         return Ok(news);
     }
 
@@ -30,7 +23,7 @@ public class BitcoinNewsController : ControllerBase
     [HttpPost("refresh")]
     public async Task<ActionResult<IReadOnlyList<NewsArticleModel>>> Refresh([FromQuery] DateOnly? date, CancellationToken cancellationToken)
     {
-        var news = await _newsService.RefreshNewsForDateAsync(date ?? _newsService.Today, cancellationToken);
+        var news = await newsService.RefreshNewsAsync(date ?? newsService.Today, cancellationToken);
         return Ok(news);
     }
 
@@ -38,7 +31,7 @@ public class BitcoinNewsController : ControllerBase
     [HttpGet("dates")]
     public async Task<ActionResult<IReadOnlyList<DateOnly>>> GetAvailableDates(CancellationToken cancellationToken)
     {
-        var dates = await _newsService.GetAvailableDatesAsync(cancellationToken);
+        var dates = await newsService.GetAvailableDatesAsync(cancellationToken);
         return Ok(dates);
     }
 }

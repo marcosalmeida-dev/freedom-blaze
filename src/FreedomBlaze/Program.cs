@@ -1,6 +1,10 @@
 using System.ClientModel;
 using FreedomBlaze;
+using FreedomBlaze.Client.Interfaces;
 using FreedomBlaze.Client.Services;
+using FreedomBlaze.Clients;
+using FreedomBlaze.Clients.BitcoinExchanges;
+using FreedomBlaze.Clients.CurrencyExchanges;
 using FreedomBlaze.Components;
 using FreedomBlaze.Data;
 using FreedomBlaze.Data.Repositories;
@@ -9,9 +13,6 @@ using FreedomBlaze.Models;
 using FreedomBlaze.Options;
 using FreedomBlaze.ServiceDefaults;
 using FreedomBlaze.Services;
-using FreedomBlaze.WebClients;
-using FreedomBlaze.WebClients.BitcoinExchanges;
-using FreedomBlaze.WebClients.CurrencyExchanges;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
@@ -58,19 +59,19 @@ builder.Services.AddHttpClient("ExchangeRateApiCom", c => c.BaseAddress = new Ur
 builder.Services.AddHttpClient("Telegram", c => c.BaseAddress = new Uri("https://api.telegram.org"))
     .AddStandardResilienceHandler();
 
-builder.Services.AddSingleton<IBitcoinExchangeRateProvider, BlockchainInfoExchangeRateProvider>();
-builder.Services.AddSingleton<IBitcoinExchangeRateProvider, BitstampExchangeRateProvider>();
-builder.Services.AddSingleton<IBitcoinExchangeRateProvider, CoinGeckoExchangeRateProvider>();
-builder.Services.AddSingleton<IBitcoinExchangeRateProvider, CoinbaseExchangeRateProvider>();
-builder.Services.AddSingleton<IBitcoinExchangeRateProvider, GeminiExchangeRateProvider>();
-builder.Services.AddSingleton<IBitcoinExchangeRateProvider, CoingateExchangeRateProvider>();
-builder.Services.AddSingleton<IExchangeRateProvider, ExchangeRateProvider>();
+builder.Services.AddSingleton<IBitcoinExchangeRateClient, BlockchainInfoExchangeRateClient>();
+builder.Services.AddSingleton<IBitcoinExchangeRateClient, BitstampExchangeRateClient>();
+builder.Services.AddSingleton<IBitcoinExchangeRateClient, CoinGeckoExchangeRateClient>();
+builder.Services.AddSingleton<IBitcoinExchangeRateClient, CoinbaseExchangeRateClient>();
+builder.Services.AddSingleton<IBitcoinExchangeRateClient, GeminiExchangeRateClient>();
+builder.Services.AddSingleton<IBitcoinExchangeRateClient, CoingateExchangeRateClient>();
+builder.Services.AddSingleton<IExchangeRateService, ExchangeRateService>();
 
-// Currency exchange-rate providers — switch the active one via "CurrencyExchange:Provider".
+// Currency exchange-rate clients — switch the active one via "CurrencyExchange:Provider".
 builder.Services.Configure<CurrencyExchangeOptions>(builder.Configuration.GetSection(CurrencyExchangeOptions.Section));
-builder.Services.AddKeyedSingleton<ICurrencyExchangeProvider, ExchangeRateApiProvider>(CurrencyExchangeProviderType.ExchangeRatesApiIo);
-builder.Services.AddKeyedSingleton<ICurrencyExchangeProvider, ExchangeRateApiComProvider>(CurrencyExchangeProviderType.ExchangeRateApiCom);
-builder.Services.AddSingleton<ICurrencyExchangeProvider, CurrencyExchangeRateProviders>();
+builder.Services.AddKeyedSingleton<ICurrencyExchangeRateClient, ExchangeRatesApiIoClient>(CurrencyExchangeClientType.ExchangeRatesApiIo);
+builder.Services.AddKeyedSingleton<ICurrencyExchangeRateClient, ExchangeRateApiComClient>(CurrencyExchangeClientType.ExchangeRateApiCom);
+builder.Services.AddSingleton<ICurrencyExchangeRateClient, CurrencyExchangeRateService>();
 
 builder.Services.AddScoped<CultureService>();
 
@@ -138,15 +139,15 @@ builder.Services.AddDbContextFactory<FreedomBlazeDbContext>(options =>
 // to use from any Blazor render mode).
 builder.Services.AddSingleton(typeof(IRepository<>), typeof(EfRepository<>));
 
-builder.Services.AddSingleton<INewsStore, SqlServerNewsStore>();
+builder.Services.AddSingleton<INewsStore, NewsStore>();
 builder.Services.AddSingleton<IArticleThumbnailResolver, ArticleThumbnailResolver>();
 
 builder.Services.AddSingleton<OpenAiNewsClient>();
 builder.Services.AddScoped<BitcoinNewsService>();
 
-// Server-side rendering (prerender / InteractiveServer) calls the service directly instead of
-// making a loopback HTTP request to the app's own API.
-builder.Services.AddScoped<IBitcoinNewsApi, ServerBitcoinNewsApi>();
+// Server-side rendering (prerender / InteractiveServer) resolves the news service directly, so it
+// runs in-process with no loopback HTTP request to the app's own API.
+builder.Services.AddScoped<IBitcoinNewsApi>(sp => sp.GetRequiredService<BitcoinNewsService>());
 
 builder.Services.AddControllers();
 

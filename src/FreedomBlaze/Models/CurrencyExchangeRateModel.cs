@@ -1,9 +1,9 @@
-﻿namespace FreedomBlaze.Models;
+namespace FreedomBlaze.Models;
 
 public class CurrencyExchangeRateModel
 {
     public DateTime? Date { get; set; }
-    public List<CurrencyRate> Rates { get; set; } = new List<CurrencyRate>();
+    public List<CurrencyRate> Rates { get; set; } = [];
 
     public CurrencyRate this[string currency] => FindCurrencyIndex(currency);
 
@@ -25,6 +25,6 @@ public class CurrencyExchangeRateModel
 
 public class CurrencyRate
 {
-    public string Currency { get; set; }
+    public string Currency { get; set; } = string.Empty;
     public decimal Rate { get; set; }
 }

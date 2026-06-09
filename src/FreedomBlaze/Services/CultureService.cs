@@ -17,7 +17,7 @@ public class CultureService
         }
     }
 
-    private string _currencyCultureName;
+    private string _currencyCultureName = string.Empty;
     public string CurrencyCultureName
     {
         get => _currencyCultureName;
@@ -33,6 +33,6 @@ public class CultureService
     }
 
     // Event for notifying about the currency change
-    public event EventHandler OnCurrencyCultureChanged;
+    public event EventHandler? OnCurrencyCultureChanged;
 }
 

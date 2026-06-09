@@ -1,5 +1,6 @@
 using FreedomBlaze.Data;
 using FreedomBlaze.Data.Entities;
+using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,25 +17,14 @@ namespace FreedomBlaze.Services;
 /// multi-entity unit of work that must run in a single context.
 /// </para>
 /// </summary>
-public class SqlServerNewsStore : INewsStore
+public class NewsStore(
+    IDbContextFactory<FreedomBlazeDbContext> contextFactory,
+    TimeProvider timeProvider,
+    ILogger<NewsStore> logger) : INewsStore
 {
-    private readonly IDbContextFactory<FreedomBlazeDbContext> _contextFactory;
-    private readonly TimeProvider _timeProvider;
-    private readonly ILogger<SqlServerNewsStore> _logger;
-
-    public SqlServerNewsStore(
-        IDbContextFactory<FreedomBlazeDbContext> contextFactory,
-        TimeProvider timeProvider,
-        ILogger<SqlServerNewsStore> logger)
-    {
-        _contextFactory = contextFactory;
-        _timeProvider = timeProvider;
-        _logger = logger;
-    }
-
     public async Task<List<NewsArticleModel>?> LoadAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
-        await using var db = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        await using var db = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         var articles = await db.NewsArticles
             .AsNoTracking()
@@ -54,13 +44,13 @@ public class SqlServerNewsStore : INewsStore
 
         try
         {
-            await using var db = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            await using var db = await contextFactory.CreateDbContextAsync(cancellationToken);
 
             var day = await db.NewsDays
                 .Include(d => d.Articles)
                 .FirstOrDefaultAsync(d => d.Date == date, cancellationToken);
 
-            var now = _timeProvider.GetUtcNow();
+            var now = timeProvider.GetUtcNow();
 
             if (day is null)
             {
@@ -86,13 +76,13 @@ public class SqlServerNewsStore : INewsStore
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to persist Bitcoin news to the database for {Date}.", date);
+            logger.LogWarning(ex, "Failed to persist Bitcoin news to the database for {Date}.", date);
         }
     }
 
     public async Task<IReadOnlyList<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default)
     {
-        await using var db = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        await using var db = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         return await db.NewsDays
             .AsNoTracking()

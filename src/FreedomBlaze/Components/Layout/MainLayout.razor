@@ -26,7 +26,7 @@
                    Variant="Variant.Text" Margin="Margin.Dense"
                    Class="appbar-currency-select" PopoverClass="currency-dropdown"
                    AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter"
-                   DisableUnderLine="true" aria-label="Select currency">
+                   Underline="false" aria-label="Select currency">
             @foreach (var currency in CurrencyModel.CurrencyListStatic)
             {
                 <MudSelectItem Value="@currency.CultureName" @key="@currency.CultureName">

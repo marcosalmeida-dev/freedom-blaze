@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using FreedomBlaze.Client.Interfaces;
 using FreedomBlaze.Models;
 
 namespace FreedomBlaze.Client.Services;
@@ -7,19 +8,12 @@ namespace FreedomBlaze.Client.Services;
 /// WebAssembly-side <see cref="IBitcoinNewsApi"/> implementation: reads Bitcoin news from the
 /// server API over HTTP (against the browser origin).
 /// </summary>
-public class BitcoinNewsApiClient : IBitcoinNewsApi
+public class BitcoinNewsApiClient(HttpClient httpClient) : IBitcoinNewsApi
 {
-    private readonly HttpClient _httpClient;
-
-    public BitcoinNewsApiClient(HttpClient httpClient)
-    {
-        _httpClient = httpClient;
-    }
-
     /// <summary>Gets the Bitcoin news for the given date (served from the server-side daily cache/store).</summary>
     public async Task<List<NewsArticleModel>> GetNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
-        var result = await _httpClient.GetFromJsonAsync<List<NewsArticleModel>>(
+        var result = await httpClient.GetFromJsonAsync<List<NewsArticleModel>>(
             $"api/bitcoin-news?date={date:yyyy-MM-dd}", cancellationToken);
         return result ?? [];
     }
@@ -27,7 +21,7 @@ public class BitcoinNewsApiClient : IBitcoinNewsApi
     /// <summary>Requests a fresh web-search generation for the given date. May take several seconds.</summary>
     public async Task<List<NewsArticleModel>> RefreshNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
-        using var response = await _httpClient.PostAsync(
+        using var response = await httpClient.PostAsync(
             $"api/bitcoin-news/refresh?date={date:yyyy-MM-dd}", content: null, cancellationToken);
         response.EnsureSuccessStatusCode();
 
@@ -37,7 +31,7 @@ public class BitcoinNewsApiClient : IBitcoinNewsApi
 
     public async Task<List<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default)
     {
-        var result = await _httpClient.GetFromJsonAsync<List<DateOnly>>("api/bitcoin-news/dates", cancellationToken);
+        var result = await httpClient.GetFromJsonAsync<List<DateOnly>>("api/bitcoin-news/dates", cancellationToken);
         return result ?? [];
     }
 }

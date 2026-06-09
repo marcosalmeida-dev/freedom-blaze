@@ -15,14 +15,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Azure" Version="1.14.0" />
     <ProjectReference Include="..\FreedomBlaze.Client\FreedomBlaze.Client.csproj" />
     <ProjectReference Include="..\FreedomBlaze.Resources\FreedomBlaze.Resources.csproj" />
     <ProjectReference Include="..\FreedomBlaze.ServiceDefaults\FreedomBlaze.ServiceDefaults.csproj" />
     <ProjectReference Include="..\submodules\phoenixd.NET\Phoenixd.NET\Phoenixd.NET.csproj" />
-    <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.5.1" />
-    <PackageReference Include="Azure.Identity" Version="1.21.0" />
-    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.11.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.8" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <PackageReference Include="MudBlazor" Version="9.5.0" />
@@ -36,7 +32,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Properties\ServiceDependencies\" />
     <Folder Include="wwwroot\img\country-flag\" />
   </ItemGroup>
 

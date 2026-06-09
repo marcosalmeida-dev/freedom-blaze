@@ -1,5 +1,5 @@
 using FreedomBlaze.Client.Helpers;
-using FreedomBlaze.Client.Services;
+using FreedomBlaze.Client.Interfaces;
 using FreedomBlaze.Models;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
