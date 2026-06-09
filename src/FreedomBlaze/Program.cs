@@ -121,7 +121,7 @@ builder.Services.AddHttpClient(BitcoinNewsService.ImageScraperHttpClient, c =>
     c.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
 });
 
-// News persistence backend. Defaults to a local SQLite database; set "NewsStorage:Provider"
+// News persistence backend. Defaults to a SQL Server database; set "NewsStorage:Provider"
 // (e.g. NewsStorage__Provider=LocalFile or =AzureBlob) to switch backends.
 builder.Services.Configure<NewsStorageOptions>(builder.Configuration.GetSection(NewsStorageOptions.Section));
 var newsStorageOptions = builder.Configuration.GetSection(NewsStorageOptions.Section).Get<NewsStorageOptions>()
@@ -152,19 +152,30 @@ switch (newsStorageOptions.Provider)
         builder.Services.AddSingleton<INewsStore, LocalFileNewsStore>();
         break;
 
-    default: // Sqlite
-        var dbPath = Path.IsPathRooted(newsStorageOptions.SqlitePath)
-            ? newsStorageOptions.SqlitePath
-            : Path.Combine(builder.Environment.ContentRootPath, newsStorageOptions.SqlitePath);
-        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+    case NewsStorageProvider.SqlServer:
+    default:
+        var connectionString = builder.Configuration.GetConnectionString("FreedomBlazeDb")
+            ?? throw new InvalidOperationException(
+                "NewsStorage:Provider is 'SqlServer' but no 'FreedomBlazeDb' connection string is configured.");
 
-        builder.Services.AddDbContextFactory<FreedomBlazeDbContext>(options => options.UseSqlite($"Data Source={dbPath}"));
+        // Pooled context factory (safe for any Blazor render mode) over SQL Server. The retrying
+        // execution strategy transparently handles transient faults — the norm for Azure SQL and a
+        // best practice for SQL Server generally.
+        builder.Services.AddDbContextFactory<FreedomBlazeDbContext>(options =>
+            options.UseSqlServer(connectionString, sql =>
+            {
+                sql.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null);
+                sql.CommandTimeout(30);
+            }));
 
         // Generic repository over any entity in the database (backed by the context factory, so it
         // is safe to use from any Blazor render mode).
         builder.Services.AddSingleton(typeof(IRepository<>), typeof(EfRepository<>));
 
-        builder.Services.AddSingleton<INewsStore, SqliteNewsStore>();
+        builder.Services.AddSingleton<INewsStore, SqlServerNewsStore>();
         break;
 }
 
@@ -203,14 +214,15 @@ builder.AddServiceDefaults();
 
 var app = builder.Build();
 
-// Create the SQLite schema on first run. EnsureCreated suits a disposable local cache; switch to
-// migrations if the news schema ever needs to evolve in place.
-if (newsStorageOptions.Provider == NewsStorageProvider.Sqlite)
+// Apply any pending code-first migrations on startup so the schema is created/evolved in place.
+// Fine for a single-instance deployment; for multi-instance rollouts, apply migrations as a
+// separate deploy step instead to avoid concurrent migration races.
+if (newsStorageOptions.Provider == NewsStorageProvider.SqlServer)
 {
     await using var startupScope = app.Services.CreateAsyncScope();
     var dbFactory = startupScope.ServiceProvider.GetRequiredService<IDbContextFactory<FreedomBlazeDbContext>>();
     await using var db = await dbFactory.CreateDbContextAsync();
-    await db.Database.EnsureCreatedAsync();
+    await db.Database.MigrateAsync();
 }
 
 app.MapDefaultEndpoints();

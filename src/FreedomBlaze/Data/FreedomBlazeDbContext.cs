@@ -4,8 +4,9 @@ using Microsoft.EntityFrameworkCore;
 namespace FreedomBlaze.Data;
 
 /// <summary>
-/// EF Core context for the application's local SQLite database (FreedomBlazeDB). Entity mappings
-/// live in <c>Data/Configurations</c> and are applied via <see cref="OnModelCreating"/>.
+/// EF Core context for the application's SQL Server database (FreedomBlazeDb). Entity mappings
+/// live in <c>Data/Configurations</c> and are applied via <see cref="OnModelCreating"/>; the schema
+/// is created/evolved through code-first migrations in <c>Data/Migrations</c>.
 /// </summary>
 public class FreedomBlazeDbContext : DbContext
 {
