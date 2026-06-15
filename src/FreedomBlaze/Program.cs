@@ -143,6 +143,11 @@ builder.Services.AddSingleton(typeof(IRepository<>), typeof(EfRepository<>));
 builder.Services.AddSingleton<INewsStore, NewsStore>();
 builder.Services.AddSingleton<IArticleThumbnailHelper, ArticleThumbnailHelper>();
 
+// Donations: persist every tip and announce success/failure on Telegram. Independent of phoenixd so
+// the services always resolve (the donate UI itself is only shown when a node is configured).
+builder.Services.AddSingleton<ITelegramNotifier, TelegramNotifier>();
+builder.Services.AddSingleton<IDonationService, DonationService>();
+
 builder.Services.AddSingleton<OpenAiNewsClient>();
 builder.Services.AddScoped<BitcoinNewsService>();
 

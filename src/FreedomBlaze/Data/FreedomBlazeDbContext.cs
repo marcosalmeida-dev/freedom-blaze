@@ -18,6 +18,8 @@ public class FreedomBlazeDbContext : DbContext
 
     public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
 
+    public DbSet<Donation> Donations => Set<Donation>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FreedomBlazeDbContext).Assembly);

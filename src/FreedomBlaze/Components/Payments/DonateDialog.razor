@@ -12,6 +12,7 @@
 @inject CultureService Culture
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
+@inject IDonationService DonationService
 @inject ILogger<DonateDialog> Logger
 
 <MudDialog ContentClass="donate-dialog-content">
@@ -150,6 +151,7 @@
     private long _amount = 1_000;
     private string? _message;
     private string? _errorMessage;
+    private string _description = DefaultDescription;
 
     private Invoice? _invoice;
     private long _paidAmountSat;
@@ -170,10 +172,10 @@
         try
         {
             _cts = new CancellationTokenSource();
-            var description = string.IsNullOrWhiteSpace(_message) ? DefaultDescription : _message.Trim();
+            _description = string.IsNullOrWhiteSpace(_message) ? DefaultDescription : _message.Trim();
 
             _invoice = await Manager.PaymentService.ReceiveLightningPaymentAsync(
-                description, _amount, expirySeconds: ExpirySeconds, cancellationToken: _cts.Token);
+                _description, _amount, expirySeconds: ExpirySeconds, cancellationToken: _cts.Token);
 
             _completed = 0;
             _state = DonateState.Awaiting;
@@ -189,6 +191,7 @@
             Logger.LogError(ex, "Failed to create donation invoice.");
             _errorMessage = "Could not create an invoice. Please make sure the node is reachable and try again.";
             _state = DonateState.Error;
+            await RecordFailureAsync(ex);
         }
 
         StateHasChanged();
@@ -268,10 +271,55 @@
             StateHasChanged();
         });
 
+        // Persist the donation and announce it on Telegram. Started fire-and-forget so it runs during
+        // the confirmation window below and never delays the auto-close if Telegram is slow; the
+        // wrapper swallows all faults, so the discard can't surface an unobserved exception.
+        _ = RecordSuccessAsync(_paidAmountSat);
+
         // Let the user see the confirmation, then close automatically.
         await Task.Delay(3000);
         await InvokeAsync(() => MudDialog.Close(DialogResult.Ok(true)));
     }
+
+    private async Task RecordSuccessAsync(long receivedSat)
+    {
+        try
+        {
+            // A fresh token (not _cts, which is cancelled on completion) so recording always runs.
+            await DonationService.RecordSuccessAsync(BuildDetails(receivedSat));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to record successful donation.");
+        }
+    }
+
+    private async Task RecordFailureAsync(Exception error)
+    {
+        try
+        {
+            var detail = error.InnerException is null
+                ? $"{error.GetType().Name}: {error.Message}"
+                : $"{error.GetType().Name}: {error.Message} → {error.InnerException.GetType().Name}: {error.InnerException.Message}";
+
+            await DonationService.RecordFailureAsync(BuildDetails(receivedSat: 0), detail);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to record failed donation attempt.");
+        }
+    }
+
+    private DonationDetails BuildDetails(long receivedSat) => new()
+    {
+        AmountSat = _amount,
+        ReceivedSat = receivedSat,
+        Message = _message,
+        Description = _description,
+        PaymentHash = _invoice?.PaymentHash,
+        Bolt11 = _invoice?.Serialized,
+        FiatEstimate = FiatEstimate(_amount),
+    };
 
     private async Task OnExpiredAsync()
     {
