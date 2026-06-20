@@ -1,5 +1,6 @@
 using System.ClientModel;
 using FreedomBlaze;
+using FreedomBlaze.Authentication;
 using FreedomBlaze.Client.Interfaces;
 using FreedomBlaze.Client.Services;
 using FreedomBlaze.Clients;
@@ -157,6 +158,10 @@ builder.Services.AddScoped<IBitcoinNewsApiService>(sp => sp.GetRequiredService<B
 
 builder.Services.AddControllers();
 
+// Public, key-authenticated conversion API: API-key + conversion services, the "ApiKey"
+// authentication scheme, an authorization policy, and a per-key rate limiter.
+builder.Services.AddPublicApi(builder.Configuration);
+
 // Lightning payments via phoenixd. Only registered when a phoenixd host is configured, so the app
 // (and its CI/dev runs) work fine without a payment backend. The donate UI is hidden when absent.
 var phoenixdHost = builder.Configuration["PhoenixConfig:Host"];
@@ -218,6 +223,12 @@ var localizationOptions = new RequestLocalizationOptions()
 app.UseRequestLocalization(localizationOptions);
 
 app.UseRouting();
+
+// Authenticate/authorize before the rate limiter so the per-key partition is known when a request
+// reaches the conversion API (the [Authorize] attribute drives authentication for the "ApiKey" scheme).
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
 
 app.UseAntiforgery();
 

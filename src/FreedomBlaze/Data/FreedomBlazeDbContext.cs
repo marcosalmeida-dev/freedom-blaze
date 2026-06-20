@@ -20,6 +20,8 @@ public class FreedomBlazeDbContext : DbContext
 
     public DbSet<Donation> Donations => Set<Donation>();
 
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FreedomBlazeDbContext).Assembly);
