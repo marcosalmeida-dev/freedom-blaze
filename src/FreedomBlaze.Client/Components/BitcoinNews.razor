@@ -24,10 +24,10 @@
                                Label="Date" Variant="Variant.Outlined" Margin="Margin.Dense"
                                DateFormat="MMM d, yyyy" Editable="true" Disabled="_loading" />
             </div>
-            <MudTooltip Text="@(IsToday ? "Fetch the latest news" : "Re-fetch this day's news")">
+            @* <MudTooltip Text="@(IsToday ? "Fetch the latest news" : "Re-fetch this day's news")">
                 <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary"
                                aria-label="Refresh news" Disabled="_loading" OnClick="RefreshAsync" />
-            </MudTooltip>
+            </MudTooltip> *@
         </MudStack>
     </MudStack>
 
@@ -68,10 +68,10 @@
             <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center">
                 No Bitcoin news for @SelectedDate.ToString("MMMM d, yyyy").
             </MudText>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_loading"
+            @* <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_loading"
                        StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync">
                 Fetch news for this day
-            </MudButton>
+            </MudButton> *@
         </MudStack>
     }
 </MudContainer>

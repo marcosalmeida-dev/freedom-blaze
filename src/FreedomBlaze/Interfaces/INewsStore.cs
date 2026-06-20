@@ -16,7 +16,10 @@ public interface INewsStore
     /// Inserts or replaces the news set for <paramref name="date"/> — an existing day's articles are
     /// overwritten wholesale, so a refresh always persists the latest result.
     /// </summary>
+    /// <param name="date">The calendar day the articles belong to.</param>
+    /// <param name="articles">The generated articles to persist.</param>
     /// <param name="model">The AI model that produced the set, recorded as metadata.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     Task SaveAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, string? model = null, CancellationToken cancellationToken = default);
 
     /// <summary>The dates that currently have a saved news set, most recent first.</summary>

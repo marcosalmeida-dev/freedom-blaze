@@ -8,6 +8,7 @@ namespace FreedomBlaze.Controllers;
 /// Serves the crawler-facing <c>robots.txt</c> and <c>sitemap.xml</c>, built from the live request
 /// host so the advertised URLs are always correct regardless of environment (no hard-coded domain).
 /// </summary>
+[ApiExplorerSettings(IgnoreApi = true)]
 public class SeoController : ControllerBase
 {
     // Indexable routes and their crawl hints. Keep in sync with the app's @page routes.

@@ -12,15 +12,18 @@ using FreedomBlaze.Data.Repositories;
 using FreedomBlaze.Helpers;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
+using FreedomBlaze.OpenApi;
 using FreedomBlaze.Options;
 using FreedomBlaze.ServiceDefaults;
 using FreedomBlaze.Services;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
 using MudBlazor.Services;
 using OpenAI;
 using Phoenixd.NET;
 using Phoenixd.NET.Hubs;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -158,6 +161,29 @@ builder.Services.AddScoped<IBitcoinNewsApiService>(sp => sp.GetRequiredService<B
 
 builder.Services.AddControllers();
 
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Info = new OpenApiInfo
+        {
+            Title = "Freedom Blaze API",
+            Version = "v1",
+            Description =
+                "REST API for Bitcoin/fiat conversion, Bitcoin news, Lightning payments, and platform administration. " +
+                "Most endpoints require an API key passed via the `X-Api-Key` header.",
+            Contact = new OpenApiContact
+            {
+                Name = "Freedom Blaze",
+                Url = new Uri(baseUrl),
+            },
+        };
+        return Task.CompletedTask;
+    });
+    options.AddDocumentTransformer<ApiKeySecuritySchemeTransformer>();
+    options.AddOperationTransformer<ApiKeySecurityOperationTransformer>();
+});
+
 // Public, key-authenticated conversion API: API-key + conversion services, the "ApiKey"
 // authentication scheme, an authorization policy, and a per-key rate limiter.
 builder.Services.AddPublicApi(builder.Configuration);
@@ -210,6 +236,16 @@ await using (var startupScope = app.Services.CreateAsyncScope())
 }
 
 app.MapDefaultEndpoints();
+
+app.MapOpenApi();
+
+app.MapScalarApiReference(options =>
+{
+    options.Title = "Freedom Blaze API";
+    options.Theme = ScalarTheme.Default;
+    options.AddPreferredSecuritySchemes(ApiKeyDefaults.Scheme);
+    options.DefaultHttpClient = new(ScalarTarget.CSharp, ScalarClient.HttpClient);
+});
 
 if (app.Environment.IsDevelopment())
 {

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace FreedomBlaze.Controllers;
 
 [Route("[controller]/[action]")]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class CultureController(CultureService cultureService) : Controller
 {
     public IActionResult Set(string culture, string redirectUri)

@@ -15,6 +15,7 @@ namespace FreedomBlaze.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1")]
+[Tags("Conversion")]
 [Authorize(AuthenticationSchemes = ApiKeyDefaults.Scheme)]
 [EnableRateLimiting(RateLimitPolicies.PerApiKey)]
 [Produces("application/json")]

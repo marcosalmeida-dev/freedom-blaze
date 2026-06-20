@@ -5,13 +5,19 @@ using Microsoft.Extensions.Options;
 
 namespace FreedomBlaze.Controllers;
 
+/// <summary>Forwards contact-form submissions to the Telegram notification channel.</summary>
 [ApiController]
 [Route("api/contact")]
-public class ContactController(IHttpClientFactory httpClientFactory, IOptions<TelegramOptions> telegramOptions) : ControllerBase
+[Tags("Contact")]
+[Produces("application/json")]
+public sealed class ContactController(IHttpClientFactory httpClientFactory, IOptions<TelegramOptions> telegramOptions) : ControllerBase
 {
     private readonly TelegramOptions _telegramOptions = telegramOptions.Value;
 
+    /// <summary>Submits a contact message. The message is forwarded to Telegram.</summary>
     [HttpPost("submit")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Submit(ContactFormModel model)
     {
         var message = $"Title: {model.Title}\nDescription: {model.Description}";
