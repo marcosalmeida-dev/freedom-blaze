@@ -196,6 +196,17 @@ await using (var startupScope = app.Services.CreateAsyncScope())
     var dbFactory = startupScope.ServiceProvider.GetRequiredService<IDbContextFactory<FreedomBlazeDbContext>>();
     await using var db = await dbFactory.CreateDbContextAsync();
     await db.Database.MigrateAsync();
+
+    // Seed the first master key if none exists. The plaintext is shown exactly once, here, so capture
+    // it from the logs on first run — it cannot be recovered later. Use it to mint further keys via
+    // the /api/admin/api-keys endpoints.
+    var apiKeyService = startupScope.ServiceProvider.GetRequiredService<IApiKeyService>();
+    var masterKey = await apiKeyService.EnsureMasterKeyAsync(CancellationToken.None);
+    if (masterKey is not null)
+    {
+        app.Logger.LogWarning(
+            "Generated master API key (shown ONCE — store it now): {MasterKey}", masterKey.Key);
+    }
 }
 
 app.MapDefaultEndpoints();

@@ -29,7 +29,14 @@ public static class PublicApiServiceExtensions
         services.AddAuthentication()
             .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(ApiKeyDefaults.Scheme, _ => { });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            // Key-management endpoints require a master key (same auth scheme, master claim set).
+            options.AddPolicy(ApiKeyDefaults.MasterPolicy, policy => policy
+                .AddAuthenticationSchemes(ApiKeyDefaults.Scheme)
+                .RequireAuthenticatedUser()
+                .RequireClaim(ApiKeyDefaults.MasterClaim, "true"));
+        });
 
         services.AddRateLimiter(options =>
         {

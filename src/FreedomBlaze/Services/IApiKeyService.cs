@@ -14,6 +14,13 @@ public interface IApiKeyService
     Task<CreateApiKeyResponse> CreateAsync(CreateApiKeyRequest request, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Ensures at least one usable master key exists, creating one if none does. Returns the newly
+    /// created key's plaintext (to be surfaced once, e.g. logged at startup), or null when a master
+    /// key already existed.
+    /// </summary>
+    Task<CreateApiKeyResponse?> EnsureMasterKeyAsync(CancellationToken cancellationToken);
+
+    /// <summary>
     /// Resolves a plaintext key to its active, non-expired, non-revoked record, or returns null when
     /// it is invalid. Updates <see cref="ApiKey.LastUsedAtUtc"/> opportunistically on success.
     /// </summary>

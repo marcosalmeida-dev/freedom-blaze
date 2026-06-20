@@ -39,6 +39,7 @@ public sealed class ApiKeyAuthenticationHandler(
         {
             new Claim(ApiKeyDefaults.KeyIdClaim, key.Id.ToString()),
             new Claim(ClaimTypes.Name, key.Name),
+            new Claim(ApiKeyDefaults.MasterClaim, key.IsMaster ? "true" : "false"),
         };
 
         var identity = new ClaimsIdentity(claims, ApiKeyDefaults.Scheme);

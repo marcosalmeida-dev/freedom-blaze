@@ -15,6 +15,12 @@ public sealed class CreateApiKeyRequest
     /// <summary>Optional per-minute request budget overriding the global default.</summary>
     [Range(1, 100_000)]
     public int? RateLimitPerMinute { get; set; }
+
+    /// <summary>
+    /// When true the new key can also manage other keys. Only a caller already holding a master key
+    /// can mint another master key.
+    /// </summary>
+    public bool IsMaster { get; set; }
 }
 
 /// <summary>
@@ -30,6 +36,7 @@ public sealed class CreateApiKeyResponse
     public string Key { get; init; } = string.Empty;
 
     public string Prefix { get; init; } = string.Empty;
+    public bool IsMaster { get; init; }
     public DateTimeOffset CreatedAtUtc { get; init; }
     public DateTimeOffset? ExpiresAtUtc { get; init; }
 }
@@ -41,6 +48,7 @@ public sealed class ApiKeyInfo
     public string Name { get; init; } = string.Empty;
     public string Prefix { get; init; } = string.Empty;
     public bool IsActive { get; init; }
+    public bool IsMaster { get; init; }
     public int? RateLimitPerMinute { get; init; }
     public DateTimeOffset CreatedAtUtc { get; init; }
     public DateTimeOffset? ExpiresAtUtc { get; init; }

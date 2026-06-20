@@ -33,6 +33,7 @@ public sealed class ApiKeyService(
             KeyHash = Hash(plaintext),
             Prefix = KeyScheme + secret[..PrefixSecretChars],
             IsActive = true,
+            IsMaster = request.IsMaster,
             RateLimitPerMinute = request.RateLimitPerMinute,
             CreatedAtUtc = now,
             ExpiresAtUtc = request.ExpiresAtUtc,
@@ -48,9 +49,24 @@ public sealed class ApiKeyService(
             Name = entity.Name,
             Key = plaintext,
             Prefix = entity.Prefix,
+            IsMaster = entity.IsMaster,
             CreatedAtUtc = entity.CreatedAtUtc,
             ExpiresAtUtc = entity.ExpiresAtUtc,
         };
+    }
+
+    public async Task<CreateApiKeyResponse?> EnsureMasterKeyAsync(CancellationToken cancellationToken)
+    {
+        var hasMaster = await apiKeys.AnyAsync(
+            k => k.IsMaster && k.IsActive && k.RevokedAtUtc == null,
+            cancellationToken);
+
+        if (hasMaster)
+            return null;
+
+        return await CreateAsync(
+            new CreateApiKeyRequest { Name = "Master key (auto-generated)", IsMaster = true },
+            cancellationToken);
     }
 
     public async Task<ApiKey?> ValidateAsync(string plaintextKey, CancellationToken cancellationToken)
@@ -82,6 +98,7 @@ public sealed class ApiKeyService(
                 Name = k.Name,
                 Prefix = k.Prefix,
                 IsActive = k.IsActive,
+                IsMaster = k.IsMaster,
                 RateLimitPerMinute = k.RateLimitPerMinute,
                 CreatedAtUtc = k.CreatedAtUtc,
                 ExpiresAtUtc = k.ExpiresAtUtc,

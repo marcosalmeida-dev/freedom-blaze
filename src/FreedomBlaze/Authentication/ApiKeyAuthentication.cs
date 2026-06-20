@@ -14,6 +14,12 @@ public static class ApiKeyDefaults
     /// <summary>Custom claim type holding the database id of the authenticated key.</summary>
     public const string KeyIdClaim = "api_key_id";
 
+    /// <summary>Claim type present (value "true") when the authenticated key is a master key.</summary>
+    public const string MasterClaim = "api_key_master";
+
+    /// <summary>Authorization policy that requires a master key. Guards the key-management endpoints.</summary>
+    public const string MasterPolicy = "MasterKey";
+
     /// <summary>HttpContext.Items key under which the resolved per-key rate limit (int) is stashed.</summary>
     public const string RateLimitItemKey = "api_key_rate_limit";
 

@@ -27,6 +27,12 @@ public class ApiKey
     public bool IsActive { get; set; } = true;
 
     /// <summary>
+    /// A master key authorizes the key-management endpoints (create/list/revoke other keys) in
+    /// addition to the normal conversion API. Ordinary keys can only call the conversion API.
+    /// </summary>
+    public bool IsMaster { get; set; }
+
+    /// <summary>
     /// Optional per-key request budget per minute. When null the global default policy applies.
     /// </summary>
     public int? RateLimitPerMinute { get; set; }
