@@ -3,6 +3,7 @@ using FreedomBlaze.Client.Models;
 using FreedomBlaze.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace FreedomBlaze.Controllers;
 
@@ -10,6 +11,7 @@ namespace FreedomBlaze.Controllers;
 [ApiController]
 [Tags("Bitcoin News")]
 [Produces("application/json")]
+[EnableRateLimiting(RateLimitPolicies.PerIp)]
 public sealed class BitcoinNewsController(BitcoinNewsService newsService) : ControllerBase
 {
     /// <summary>

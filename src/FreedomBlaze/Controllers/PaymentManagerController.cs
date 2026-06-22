@@ -1,3 +1,5 @@
+using FreedomBlaze.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Phoenixd.NET.Exceptions;
 using Phoenixd.NET.Interfaces;
@@ -9,6 +11,11 @@ namespace FreedomBlaze.Controllers;
 /// REST surface over the phoenixd node/payment services for external integrators. The Blazor donate
 /// UI talks to the services in-process and does not depend on this controller.
 /// <para>
+/// These endpoints can move funds (send on-chain/Lightning payments, close channels) and expose
+/// sensitive node state (balance, channels), so the whole controller is gated behind a <b>master</b>
+/// API key sent in the <c>X-Api-Key</c> header — never expose it anonymously.
+/// </para>
+/// <para>
 /// The phoenixd services are only registered when a phoenixd host is configured, so the services are
 /// resolved optionally here: when payments are not configured every endpoint returns
 /// <c>503 Service Unavailable</c> instead of failing to construct the controller.
@@ -18,6 +25,7 @@ namespace FreedomBlaze.Controllers;
 [Route("api/payment-manager")]
 [Tags("Lightning Payments")]
 [Produces("application/json")]
+[Authorize(AuthenticationSchemes = ApiKeyDefaults.Scheme, Policy = ApiKeyDefaults.MasterPolicy)]
 public class PaymentManagerController(
     ILogger<PaymentManagerController> logger,
     IPaymentService? payments = null,

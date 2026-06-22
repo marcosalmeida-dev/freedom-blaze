@@ -10,6 +10,18 @@ public static class RateLimitPolicies
 {
     /// <summary>Per-API-key fixed-window throttle applied to the public conversion API.</summary>
     public const string PerApiKey = "ApiKeyPolicy";
+
+    /// <summary>
+    /// Per-client-IP fixed-window throttle for anonymous public endpoints (e.g. Bitcoin news reads),
+    /// which can trigger expensive paid work and so must be bounded for unauthenticated callers.
+    /// </summary>
+    public const string PerIp = "PerIpPolicy";
+
+    /// <summary>
+    /// Stricter per-client-IP throttle for the anonymous contact endpoint, which fans out to an
+    /// external Telegram channel and so is a spam/abuse target.
+    /// </summary>
+    public const string ContactSubmit = "ContactSubmitPolicy";
 }
 
 /// <summary>
@@ -56,6 +68,29 @@ public static class PublicApiServiceExtensions
                     QueueLimit = 0,
                 });
             });
+
+            // Anonymous public reads: throttle per client IP so unauthenticated callers cannot drive
+            // unbounded (and, for news generation, paid) work by enumerating inputs.
+            options.AddPolicy(RateLimitPolicies.PerIp, httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 30,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0,
+                    }));
+
+            // Contact form: stricter per-IP budget — it relays to an external Telegram channel.
+            options.AddPolicy(RateLimitPolicies.ContactSubmit, httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 5,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0,
+                    }));
 
             options.OnRejected = (context, cancellationToken) =>
             {

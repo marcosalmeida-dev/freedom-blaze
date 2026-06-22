@@ -1,6 +1,8 @@
+using FreedomBlaze.Authentication;
 using FreedomBlaze.Client.Models;
 using FreedomBlaze.Options;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
 namespace FreedomBlaze.Controllers;
@@ -10,6 +12,7 @@ namespace FreedomBlaze.Controllers;
 [Route("api/contact")]
 [Tags("Contact")]
 [Produces("application/json")]
+[EnableRateLimiting(RateLimitPolicies.ContactSubmit)]
 public sealed class ContactController(IHttpClientFactory httpClientFactory, IOptions<TelegramOptions> telegramOptions) : ControllerBase
 {
     private readonly TelegramOptions _telegramOptions = telegramOptions.Value;
