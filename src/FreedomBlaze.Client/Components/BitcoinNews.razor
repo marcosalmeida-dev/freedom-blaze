@@ -5,73 +5,115 @@
          Description="Stay current with daily Bitcoin news headlines from around the world, refreshed every day and browsable by date."
          RelativePath="bitcoinnews" OgType="article" />
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-8">
     <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween"
-              Spacing="3" Class="mb-4">
+              Spacing="3" Class="mb-6">
         <div>
             <MudText Typo="Typo.h5">Bitcoin News</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Around the world · @SelectedDate.ToString("MMMM d, yyyy")@(IsToday ? " · today" : string.Empty)
+                Around the world · @DayLabel
             </MudText>
         </div>
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudTooltip Text="Earlier day">
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" aria-label="Show an earlier day"
+                               Disabled="_loading || PreviousDay is null" OnClick="@(() => GoToAsync(PreviousDay))" />
+            </MudTooltip>
+
             @* The width constraint lives on this wrapper (input only). PickerVariant.Dialog renders
                the calendar as a centered modal, so it is never clipped on mobile or desktop. *@
-            <div style="width: 200px; max-width: 100%;">
+            <div style="width: 190px; max-width: 100%;">
                 <MudDatePicker Date="_selectedDate" DateChanged="OnDateChangedAsync"
-                               MinDate="_minDate" MaxDate="_maxDate" IsDateDisabledFunc="IsDateDisabled"
+                               MinDate="MinSelectableDate" MaxDate="MaxSelectableDate" IsDateDisabledFunc="IsDateDisabled"
                                PickerVariant="PickerVariant.Dialog"
                                Label="Date" Variant="Variant.Outlined" Margin="Margin.Dense"
                                DateFormat="MMM d, yyyy" Editable="true" Disabled="_loading" />
             </div>
-            @* <MudTooltip Text="@(IsToday ? "Fetch the latest news" : "Re-fetch this day's news")">
-                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary"
-                               aria-label="Refresh news" Disabled="_loading" OnClick="RefreshAsync" />
-            </MudTooltip> *@
+
+            <MudTooltip Text="Later day">
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" aria-label="Show a later day"
+                               Disabled="_loading || NextDay is null" OnClick="@(() => GoToAsync(NextDay))" />
+            </MudTooltip>
+
+            @if (!IsToday)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Class="ml-1"
+                           Disabled="_loading" OnClick="@(() => GoToAsync(TodayDate))">
+                    Today
+                </MudButton>
+            }
         </MudStack>
     </MudStack>
 
-    @if (_loading)
-    {
-        <MudGrid>
-            @for (var i = 0; i < SkeletonCount; i++)
-            {
-                <MudItem xs="12" sm="6" md="4">
-                    <MudCard Class="d-flex flex-column" Style="height: 100%;" Elevation="2">
-                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="160px" />
-                        <MudCardContent>
-                            <MudSkeleton Width="40%" Class="mb-2" />
-                            <MudSkeleton Width="95%" />
-                            <MudSkeleton Width="80%" Class="mt-1" />
-                            <MudSkeleton Width="60%" Class="mt-1" />
-                        </MudCardContent>
-                    </MudCard>
-                </MudItem>
-            }
-        </MudGrid>
-    }
-    else if (_articles.Count > 0)
-    {
-        <MudGrid>
-            @foreach (var article in _articles)
-            {
-                <MudItem xs="12" sm="6" md="4">
-                    <NewsArticleCard Article="article" />
-                </MudItem>
-            }
-        </MudGrid>
-    }
-    else
-    {
-        <MudStack AlignItems="AlignItems.Center" Spacing="4" Class="mt-12">
-            <MudIcon Icon="@Icons.Material.Filled.Newspaper" Size="Size.Large" Color="Color.Secondary" />
-            <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center">
-                No Bitcoin news for @SelectedDate.ToString("MMMM d, yyyy").
+    <section aria-live="polite" aria-busy="@_loading">
+        @if (_loading)
+        {
+            <MudGrid>
+                @for (var i = 0; i < SkeletonCount; i++)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Class="d-flex flex-column" Style="height: 100%;" Elevation="2">
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="170px" />
+                            <MudCardContent>
+                                <MudSkeleton Width="40%" Class="mb-2" />
+                                <MudSkeleton Width="95%" />
+                                <MudSkeleton Width="80%" Class="mt-1" />
+                                <MudSkeleton Width="60%" Class="mt-1" />
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else if (_errorMessage is not null)
+        {
+            <MudPaper Class="pa-8 mt-6 d-flex flex-column align-center" Elevation="0" Outlined="true">
+                <MudIcon Icon="@Icons.Material.Filled.CloudOff" Size="Size.Large" Color="Color.Warning" Class="mb-3" />
+                <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="mb-1">Couldn't load the news</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mb-4">
+                    @_errorMessage
+                </MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_loading"
+                           StartIcon="@Icons.Material.Filled.Refresh" OnClick="RetryAsync">
+                    Try again
+                </MudButton>
+            </MudPaper>
+        }
+        else if (_articles.Count > 0)
+        {
+            <MudGrid>
+                @foreach (var article in _articles)
+                {
+                    <MudItem xs="12" sm="6" md="4" @key="article">
+                        <NewsArticleCard Article="article" />
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center" Class="d-block mt-8">
+                Headlines are gathered daily by an AI web search. Summaries are automated — follow the
+                link on each card to read the publisher's original article.
             </MudText>
-            @* <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_loading"
-                       StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync">
-                Fetch news for this day
-            </MudButton> *@
-        </MudStack>
-    }
+        }
+        else
+        {
+            <MudPaper Class="pa-8 mt-6 d-flex flex-column align-center" Elevation="0" Outlined="true">
+                <MudIcon Icon="@Icons.Material.Filled.Newspaper" Size="Size.Large" Color="Color.Secondary" Class="mb-3" />
+                <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="mb-1">
+                    No Bitcoin news for @SelectedDate.ToString("MMMM d, yyyy")
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mb-4">
+                    @(IsToday
+                        ? "Today's headlines haven't been gathered yet. Try again in a little while."
+                        : "Pick another day, or jump back to today's headlines.")
+                </MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_loading"
+                           StartIcon="@(IsToday ? Icons.Material.Filled.Refresh : Icons.Material.Filled.Today)"
+                           OnClick="OnEmptyStateActionAsync">
+                    @(IsToday ? "Try again" : "Go to today")
+                </MudButton>
+            </MudPaper>
+        }
+    </section>
 </MudContainer>

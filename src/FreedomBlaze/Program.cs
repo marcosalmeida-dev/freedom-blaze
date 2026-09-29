@@ -93,7 +93,13 @@ builder.Services.AddResponseCompression(opts =>
 });
 
 // Real-time Bitcoin news via the OpenAI Responses API web-search tool.
-builder.Services.Configure<OpenAiOptions>(builder.Configuration.GetSection(OpenAiOptions.Section));
+var openAiSection = builder.Configuration.GetSection(OpenAiOptions.Section);
+builder.Services.AddOptions<OpenAiOptions>()
+    .Bind(openAiSection)
+    .Validate(options => options.GenerationTimeout > TimeSpan.Zero, "OpenAI:GenerationTimeout must be positive.")
+    .Validate(options => options.CacheDuration > TimeSpan.Zero, "OpenAI:CacheDuration must be positive.")
+    .Validate(options => options.FailureCooldown > TimeSpan.Zero, "OpenAI:FailureCooldown must be positive.")
+    .ValidateOnStart();
 
 // Register the official OpenAI SDK client. Per the openai-dotnet docs the OpenAIClient is the
 // recommended entry point and is thread-safe, so it is registered as a singleton (one pooled
@@ -106,11 +112,17 @@ if (string.IsNullOrWhiteSpace(openAiApiKey))
 }
 if (!string.IsNullOrWhiteSpace(openAiApiKey))
 {
-    // A web-search news call on a reasoning model can take 60-90s, so raise the SDK's
-    // network timeout well above the call duration to avoid spurious cancellations.
+    // The service cancellation token bounds the full generation, including any SDK retries.
+    // Do not subtract a fixed margin: a short configured timeout could become zero or negative.
+    var generationTimeout = openAiSection.GetValue("GenerationTimeout", TimeSpan.FromMinutes(4));
+
     builder.Services.AddSingleton(_ => new OpenAIClient(
         new ApiKeyCredential(openAiApiKey),
-        new OpenAIClientOptions { NetworkTimeout = TimeSpan.FromMinutes(3) }));
+        new OpenAIClientOptions
+        {
+            NetworkTimeout = generationTimeout,
+            RetryPolicy = new OpenAiNewsRetryPolicy(),
+        }));
 }
 
 // HttpClient dedicated to scraping article thumbnails (headers configured once, never mutated).

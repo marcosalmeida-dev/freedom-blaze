@@ -204,3 +204,63 @@ html.dark-mode-preload {
     bottom: 0;
     margin: auto;
 }
+
+/* ---------------------------------------------------------------------------
+   Bitcoin news cards (Components/NewsArticleCard.razor)
+   --------------------------------------------------------------------------- */
+
+.news-card {
+    height: 100%;
+    transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.news-card:hover,
+.news-card:focus-within {
+    transform: translateY(-2px);
+    box-shadow: var(--mud-elevation-8);
+}
+
+/* Fixed aspect ratio keeps the grid aligned whatever the publisher's image size,
+   and reserves the space up front so lazy-loaded thumbnails cause no layout shift. */
+.news-card__media {
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background-color: var(--mud-palette-background-grey);
+}
+
+    .news-card__media img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+/* Clamp at a line boundary rather than mid-word, so every card is the same height
+   without cutting a headline in half. */
+.news-card__title,
+.news-card__summary {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.news-card__title {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}
+
+.news-card__summary {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .news-card {
+        transition: none;
+    }
+
+    .news-card:hover,
+    .news-card:focus-within {
+        transform: none;
+    }
+}

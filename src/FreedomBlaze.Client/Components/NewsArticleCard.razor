@@ -1,31 +1,47 @@
 @using FreedomBlaze.Client.Models
-@using static FreedomBlaze.Client.Helpers.StringHelper
 
-<MudCard Class="d-flex flex-column" Style="height: 100%;" Elevation="2">
-    <MudCardMedia Image="@Thumbnail" Height="160" />
+<MudCard Class="news-card d-flex flex-column" Elevation="2">
+    <div class="news-card__media">
+        @* A real <img> (rather than MudCardMedia's background-image) so the thumbnail can be lazy
+           loaded, carries alt text, and can fall back when a scraped source URL goes stale. *@
+        <img src="@Thumbnail" alt="" loading="lazy" decoding="async" aria-hidden="true"
+             onerror="this.onerror=null;this.src='@DefaultThumbnail'" />
+    </div>
+
     <MudCardContent Class="flex-grow-1">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
             @if (!string.IsNullOrWhiteSpace(Article.SourceRegion))
             {
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
-                         Icon="@Icons.Material.Filled.Public">@Article.SourceRegion</MudChip>
+                         Icon="@Icons.Material.Filled.Public" Class="ma-0">@Article.SourceRegion</MudChip>
             }
             @if (!string.IsNullOrWhiteSpace(Article.Source))
             {
                 <MudText Typo="Typo.caption" Color="Color.Secondary">@Article.Source</MudText>
             }
         </MudStack>
-        <MudText Typo="Typo.subtitle1" Class="mb-1"><b>@Article.Title.Truncate(90)</b></MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">@Article.Text.Truncate(170)</MudText>
+
+        <MudText Typo="Typo.subtitle1" Class="news-card__title mb-1" title="@Article.Title">
+            <b>@Article.Title</b>
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="news-card__summary">
+            @Article.Text
+        </MudText>
     </MudCardContent>
+
     <MudCardActions Class="justify-space-between">
-        <MudText Typo="Typo.caption" Color="Color.Secondary">@Article.Date.ToString("MMM d, yyyy")</MudText>
-        <MudButton Variant="Variant.Text" Color="Color.Primary"
-                   EndIcon="@Icons.Material.Filled.OpenInNew"
-                   Href="@Article.ArticleLinkUrl" Target="_blank" rel="noopener noreferrer"
-                   Disabled="@string.IsNullOrWhiteSpace(Article.ArticleLinkUrl)">
-            Read more
-        </MudButton>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            <time datetime="@Article.Date.ToString("yyyy-MM-dd")">@Article.Date.ToString("MMM d, yyyy")</time>
+        </MudText>
+        @if (HasLink)
+        {
+            <MudButton Variant="Variant.Text" Color="Color.Primary"
+                       EndIcon="@Icons.Material.Filled.OpenInNew"
+                       Href="@Article.ArticleLinkUrl" Target="_blank" rel="noopener noreferrer"
+                       aria-label="@ReadMoreLabel">
+                Read more
+            </MudButton>
+        }
     </MudCardActions>
 </MudCard>
 
@@ -36,4 +52,13 @@
 
     private string Thumbnail =>
         string.IsNullOrWhiteSpace(Article.NewsThumbImg) ? DefaultThumbnail : Article.NewsThumbImg;
+
+    private bool HasLink => !string.IsNullOrWhiteSpace(Article.ArticleLinkUrl);
+
+    // Screen readers announce every link on the page in isolation, so nine identical "Read more"
+    // links are useless without the headline they belong to.
+    private string ReadMoreLabel =>
+        string.IsNullOrWhiteSpace(Article.Source)
+            ? $"Read more: {Article.Title} (opens in a new tab)"
+            : $"Read more: {Article.Title} — {Article.Source} (opens in a new tab)";
 }

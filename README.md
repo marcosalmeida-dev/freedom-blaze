@@ -26,6 +26,42 @@ dotnet watch run
 
 Navigate to https://localhost:7029. The application will automatically reload if you change any of the source files.
 
+## Bitcoin news
+
+`BitcoinNews.razor` reads saved daily articles first. When a recent day has no saved news,
+the server requests structured articles from OpenAI's Responses API and requires a web
+search. The configured model must support both features; see the
+[OpenAI web-search guide](https://developers.openai.com/api/docs/guides/tools-web-search).
+
+Configure `OpenAI:ApiKey` on the **server**, using .NET user secrets for local development,
+Key Vault, or the `OpenAI__ApiKey` environment variable. `ChatGptApiKey` remains a legacy
+fallback. Keep API keys out of client configuration and source control. `OpenAI:Model`
+selects the model; changing models does not fix an exhausted API balance.
+
+If the news stops loading, check the server's `OpenAiNewsClient` / `BitcoinNewsService`
+logs for the HTTP status and provider error code:
+
+| Error | Action |
+| --- | --- |
+| `429` with `credit_balance_exhausted`, `insufficient_quota`, or a billing-limit code | Restore API credit or raise the applicable spending limit for the key's account/project. |
+| Other `429` errors | Wait for the provider's rate limit to reset. |
+| `401` / `403` | Check the server's key and project permissions. |
+| Model/tool rejection | Check that the configured model supports Responses, web search, and structured output. |
+| Timeout | Check provider latency and `OpenAI:GenerationTimeout` (four minutes by default). The browser news client waits five minutes; keep it longer than the configured generation timeout. |
+
+Failures return HTTP `503` with a reader-safe explanation instead of a successful empty
+news list. Billing/configuration failures pause generation for all dates for
+`OpenAI:FailureCooldown` (ten minutes by default); saved articles remain readable.
+After correcting the account/configuration, wait for that cooldown or use the existing
+master-key-protected `POST /api/bitcoin-news/refresh?date=yyyy-MM-dd` endpoint to retry
+immediately. The public page's Retry button respects the cooldown.
+
+Run the offline news integration tests with:
+
+```bash
+dotnet test tests/FreedomBlaze.Tests/FreedomBlaze.Tests.csproj
+```
+
 ## Code Styles & Formatting
 
 The template includes [EditorConfig](https://editorconfig.org/) support to help maintain consistent coding styles for multiple developers working on the same project across various editors and IDEs. The **.editorconfig** file defines the coding styles applicable to this solution.

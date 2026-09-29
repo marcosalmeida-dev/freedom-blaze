@@ -3,6 +3,7 @@
 @using FreedomBlaze.Components.Payments
 
 @inherits LayoutComponentBase
+@implements IDisposable
 
 <MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@ThemeManager.IsDarkMode" Theme="_theme" />
 <MudSnackbarProvider />

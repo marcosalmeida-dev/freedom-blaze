@@ -18,12 +18,12 @@ CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo(defaultCulture);
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
-// In WebAssembly the news API is reached over HTTP (browser origin). The longer timeout covers a
-// cold generation (web search on a reasoning model) that can take ~80s, just over the default 100s.
+// In WebAssembly the news API is reached over HTTP (browser origin). Allow the server's default
+// four-minute generation timeout to finish, with extra time for storage and the HTTP response.
 builder.Services.AddScoped<IBitcoinNewsApiService>(sp => new BitcoinNewsApiService(new HttpClient
 {
     BaseAddress = new Uri(builder.HostEnvironment.BaseAddress),
-    Timeout = TimeSpan.FromMinutes(3),
+    Timeout = TimeSpan.FromMinutes(5),
 }));
 
 builder.Services.AddMudServices();

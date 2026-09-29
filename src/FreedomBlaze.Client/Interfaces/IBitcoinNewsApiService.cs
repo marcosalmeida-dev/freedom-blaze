@@ -9,9 +9,17 @@ namespace FreedomBlaze.Client.Interfaces;
 /// </summary>
 public interface IBitcoinNewsApiService
 {
-    Task<List<NewsArticleModel>> GetNewsAsync(DateOnly date, CancellationToken cancellationToken = default);
-
-    Task<List<NewsArticleModel>> RefreshNewsAsync(DateOnly date, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Gets the news for <paramref name="date"/>.
+    /// </summary>
+    /// <param name="date">The calendar day to read.</param>
+    /// <param name="allowGeneration">
+    /// When <c>false</c>, only already-stored news is returned and no (paid) generation is started.
+    /// Used during prerender so a crawler still gets real content without triggering an expensive
+    /// call. The WebAssembly implementation always runs interactively, so it ignores the flag.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<NewsResult> GetNewsAsync(DateOnly date, bool allowGeneration = true, CancellationToken cancellationToken = default);
 
     /// <summary>The dates that already have saved news (drives the date filter), most recent first.</summary>
     Task<List<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default);
