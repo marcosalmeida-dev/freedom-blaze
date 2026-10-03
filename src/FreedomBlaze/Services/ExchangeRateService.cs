@@ -1,74 +1,106 @@
-using FreedomBlaze.Exceptions;
-using FreedomBlaze.Extensions;
-using FreedomBlaze.Interfaces;
+﻿using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace FreedomBlaze.Services;
 
 /// <summary>
-/// Aggregates every <see cref="IBitcoinExchangeRateClient"/> into a single averaged BTC/USD rate
-/// (cached briefly), attaches the latest fiat conversion rates from
-/// <see cref="ICurrencyExchangeRateClient"/>, and records per-exchange availability for the status UI.
+/// Aggregates usable BTC/USD sources and fiat rates into one cached snapshot, including source health.
+/// The singleton's refresh gate prevents simultaneous page and API requests from flooding providers.
 /// </summary>
-public class ExchangeRateService(
+public sealed class ExchangeRateService(
     IMemoryCache cache,
     ICurrencyExchangeRateClient currencyExchangeClient,
     IEnumerable<IBitcoinExchangeRateClient> bitcoinExchangeClients) : IExchangeRateService
 {
+    private const string CacheKey = "ExchangeRateService.Snapshot";
+    private readonly SemaphoreSlim _refreshGate = new(1, 1);
+
     public List<BitcoinExchangeStatusModel> BitcoinExchangeStatusList { get; private set; } = [];
 
     public async Task<BitcoinExchangeRateModel?> GetExchangeRateAsync(CancellationToken cancellationToken)
     {
-        const string cacheKey = nameof(GetExchangeRateAsync);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (cache.TryGetValue<RateSnapshot>(CacheKey, out var snapshot))
+            return ReadSnapshot(snapshot!);
 
-        if (!cache.TryGetValue(cacheKey, out decimal? exchangeRateAvgResult))
-        {
-            var tasks = bitcoinExchangeClients.Select(p => p.GetExchangeRateAsync(cancellationToken));
-            var exchangeRates = await tasks.WhenAllOrException();
-
-            if (exchangeRates != null)
-            {
-                var successRates = exchangeRates
-                    .Where(w => w.IsSuccess && w.Result is { BitcoinRateInUSD: > 0 })
-                    .ToList();
-
-                if (successRates.Count > 0)
-                    exchangeRateAvgResult = successRates.Average(a => a.Result!.BitcoinRateInUSD);
-
-                cache.Set(cacheKey, exchangeRateAvgResult, TimeSpan.FromSeconds(55));
-
-                BitcoinExchangeStatusList = exchangeRates.Select(s => new BitcoinExchangeStatusModel
-                {
-                    ExchangeName = s.IsSuccess
-                        ? s.Result!.ExchangeName
-                        : (s.Exception?.InnerException as ExchangeIntegrationException)?.ExchangeName,
-                    IsExchangeAvailable = s.IsSuccess
-                }).ToList();
-            }
-        }
-
-        if (!exchangeRateAvgResult.HasValue)
-            return null;
-
-        CurrencyExchangeRateModel? currencyRatesResult;
+        await _refreshGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            currencyRatesResult = await currencyExchangeClient.GetCurrencyRateAsync(cancellationToken);
+            // Another caller may have refreshed the shared cache while this one waited.
+            if (cache.TryGetValue<RateSnapshot>(CacheKey, out snapshot))
+                return ReadSnapshot(snapshot!);
+
+            var exchangesTask = Task.WhenAll(bitcoinExchangeClients.Select(
+                client => ReadExchangeAsync(client, cancellationToken)));
+            var currenciesTask = ReadCurrenciesAsync(cancellationToken);
+            await Task.WhenAll(exchangesTask, currenciesTask).ConfigureAwait(false);
+            var results = await exchangesTask.ConfigureAwait(false);
+            var currencies = await currenciesTask.ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var successfulRates = results.Where(result => result.Rate > 0).ToArray();
+            BitcoinExchangeRateModel? rate = null;
+            if (successfulRates.Length > 0 && currencies is not null)
+            {
+                rate = new BitcoinExchangeRateModel
+                {
+                    BitcoinRateInUSD = successfulRates.Average(result => result.Rate),
+                    CurrencyExchangeRate = currencies
+                };
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            snapshot = new RateSnapshot(rate, results.Select(result => new BitcoinExchangeStatusModel
+            {
+                ExchangeName = result.ExchangeName,
+                IsExchangeAvailable = result.Rate > 0
+            }).ToList());
+
+            // Briefly cache failures too, so a provider outage doesn't trigger a request storm.
+            cache.Set(CacheKey, snapshot, rate is null ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(55));
+            return ReadSnapshot(snapshot);
+        }
+        finally
+        {
+            _refreshGate.Release();
+        }
+    }
+
+    private BitcoinExchangeRateModel? ReadSnapshot(RateSnapshot snapshot)
+    {
+        BitcoinExchangeStatusList = snapshot.Statuses;
+        return snapshot.Rate;
+    }
+
+    private static async Task<ExchangeResult> ReadExchangeAsync(
+        IBitcoinExchangeRateClient client, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var rate = await client.GetExchangeRateAsync(cancellationToken).ConfigureAwait(false);
+            return new ExchangeResult(client.ExchangeName, rate?.BitcoinRateInUSD ?? 0);
         }
         catch (Exception)
         {
-            // Currency rate failure is non-fatal — BTC/USD price still shows; non-USD rates update next tick.
+            cancellationToken.ThrowIfCancellationRequested();
+            return new ExchangeResult(client.ExchangeName, 0);
+        }
+    }
+
+    private async Task<CurrencyExchangeRateModel?> ReadCurrenciesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await currencyExchangeClient.GetCurrencyRateAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             return null;
         }
-
-        if (currencyRatesResult == null)
-            return null;
-
-        return new BitcoinExchangeRateModel
-        {
-            BitcoinRateInUSD = exchangeRateAvgResult.Value,
-            CurrencyExchangeRate = currencyRatesResult
-        };
     }
+
+    private sealed record RateSnapshot(BitcoinExchangeRateModel? Rate, List<BitcoinExchangeStatusModel> Statuses);
+    private sealed record ExchangeResult(string ExchangeName, decimal Rate);
 }

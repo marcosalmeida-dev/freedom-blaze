@@ -55,30 +55,44 @@ html.dark-mode-preload {
     color-scheme: dark;
 }
 
-/* MudAppBar currency select */
-.appbar-currency-select {
-    min-width: 155px;
-    max-width: 180px;
+/* Site language is independent of the converter currency. */
+.appbar-language-select {
+    min-width: 160px;
+    max-width: 195px;
 }
 
-.appbar-currency-select .mud-select-input,
-.appbar-currency-select .mud-input-slot,
-.appbar-currency-select .mud-input-adornment,
-.appbar-currency-select .mud-svg-icon {
+.appbar-language-select .mud-select-input,
+.appbar-language-select .mud-input-slot,
+.appbar-language-select .mud-input-adornment,
+.appbar-language-select .mud-svg-icon {
     color: white !important;
 }
 
 @media (max-width: 600px) {
-    .appbar-currency-select {
-        min-width: 100px;
-        max-width: 130px;
+    .appbar-language-select {
+        min-width: 130px;
+        max-width: 155px;
     }
 }
 
-/* Dropdown popup — wide enough for longest currency label */
-.currency-dropdown {
-    min-width: 220px !important;
+.language-dropdown {
+    min-width: 240px !important;
+    max-width: calc(100vw - 32px);
 }
+
+.language-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    white-space: normal;
+    text-align: start;
+    line-height: 1.3;
+}
+
+.language-option img { flex: 0 0 20px; object-fit: contain; }
+.language-option > span { min-width: 0; overflow-wrap: anywhere; }
+.appbar-language-select .language-option { font-size: .85rem; }
 
 /* Hide app name and adjust layout for small screens */
 @media (max-width: 600px) {
@@ -94,6 +108,19 @@ html.dark-mode-preload {
     .toggle-switch {
         display: none;
     }
+
+    .appbar-btc-price {
+        display: none;
+    }
+
+    .main-content-container {
+        padding-inline: 0;
+    }
+}
+
+/* Route navigation focuses the page heading for screen readers. */
+#main-content h1:focus {
+    outline: none;
 }
 
 /* Show drawer dark mode toggle only on mobile */
@@ -203,64 +230,4 @@ html.dark-mode-preload {
     right: 0;
     bottom: 0;
     margin: auto;
-}
-
-/* ---------------------------------------------------------------------------
-   Bitcoin news cards (Components/NewsArticleCard.razor)
-   --------------------------------------------------------------------------- */
-
-.news-card {
-    height: 100%;
-    transition: transform 150ms ease, box-shadow 150ms ease;
-}
-
-.news-card:hover,
-.news-card:focus-within {
-    transform: translateY(-2px);
-    box-shadow: var(--mud-elevation-8);
-}
-
-/* Fixed aspect ratio keeps the grid aligned whatever the publisher's image size,
-   and reserves the space up front so lazy-loaded thumbnails cause no layout shift. */
-.news-card__media {
-    aspect-ratio: 16 / 9;
-    overflow: hidden;
-    background-color: var(--mud-palette-background-grey);
-}
-
-    .news-card__media img {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-/* Clamp at a line boundary rather than mid-word, so every card is the same height
-   without cutting a headline in half. */
-.news-card__title,
-.news-card__summary {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.news-card__title {
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-}
-
-.news-card__summary {
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .news-card {
-        transition: none;
-    }
-
-    .news-card:hover,
-    .news-card:focus-within {
-        transform: none;
-    }
 }

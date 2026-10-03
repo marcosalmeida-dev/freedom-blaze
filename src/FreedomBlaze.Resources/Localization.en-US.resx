@@ -127,7 +127,7 @@
     <value>By breaking Bitcoin into these tiny units, users can make microtransactions and participate in Bitcoin’s economy with even the smallest amounts of value.</value>
   </data>
   <data name="SatsConverter.Title" xml:space="preserve">
-    <value>Bitcoin Satoshis (SATS) Converter</value>
+    <value>Sats converter</value>
   </data>
   <data name="SatsConverter.Body1" xml:space="preserve">
     <value>Select Currency. Convert currency to sats and sats to currency.</value>
@@ -152,5 +152,254 @@
   </data>
   <data name="SatsConverter.ConvertButtonText" xml:space="preserve">
     <value>Convert</value>
+  </data>
+  <data name="SatsConverter.SeoTitle" xml:space="preserve">
+    <value>Bitcoin Satoshi (Sats) Converter — Live Multi-Currency Rates — Freedom Blaze</value>
+  </data>
+  <data name="SatsConverter.SeoDescription" xml:space="preserve">
+    <value>Instantly convert between Bitcoin Satoshis (Sats), BTC and major fiat currencies using live exchange rates from multiple providers.</value>
+  </data>
+  <data name="SatsConverter.Eyebrow" xml:space="preserve">
+    <value>BITCOIN TO EVERYDAY MONEY</value>
+  </data>
+  <data name="SatsConverter.Description" xml:space="preserve">
+    <value>A little Bitcoin. Any currency. See what your sats are worth.</value>
+  </data>
+  <data name="SatsConverter.UpdatingRates" xml:space="preserve">
+    <value>Updating rates…</value>
+  </data>
+  <data name="SatsConverter.RatesDelayed" xml:space="preserve">
+    <value>Rates delayed</value>
+  </data>
+  <data name="SatsConverter.LiveRates" xml:space="preserve">
+    <value>Live exchange rates</value>
+  </data>
+  <data name="SatsConverter.WaitingForRates" xml:space="preserve">
+    <value>Waiting for rates</value>
+  </data>
+  <data name="SatsConverter.Retry" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="SatsConverter.ConvertHeading" xml:space="preserve">
+    <value>Make the conversion</value>
+  </data>
+  <data name="SatsConverter.EnterAmount" xml:space="preserve">
+    <value>Enter either amount to convert.</value>
+  </data>
+  <data name="SatsConverter.YourCurrency" xml:space="preserve">
+    <value>Your currency</value>
+  </data>
+  <data name="SatsConverter.SwapFields" xml:space="preserve">
+    <value>Swap the order of the currency and satoshi fields</value>
+  </data>
+  <data name="SatsConverter.AmountTooLarge" xml:space="preserve">
+    <value>This amount is too large for the current rates. Enter a smaller amount.</value>
+  </data>
+  <data name="SatsConverter.BitcoinEquivalent" xml:space="preserve">
+    <value>Bitcoin equivalent</value>
+  </data>
+  <data name="SatsConverter.ConversionNote" xml:space="preserve">
+    <value>1 BTC = {0} sats. Estimates exclude exchange fees.</value>
+  </data>
+  <data name="SatsConverter.AcrossCurrencies" xml:space="preserve">
+    <value>Across currencies</value>
+  </data>
+  <data name="SatsConverter.CompareHint" xml:space="preserve">
+    <value>Compare your amount. Tap a value to copy it.</value>
+  </data>
+  <data name="SatsConverter.RefreshRates" xml:space="preserve">
+    <value>Refresh exchange rates</value>
+  </data>
+  <data name="SatsConverter.TableCaption" xml:space="preserve">
+    <value>Bitcoin prices and your converted amount in each currency. Select a currency to use it in the converter.</value>
+  </data>
+  <data name="SatsConverter.Currency" xml:space="preserve">
+    <value>Currency</value>
+  </data>
+  <data name="SatsConverter.OneBitcoin" xml:space="preserve">
+    <value>1 Bitcoin</value>
+  </data>
+  <data name="SatsConverter.YourAmount" xml:space="preserve">
+    <value>Your amount</value>
+  </data>
+  <data name="SatsConverter.OneUsd" xml:space="preserve">
+    <value>1 USD</value>
+  </data>
+  <data name="SatsConverter.UseCurrency" xml:space="preserve">
+    <value>Use {0} in the converter</value>
+  </data>
+  <data name="SatsConverter.CopyBitcoinPrice" xml:space="preserve">
+    <value>Copy Bitcoin price in {0}</value>
+  </data>
+  <data name="SatsConverter.CopyConvertedAmount" xml:space="preserve">
+    <value>Copy your amount in {0}</value>
+  </data>
+  <data name="SatsConverter.Updated" xml:space="preserve">
+    <value>Updated</value>
+  </data>
+  <data name="SatsConverter.GettingRates" xml:space="preserve">
+    <value>Getting the latest exchange rates…</value>
+  </data>
+  <data name="SatsConverter.RatesUnavailable" xml:space="preserve">
+    <value>Rates are currently unavailable.</value>
+  </data>
+  <data name="SatsConverter.UpdatesEveryMinute" xml:space="preserve">
+    <value>Updates every minute</value>
+  </data>
+  <data name="SatsConverter.Denominations" xml:space="preserve">
+    <value>Understanding Bitcoin denominations</value>
+  </data>
+  <data name="SatsConverter.ExchangeStatus" xml:space="preserve">
+    <value>Exchange status</value>
+  </data>
+  <data name="SatsConverter.AmountInCurrency" xml:space="preserve">
+    <value>Amount in {0}</value>
+  </data>
+  <data name="SatsConverter.Satoshis" xml:space="preserve">
+    <value>Satoshis (sats)</value>
+  </data>
+  <data name="SatsConverter.CopyCurrencyAmount" xml:space="preserve">
+    <value>Copy currency amount</value>
+  </data>
+  <data name="SatsConverter.CopySats" xml:space="preserve">
+    <value>Copy satoshi amount</value>
+  </data>
+  <data name="SatsConverter.StaleRates" xml:space="preserve">
+    <value>Live rates are temporarily unavailable. Showing the last available rates.</value>
+  </data>
+  <data name="SatsConverter.NoRates" xml:space="preserve">
+    <value>Exchange rates are temporarily unavailable. Your amount is saved while we reconnect.</value>
+  </data>
+  <data name="SatsConverter.MissingCurrencyRate" xml:space="preserve">
+    <value>A rate for this currency is unavailable. Choose another currency or try again.</value>
+  </data>
+  <data name="SatsConverter.PreferencesUnavailable" xml:space="preserve">
+    <value>Your browser could not save this conversion for your next visit.</value>
+  </data>
+  <data name="SatsConverter.Copied" xml:space="preserve">
+    <value>Copied to clipboard.</value>
+  </data>
+  <data name="SatsConverter.ClipboardUnavailable" xml:space="preserve">
+    <value>Clipboard access is unavailable. Select and copy the value instead.</value>
+  </data>
+  <data name="Currency.USD" xml:space="preserve">
+    <value>US Dollar</value>
+  </data>
+  <data name="Currency.EUR" xml:space="preserve">
+    <value>Euro</value>
+  </data>
+  <data name="Currency.GBP" xml:space="preserve">
+    <value>Pound Sterling</value>
+  </data>
+  <data name="Currency.AUD" xml:space="preserve">
+    <value>Australian Dollar</value>
+  </data>
+  <data name="Currency.JPY" xml:space="preserve">
+    <value>Japanese Yen</value>
+  </data>
+  <data name="Currency.ZAR" xml:space="preserve">
+    <value>South African Rand</value>
+  </data>
+  <data name="Currency.ARS" xml:space="preserve">
+    <value>Argentine Peso</value>
+  </data>
+  <data name="Currency.BRL" xml:space="preserve">
+    <value>Brazilian Real</value>
+  </data>
+  <data name="Common.SelectLanguage" xml:space="preserve">
+    <value>Select language</value>
+  </data>
+  <data name="Common.Available" xml:space="preserve">
+    <value>Available</value>
+  </data>
+  <data name="Common.Unavailable" xml:space="preserve">
+    <value>Unavailable</value>
+  </data>
+  <data name="SatsInfo.Sats" xml:space="preserve">
+    <value>Sats</value>
+  </data>
+  <data name="SatsInfo.Bitcoin" xml:space="preserve">
+    <value>Bitcoin</value>
+  </data>
+  <data name="SatsInfo.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="SatsInfo.OneSatoshi" xml:space="preserve">
+    <value>1 Satoshi (sat)</value>
+  </data>
+  <data name="SatsInfo.OneBit" xml:space="preserve">
+    <value>1 Bit</value>
+  </data>
+  <data name="SatsInfo.OneBitcoin" xml:space="preserve">
+    <value>1 Bitcoin (BTC)</value>
+  </data>
+  <data name="SatsInfo.FaqTitle" xml:space="preserve">
+    <value>Frequently asked questions</value>
+  </data>
+  <data name="SatsInfo.FaqLabel" xml:space="preserve">
+    <value>Frequently asked questions about Bitcoin and Satoshis</value>
+  </data>
+  <data name="SatsInfo.Faq1Question" xml:space="preserve">
+    <value>What is a Satoshi (sat)?</value>
+  </data>
+  <data name="SatsInfo.Faq1Answer" xml:space="preserve">
+    <value>A Satoshi, or “sat”, is the smallest unit of Bitcoin. One Satoshi equals 0.00000001 BTC, and 100,000,000 Satoshis make up a single Bitcoin. It is named after Bitcoin's pseudonymous creator, Satoshi Nakamoto.</value>
+  </data>
+  <data name="SatsInfo.Faq2Question" xml:space="preserve">
+    <value>How many Satoshis are in one Bitcoin?</value>
+  </data>
+  <data name="SatsInfo.Faq2Answer" xml:space="preserve">
+    <value>There are exactly 100,000,000 (one hundred million) Satoshis in one Bitcoin (BTC).</value>
+  </data>
+  <data name="SatsInfo.Faq3Question" xml:space="preserve">
+    <value>How do I convert Satoshis to my local currency?</value>
+  </data>
+  <data name="SatsInfo.Faq3Answer" xml:space="preserve">
+    <value>Enter an amount in the converter to see its value in the selected currency, or convert your currency to sats. Choose a currency in the converter or the table. Use the top bar to change the site language.</value>
+  </data>
+  <data name="SatsInfo.Faq4Question" xml:space="preserve">
+    <value>Why do Bitcoin prices differ slightly between exchanges?</value>
+  </data>
+  <data name="SatsInfo.Faq4Answer" xml:space="preserve">
+    <value>Each exchange has its own order book and liquidity, so prices vary over time. Freedom Blaze combines available rates from Blockchain.info, Bitstamp, CoinGecko, Coinbase, Gemini and Coingate to calculate an average price.</value>
+  </data>
+  <data name="SatsInfo.Faq5Question" xml:space="preserve">
+    <value>Is the Freedom Blaze Sats converter free to use?</value>
+  </data>
+  <data name="SatsInfo.Faq5Answer" xml:space="preserve">
+    <value>Yes. The converter, live exchange rates and Bitcoin news are completely free, with no sign-up or account required.</value>
+  </data>
+  <data name="Common.SkipToContent" xml:space="preserve">
+    <value>Skip to main content</value>
+  </data>
+  <data name="Common.ToggleNavigation" xml:space="preserve">
+    <value>Toggle navigation menu</value>
+  </data>
+  <data name="Common.ToggleDarkMode" xml:space="preserve">
+    <value>Toggle dark mode</value>
+  </data>
+  <data name="Common.DarkMode" xml:space="preserve">
+    <value>Dark mode</value>
+  </data>
+  <data name="Common.News" xml:space="preserve">
+    <value>Bitcoin News</value>
+  </data>
+  <data name="Common.About" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Common.Donate" xml:space="preserve">
+    <value>Donate with Lightning</value>
+  </data>
+  <data name="Common.SelectCurrency" xml:space="preserve">
+    <value>Select currency</value>
+  </data>
+  <data name="SatsConverter.QuickReference" xml:space="preserve">
+    <value>At the current rate</value>
+  </data>
+  <data name="SatsConverter.ReferenceSats" xml:space="preserve">
+    <value>{0} sats</value>
+  </data>
+  <data name="SatsConverter.RateExplanation" xml:space="preserve">
+    <value>The sats stay the same; their currency value changes with Bitcoin’s price.</value>
   </data>
 </root>

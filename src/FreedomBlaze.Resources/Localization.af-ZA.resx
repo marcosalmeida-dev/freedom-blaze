@@ -127,7 +127,7 @@
     <value>Deur Bitcoin in hierdie klein eenhede te verdeel, kan gebruikers mikrotransaksies uitvoer en aan Bitcoin se ekonomie deelneem met selfs die kleinste hoeveelhede waarde.</value>
   </data>
   <data name="SatsConverter.Title" xml:space="preserve">
-    <value>Bitcoin Satoshis (SATS) Omskakelaar</value>
+    <value>Sats-omskakelaar</value>
   </data>
 
 
@@ -154,5 +154,254 @@
   </data>
     <data name="SatsConverter.Body2" xml:space="preserve">
       <value>Jy kan die BTC Sats/Geldeenheidresultaat kopieer deur op die kopieer-ikoon of tabelitemresultaat te tik/klik.</value>
+  </data>
+  <data name="SatsConverter.SeoTitle" xml:space="preserve">
+    <value>Bitcoin-satoshi-omskakelaar (sats) — Intydse wisselkoerse — Freedom Blaze</value>
+  </data>
+  <data name="SatsConverter.SeoDescription" xml:space="preserve">
+    <value>Skakel onmiddellik tussen Bitcoin-satoshi's (sats), BTC en die belangrikste geldeenhede om met intydse wisselkoerse van verskeie verskaffers.</value>
+  </data>
+  <data name="SatsConverter.Eyebrow" xml:space="preserve">
+    <value>BITCOIN NA ALLEDAAGSE GELD</value>
+  </data>
+  <data name="SatsConverter.Description" xml:space="preserve">
+    <value>’n Bietjie Bitcoin. Enige geldeenheid. Kyk wat jou sats werd is.</value>
+  </data>
+  <data name="SatsConverter.UpdatingRates" xml:space="preserve">
+    <value>Wisselkoerse word bygewerk…</value>
+  </data>
+  <data name="SatsConverter.RatesDelayed" xml:space="preserve">
+    <value>Wisselkoerse is vertraag</value>
+  </data>
+  <data name="SatsConverter.LiveRates" xml:space="preserve">
+    <value>Intydse wisselkoerse</value>
+  </data>
+  <data name="SatsConverter.WaitingForRates" xml:space="preserve">
+    <value>Wag vir wisselkoerse</value>
+  </data>
+  <data name="SatsConverter.Retry" xml:space="preserve">
+    <value>Probeer weer</value>
+  </data>
+  <data name="SatsConverter.ConvertHeading" xml:space="preserve">
+    <value>Skakel jou bedrag om</value>
+  </data>
+  <data name="SatsConverter.EnterAmount" xml:space="preserve">
+    <value>Voer enige van die twee bedrae in om om te skakel.</value>
+  </data>
+  <data name="SatsConverter.YourCurrency" xml:space="preserve">
+    <value>Jou geldeenheid</value>
+  </data>
+  <data name="SatsConverter.SwapFields" xml:space="preserve">
+    <value>Ruil die volgorde van die geldeenheid- en satoshi-velde om</value>
+  </data>
+  <data name="SatsConverter.AmountTooLarge" xml:space="preserve">
+    <value>Hierdie bedrag is te groot vir die huidige wisselkoerse. Voer ’n kleiner bedrag in.</value>
+  </data>
+  <data name="SatsConverter.BitcoinEquivalent" xml:space="preserve">
+    <value>Bitcoin-ekwivalent</value>
+  </data>
+  <data name="SatsConverter.ConversionNote" xml:space="preserve">
+    <value>1 BTC = {0} sats. Ramings sluit wisselfooie uit.</value>
+  </data>
+  <data name="SatsConverter.AcrossCurrencies" xml:space="preserve">
+    <value>Vergelyk geldeenhede</value>
+  </data>
+  <data name="SatsConverter.CompareHint" xml:space="preserve">
+    <value>Vergelyk jou bedrag. Tik op ’n waarde om dit te kopieer.</value>
+  </data>
+  <data name="SatsConverter.RefreshRates" xml:space="preserve">
+    <value>Verfris wisselkoerse</value>
+  </data>
+  <data name="SatsConverter.TableCaption" xml:space="preserve">
+    <value>Bitcoin-pryse en jou omgeskakelde bedrag in elke geldeenheid. Kies ’n geldeenheid om in die omskakelaar te gebruik.</value>
+  </data>
+  <data name="SatsConverter.Currency" xml:space="preserve">
+    <value>Geldeenheid</value>
+  </data>
+  <data name="SatsConverter.OneBitcoin" xml:space="preserve">
+    <value>1 Bitcoin</value>
+  </data>
+  <data name="SatsConverter.YourAmount" xml:space="preserve">
+    <value>Jou bedrag</value>
+  </data>
+  <data name="SatsConverter.OneUsd" xml:space="preserve">
+    <value>1 USD</value>
+  </data>
+  <data name="SatsConverter.UseCurrency" xml:space="preserve">
+    <value>Gebruik {0} in die omskakelaar</value>
+  </data>
+  <data name="SatsConverter.CopyBitcoinPrice" xml:space="preserve">
+    <value>Kopieer die Bitcoin-prys in {0}</value>
+  </data>
+  <data name="SatsConverter.CopyConvertedAmount" xml:space="preserve">
+    <value>Kopieer jou bedrag in {0}</value>
+  </data>
+  <data name="SatsConverter.Updated" xml:space="preserve">
+    <value>Bygewerk</value>
+  </data>
+  <data name="SatsConverter.GettingRates" xml:space="preserve">
+    <value>Die jongste wisselkoerse word verkry…</value>
+  </data>
+  <data name="SatsConverter.RatesUnavailable" xml:space="preserve">
+    <value>Wisselkoerse is tans nie beskikbaar nie.</value>
+  </data>
+  <data name="SatsConverter.UpdatesEveryMinute" xml:space="preserve">
+    <value>Word elke minuut bygewerk</value>
+  </data>
+  <data name="SatsConverter.Denominations" xml:space="preserve">
+    <value>Verstaan Bitcoin-eenhede</value>
+  </data>
+  <data name="SatsConverter.ExchangeStatus" xml:space="preserve">
+    <value>Handelsplatformstatus</value>
+  </data>
+  <data name="SatsConverter.AmountInCurrency" xml:space="preserve">
+    <value>Bedrag in {0}</value>
+  </data>
+  <data name="SatsConverter.Satoshis" xml:space="preserve">
+    <value>Satoshi's (sats)</value>
+  </data>
+  <data name="SatsConverter.CopyCurrencyAmount" xml:space="preserve">
+    <value>Kopieer die geldeenheidbedrag</value>
+  </data>
+  <data name="SatsConverter.CopySats" xml:space="preserve">
+    <value>Kopieer die satoshi-bedrag</value>
+  </data>
+  <data name="SatsConverter.StaleRates" xml:space="preserve">
+    <value>Intydse wisselkoerse is tydelik nie beskikbaar nie. Die laaste beskikbare wisselkoerse word vertoon.</value>
+  </data>
+  <data name="SatsConverter.NoRates" xml:space="preserve">
+    <value>Wisselkoerse is tydelik nie beskikbaar nie. Jou bedrag word behou terwyl ons weer verbind.</value>
+  </data>
+  <data name="SatsConverter.MissingCurrencyRate" xml:space="preserve">
+    <value>’n Wisselkoers vir hierdie geldeenheid is nie beskikbaar nie. Kies ’n ander geldeenheid of probeer weer.</value>
+  </data>
+  <data name="SatsConverter.PreferencesUnavailable" xml:space="preserve">
+    <value>Jou blaaier kon nie hierdie omskakeling vir jou volgende besoek stoor nie.</value>
+  </data>
+  <data name="SatsConverter.Copied" xml:space="preserve">
+    <value>Na die knipbord gekopieer.</value>
+  </data>
+  <data name="SatsConverter.ClipboardUnavailable" xml:space="preserve">
+    <value>Die knipbord is nie toeganklik nie. Kies en kopieer die waarde met die hand.</value>
+  </data>
+  <data name="Currency.USD" xml:space="preserve">
+    <value>Amerikaanse dollar</value>
+  </data>
+  <data name="Currency.EUR" xml:space="preserve">
+    <value>Euro</value>
+  </data>
+  <data name="Currency.GBP" xml:space="preserve">
+    <value>Britse pond</value>
+  </data>
+  <data name="Currency.AUD" xml:space="preserve">
+    <value>Australiese dollar</value>
+  </data>
+  <data name="Currency.JPY" xml:space="preserve">
+    <value>Japannese jen</value>
+  </data>
+  <data name="Currency.ZAR" xml:space="preserve">
+    <value>Suid-Afrikaanse rand</value>
+  </data>
+  <data name="Currency.ARS" xml:space="preserve">
+    <value>Argentynse peso</value>
+  </data>
+  <data name="Currency.BRL" xml:space="preserve">
+    <value>Brasiliaanse real</value>
+  </data>
+  <data name="Common.SelectLanguage" xml:space="preserve">
+    <value>Kies taal</value>
+  </data>
+  <data name="Common.Available" xml:space="preserve">
+    <value>Beskikbaar</value>
+  </data>
+  <data name="Common.Unavailable" xml:space="preserve">
+    <value>Nie beskikbaar nie</value>
+  </data>
+  <data name="SatsInfo.Sats" xml:space="preserve">
+    <value>Sats</value>
+  </data>
+  <data name="SatsInfo.Bitcoin" xml:space="preserve">
+    <value>Bitcoin</value>
+  </data>
+  <data name="SatsInfo.Name" xml:space="preserve">
+    <value>Naam</value>
+  </data>
+  <data name="SatsInfo.OneSatoshi" xml:space="preserve">
+    <value>1 satoshi (sat)</value>
+  </data>
+  <data name="SatsInfo.OneBit" xml:space="preserve">
+    <value>1 bit</value>
+  </data>
+  <data name="SatsInfo.OneBitcoin" xml:space="preserve">
+    <value>1 Bitcoin (BTC)</value>
+  </data>
+  <data name="SatsInfo.FaqTitle" xml:space="preserve">
+    <value>Gereelde vrae</value>
+  </data>
+  <data name="SatsInfo.FaqLabel" xml:space="preserve">
+    <value>Gereelde vrae oor Bitcoin en satoshi's</value>
+  </data>
+  <data name="SatsInfo.Faq1Question" xml:space="preserve">
+    <value>Wat is ’n satoshi (sat)?</value>
+  </data>
+  <data name="SatsInfo.Faq1Answer" xml:space="preserve">
+    <value>’n Satoshi, of “sat”, is die kleinste eenheid van Bitcoin. Een satoshi is gelyk aan 0,00000001 BTC, en 100 000 000 satoshi's vorm een Bitcoin. Dit is vernoem na Bitcoin se skepper, wat die skuilnaam Satoshi Nakamoto gebruik.</value>
+  </data>
+  <data name="SatsInfo.Faq2Question" xml:space="preserve">
+    <value>Hoeveel satoshi's is daar in een Bitcoin?</value>
+  </data>
+  <data name="SatsInfo.Faq2Answer" xml:space="preserve">
+    <value>Daar is presies 100 000 000 (eenhonderd miljoen) satoshi's in een Bitcoin (BTC).</value>
+  </data>
+  <data name="SatsInfo.Faq3Question" xml:space="preserve">
+    <value>Hoe skakel ek satoshi's na my plaaslike geldeenheid om?</value>
+  </data>
+  <data name="SatsInfo.Faq3Answer" xml:space="preserve">
+    <value>Voer &apos;n bedrag in die omskakelaar in om die waarde in die gekose geldeenheid te sien, of skakel jou geldeenheid na sats om. Kies die geldeenheid in die omskakelaar of tabel. Gebruik die boonste balk om die webwerf se taal te verander.</value>
+  </data>
+  <data name="SatsInfo.Faq4Question" xml:space="preserve">
+    <value>Waarom verskil Bitcoin-pryse effens tussen handelsplatforms?</value>
+  </data>
+  <data name="SatsInfo.Faq4Answer" xml:space="preserve">
+    <value>Elke handelsplatform het sy eie bestelboek en likiditeit, daarom wissel pryse met verloop van tyd. Freedom Blaze kombineer beskikbare koerse van Blockchain.info, Bitstamp, CoinGecko, Coinbase, Gemini en Coingate om ’n gemiddelde prys te bereken.</value>
+  </data>
+  <data name="SatsInfo.Faq5Question" xml:space="preserve">
+    <value>Is die Freedom Blaze-sats-omskakelaar gratis om te gebruik?</value>
+  </data>
+  <data name="SatsInfo.Faq5Answer" xml:space="preserve">
+    <value>Ja. Die omskakelaar, intydse wisselkoerse en Bitcoin-nuus is heeltemal gratis, sonder enige registrasie of rekening.</value>
+  </data>
+  <data name="Common.SkipToContent" xml:space="preserve">
+    <value>Spring na hoofinhoud</value>
+  </data>
+  <data name="Common.ToggleNavigation" xml:space="preserve">
+    <value>Wys of versteek die navigasiekieslys</value>
+  </data>
+  <data name="Common.ToggleDarkMode" xml:space="preserve">
+    <value>Skakel donker modus aan of af</value>
+  </data>
+  <data name="Common.DarkMode" xml:space="preserve">
+    <value>Donker modus</value>
+  </data>
+  <data name="Common.News" xml:space="preserve">
+    <value>Bitcoin-nuus</value>
+  </data>
+  <data name="Common.About" xml:space="preserve">
+    <value>Oor ons</value>
+  </data>
+  <data name="Common.Donate" xml:space="preserve">
+    <value>Skenk met Lightning</value>
+  </data>
+  <data name="Common.SelectCurrency" xml:space="preserve">
+    <value>Kies geldeenheid</value>
+  </data>
+  <data name="SatsConverter.QuickReference" xml:space="preserve">
+    <value>Teen die huidige koers</value>
+  </data>
+  <data name="SatsConverter.ReferenceSats" xml:space="preserve">
+    <value>{0} sats</value>
+  </data>
+  <data name="SatsConverter.RateExplanation" xml:space="preserve">
+    <value>Die aantal sats bly dieselfde; hul waarde in geld verander met Bitcoin se prys.</value>
   </data>
 </root>

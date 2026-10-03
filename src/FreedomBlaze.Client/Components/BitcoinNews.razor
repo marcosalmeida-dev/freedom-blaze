@@ -5,115 +5,109 @@
          Description="Stay current with daily Bitcoin news headlines from around the world, refreshed every day and browsable by date."
          RelativePath="bitcoinnews" OgType="article" />
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-8">
-    <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween"
-              Spacing="3" Class="mb-6">
-        <div>
-            <MudText Typo="Typo.h5">Bitcoin News</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Around the world · @DayLabel
-            </MudText>
+<div class="news-page">
+    <header class="news-header">
+        <div class="news-heading">
+            <p class="news-eyebrow">Around the world</p>
+            <h1>Bitcoin News</h1>
+            <p class="news-date-label">@DayLabel</p>
         </div>
 
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-            <MudTooltip Text="Earlier day">
-                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" aria-label="Show an earlier day"
-                               Disabled="_loading || PreviousDay is null" OnClick="@(() => GoToAsync(PreviousDay))" />
-            </MudTooltip>
+        <div class="news-date-filter">
+            <div class="news-date-controls" role="group" aria-label="Choose a news date">
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Class="news-day-button"
+                               aria-label="Show an earlier day" title="Earlier day"
+                               Disabled="PreviousDay is null" OnClick="@(() => GoToAsync(PreviousDay))" />
 
-            @* The width constraint lives on this wrapper (input only). PickerVariant.Dialog renders
-               the calendar as a centered modal, so it is never clipped on mobile or desktop. *@
-            <div style="width: 190px; max-width: 100%;">
-                <MudDatePicker Date="_selectedDate" DateChanged="OnDateChangedAsync"
-                               MinDate="MinSelectableDate" MaxDate="MaxSelectableDate" IsDateDisabledFunc="IsDateDisabled"
-                               PickerVariant="PickerVariant.Dialog"
-                               Label="Date" Variant="Variant.Outlined" Margin="Margin.Dense"
-                               DateFormat="MMM d, yyyy" Editable="true" Disabled="_loading" />
-            </div>
+                <div class="news-date-picker">
+                    <MudDatePicker Date="_selectedDate" DateChanged="OnDateChangedAsync"
+                                   MinDate="MinSelectableDate" MaxDate="MaxSelectableDate" IsDateDisabledFunc="IsDateDisabled"
+                                   PickerVariant="PickerVariant.Dialog" AutoClose="true"
+                                   Label="News date" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                   DateFormat="MMM d, yyyy" Editable="false" />
+                </div>
 
-            <MudTooltip Text="Later day">
-                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" aria-label="Show a later day"
-                               Disabled="_loading || NextDay is null" OnClick="@(() => GoToAsync(NextDay))" />
-            </MudTooltip>
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Class="news-day-button"
+                               aria-label="Show a later day" title="Later day"
+                               Disabled="NextDay is null" OnClick="@(() => GoToAsync(NextDay))" />
 
-            @if (!IsToday)
-            {
-                <MudButton Variant="Variant.Text" Color="Color.Primary" Class="ml-1"
-                           Disabled="_loading" OnClick="@(() => GoToAsync(TodayDate))">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="news-today-button"
+                           Disabled="IsToday" OnClick="@(() => GoToAsync(TodayDate))">
                     Today
                 </MudButton>
-            }
-        </MudStack>
-    </MudStack>
+            </div>
+            <p class="news-filter-hint">Browse saved headlines from the last 30 days.</p>
+        </div>
+    </header>
 
-    <section aria-live="polite" aria-busy="@_loading">
+    <div class="news-results-heading">
+        <h2>Daily headlines</h2>
+        <span role="status" aria-live="polite">@ResultsLabel</span>
+    </div>
+
+    <section aria-label="Bitcoin news headlines" aria-busy="@(_loading ? "true" : "false")">
         @if (_loading)
         {
-            <MudGrid>
+            <div class="news-grid news-skeletons" aria-hidden="true">
                 @for (var i = 0; i < SkeletonCount; i++)
                 {
-                    <MudItem xs="12" sm="6" md="4">
-                        <MudCard Class="d-flex flex-column" Style="height: 100%;" Elevation="2">
-                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="170px" />
-                            <MudCardContent>
-                                <MudSkeleton Width="40%" Class="mb-2" />
-                                <MudSkeleton Width="95%" />
-                                <MudSkeleton Width="80%" Class="mt-1" />
-                                <MudSkeleton Width="60%" Class="mt-1" />
-                            </MudCardContent>
-                        </MudCard>
-                    </MudItem>
+                    <div class="news-skeleton">
+                        <div class="news-skeleton-media">
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="100%" />
+                        </div>
+                        <div class="news-skeleton-content">
+                            <MudSkeleton Width="40%" Class="mb-2" />
+                            <MudSkeleton Width="95%" />
+                            <MudSkeleton Width="80%" Class="mt-1" />
+                            <MudSkeleton Width="60%" Class="mt-1" />
+                        </div>
+                    </div>
                 }
-            </MudGrid>
+            </div>
         }
         else if (_errorMessage is not null)
         {
-            <MudPaper Class="pa-8 mt-6 d-flex flex-column align-center" Elevation="0" Outlined="true">
-                <MudIcon Icon="@Icons.Material.Filled.CloudOff" Size="Size.Large" Color="Color.Warning" Class="mb-3" />
-                <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="mb-1">Couldn't load the news</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mb-4">
-                    @_errorMessage
-                </MudText>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_loading"
+            <div class="news-empty-state" role="alert">
+                <MudIcon Icon="@Icons.Material.Filled.CloudOff" Size="Size.Large" Color="Color.Warning" />
+                <h3>Couldn't load the news</h3>
+                <p>@_errorMessage</p>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="news-state-action"
                            StartIcon="@Icons.Material.Filled.Refresh" OnClick="RetryAsync">
                     Try again
                 </MudButton>
-            </MudPaper>
+            </div>
         }
         else if (_articles.Count > 0)
         {
-            <MudGrid>
-                @foreach (var article in _articles)
+            <div class="news-grid">
+                @for (var index = 0; index < _articles.Count; index++)
                 {
-                    <MudItem xs="12" sm="6" md="4" @key="article">
-                        <NewsArticleCard Article="article" />
-                    </MudItem>
+                    var article = _articles[index];
+                    <NewsArticleCard Article="article" PrioritizeImage="@(index == 0)" @key="article" />
                 }
-            </MudGrid>
+            </div>
 
-            <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center" Class="d-block mt-8">
-                Headlines are gathered daily by an AI web search. Summaries are automated — follow the
-                link on each card to read the publisher's original article.
-            </MudText>
+            <p class="news-disclosure">
+                Headlines are gathered daily by an AI web search. Summaries are automated; read the
+                publisher's original article for the full story.
+            </p>
         }
         else
         {
-            <MudPaper Class="pa-8 mt-6 d-flex flex-column align-center" Elevation="0" Outlined="true">
-                <MudIcon Icon="@Icons.Material.Filled.Newspaper" Size="Size.Large" Color="Color.Secondary" Class="mb-3" />
-                <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="mb-1">
-                    No Bitcoin news for @SelectedDate.ToString("MMMM d, yyyy")
-                </MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mb-4">
+            <div class="news-empty-state">
+                <MudIcon Icon="@Icons.Material.Filled.Newspaper" Size="Size.Large" Color="Color.Secondary" />
+                <h3>No Bitcoin news for @SelectedDate.ToString("MMMM d, yyyy")</h3>
+                <p>
                     @(IsToday
                         ? "Today's headlines haven't been gathered yet. Try again in a little while."
                         : "Pick another day, or jump back to today's headlines.")
-                </MudText>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_loading"
+                </p>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="news-state-action"
                            StartIcon="@(IsToday ? Icons.Material.Filled.Refresh : Icons.Material.Filled.Today)"
                            OnClick="OnEmptyStateActionAsync">
                     @(IsToday ? "Try again" : "Go to today")
                 </MudButton>
-            </MudPaper>
+            </div>
         }
     </section>
-</MudContainer>
+</div>

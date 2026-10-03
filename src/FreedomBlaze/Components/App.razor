@@ -37,7 +37,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
-    <link href="/app.css" rel="stylesheet" asp-append-version="true" />
+    <link href="@Assets["app.css"]" rel="stylesheet" />
+    <link href="@Assets["FreedomBlaze.styles.css"]" rel="stylesheet" />
 
     <HeadOutlet @rendermode="InteractiveServer" />
 
@@ -69,7 +70,7 @@
     <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
-    <script src="/js/app.js" asp-append-version="true"></script>
+    <script src="@Assets["js/app.js"]"></script>
 </body>
 
 </html>
@@ -126,11 +127,10 @@
 
     protected override void OnInitialized()
     {
-        HttpContext?.Response.Cookies.Append(
-            CookieRequestCultureProvider.DefaultCookieName,
-            CookieRequestCultureProvider.MakeCookieValue(
-                new RequestCulture(
-                    CultureInfo.CurrentCulture,
-                    CultureInfo.CurrentUICulture)));
+        if (HttpContext is not null)
+        {
+            FreedomBlaze.Helpers.CultureCookieHelper.Write(HttpContext,
+                new RequestCulture(CultureInfo.CurrentCulture, CultureInfo.CurrentUICulture));
+        }
     }
 }

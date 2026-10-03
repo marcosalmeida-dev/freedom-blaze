@@ -1,53 +1,43 @@
-using FreedomBlaze.Client.Helpers;
 using FreedomBlaze.Client.Interfaces;
 using FreedomBlaze.Client.Models;
 using Microsoft.AspNetCore.Components;
-using MudBlazor;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace FreedomBlaze.Client.Components;
 
 public partial class BitcoinNews : IDisposable
 {
-    /// <summary>Number of placeholder cards shown while loading (matches a full day's set).</summary>
-    private const int SkeletonCount = 9;
-
-    /// <summary>How far back the date filter is allowed to go.</summary>
+    private const int SkeletonCount = 6;
     private const int MaxHistoryDays = 30;
-
+    private const string StateKey = "BitcoinNews.InitialState";
     private const string LoadFailedMessage = "Bitcoin news is temporarily unavailable. Please try again in a moment.";
 
     [Inject] private IBitcoinNewsApiService NewsApi { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private PersistentComponentState ComponentState { get; set; } = default!;
 
-    /// <summary>Cancels in-flight work when the user navigates away from the page.</summary>
-    private readonly CancellationTokenSource _cts = new();
-
+    private readonly CancellationTokenSource _lifetimeCts = new();
+    private readonly Dictionary<DateOnly, IReadOnlyList<NewsArticleModel>> _loadedDays = [];
+    private CancellationTokenSource? _loadCts;
+    private PersistingComponentStateSubscription? _persistingSubscription;
     private DateTime? _selectedDate = DateTime.Today;
     private IReadOnlyList<NewsArticleModel> _articles = [];
     private HashSet<DateOnly> _availableDates = [];
     private string? _errorMessage;
-    private bool _loading;
-
-    // Identifies the newest load, so a superseded one can never write its (stale) result to the UI.
-    private int _loadGeneration;
+    private bool _loading = true;
+    private bool _disposed;
 
     private static DateOnly TodayDate => DateOnly.FromDateTime(DateTime.Today);
     private DateOnly SelectedDate => DateOnly.FromDateTime(_selectedDate ?? DateTime.Today);
     private bool IsToday => SelectedDate == TodayDate;
-
-    // Read at render time rather than captured in a field, so a long-lived circuit that spans
-    // midnight still offers the correct range.
     private static DateTime MaxSelectableDate => DateTime.Today;
     private static DateTime MinSelectableDate => DateTime.Today.AddDays(-MaxHistoryDays);
 
-    /// <summary>"today", "yesterday", or the full date — the fastest thing to read in the subtitle.</summary>
     private string DayLabel
     {
         get
         {
             var formatted = SelectedDate.ToString("MMMM d, yyyy");
-            var dayDelta = SelectedDate.DayNumber - TodayDate.DayNumber;
-            return dayDelta switch
+            return (SelectedDate.DayNumber - TodayDate.DayNumber) switch
             {
                 0 => $"{formatted} · today",
                 -1 => $"{formatted} · yesterday",
@@ -56,48 +46,60 @@ public partial class BitcoinNews : IDisposable
         }
     }
 
-    /// <summary>Every day the reader may open: those with saved news, plus today.</summary>
-    private IEnumerable<DateOnly> SelectableDates => _availableDates.Append(TodayDate).Distinct();
+    private string ResultsLabel => _loading ? "Loading headlines…"
+        : _errorMessage is not null ? "Unable to load"
+        : _articles.Count == 1 ? "1 story" : $"{_articles.Count} stories";
 
-    /// <summary>Nearest selectable day before the current one, or <c>null</c> when there is none.</summary>
-    private DateOnly? PreviousDay => SelectableDates
-        .Where(d => d < SelectedDate && d >= DateOnly.FromDateTime(MinSelectableDate))
-        .OrderByDescending(d => d)
-        .Cast<DateOnly?>()
-        .FirstOrDefault();
-
-    /// <summary>Nearest selectable day after the current one, or <c>null</c> when already at the newest.</summary>
-    private DateOnly? NextDay => SelectableDates
-        .Where(d => d > SelectedDate && d <= TodayDate)
-        .OrderBy(d => d)
-        .Cast<DateOnly?>()
-        .FirstOrDefault();
+    private DateOnly? PreviousDay => FindAdjacentDay(earlier: true);
+    private DateOnly? NextDay => FindAdjacentDay(earlier: false);
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadAvailableDatesAsync();
-
-        // During prerender, read only what is already stored: a crawler and a first paint both get
-        // real content, but neither triggers the slow, paid generation. The component re-runs this
-        // once it becomes interactive (server-interactive or WebAssembly), which is where a missing
-        // day is actually generated.
-        await LoadAsync(allowGeneration: RendererInfo.IsInteractive);
-    }
-
-    private async Task OnDateChangedAsync(DateTime? date)
-    {
-        if (date is null || date.Value.Date == _selectedDate?.Date)
+        if (ComponentState.TryTakeFromJson<InitialNewsState>(StateKey, out var restored) && restored is not null)
         {
-            return;
+            _selectedDate = restored.Date.ToDateTime(TimeOnly.MinValue);
+            _articles = restored.Articles;
+            _availableDates = [.. restored.AvailableDates];
+            _errorMessage = restored.ErrorMessage;
+            _loading = false;
+
+            if (_articles.Count > 0)
+            {
+                _loadedDays[restored.Date] = _articles;
+            }
+            else if (_errorMessage is null && RendererInfo.IsInteractive)
+            {
+                // An empty prerender only checked storage. Generation is allowed once interactive.
+                await LoadAsync();
+            }
+        }
+        else
+        {
+            // Date metadata and headlines are independent; do not delay first content on metadata.
+            await Task.WhenAll(LoadAvailableDatesAsync(), LoadAsync(allowGeneration: RendererInfo.IsInteractive));
         }
 
-        _selectedDate = date.Value.Date;
-        await LoadAsync();
+        if (!_disposed)
+        {
+            // Register after initialization so prerender persists complete data. InteractiveAuto
+            // restores it in either renderer, avoiding a second fetch and a loading flash.
+            _persistingSubscription = ComponentState.RegisterOnPersisting(PersistStateAsync, RenderMode.InteractiveAuto);
+        }
     }
+
+    private Task PersistStateAsync()
+    {
+        ComponentState.PersistAsJson(StateKey,
+            new InitialNewsState(SelectedDate, [.. _articles], [.. _availableDates], _errorMessage));
+        return Task.CompletedTask;
+    }
+
+    private Task OnDateChangedAsync(DateTime? date) =>
+        GoToAsync(date is null ? null : DateOnly.FromDateTime(date.Value));
 
     private async Task GoToAsync(DateOnly? date)
     {
-        if (date is null || date.Value == SelectedDate)
+        if (_disposed || date is null || date.Value == SelectedDate || IsDateDisabled(date.Value.ToDateTime(TimeOnly.MinValue)))
         {
             return;
         }
@@ -106,86 +108,149 @@ public partial class BitcoinNews : IDisposable
         await LoadAsync();
     }
 
-    private Task RetryAsync() => LoadAsync();
+    private Task RetryAsync() => Task.WhenAll(LoadAvailableDatesAsync(), LoadAsync(forceReload: true));
+    private Task OnEmptyStateActionAsync() => IsToday ? RetryAsync() : GoToAsync(TodayDate);
 
-    private Task OnEmptyStateActionAsync() => IsToday ? LoadAsync() : GoToAsync(TodayDate);
-
-    private async Task LoadAsync(bool allowGeneration = true)
+    private async Task LoadAsync(bool allowGeneration = true, bool forceReload = false)
     {
-        var generation = ++_loadGeneration;
+        if (_disposed)
+        {
+            return;
+        }
 
+        _loadCts?.Cancel();
+        using var request = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _loadCts = request;
+        var date = SelectedDate;
         _loading = true;
         _errorMessage = null;
+        _articles = [];
 
         try
         {
-            var result = await NewsApi.GetNewsAsync(SelectedDate, allowGeneration, _cts.Token);
-
-            if (generation != _loadGeneration)
+            if (!forceReload && _loadedDays.TryGetValue(date, out var cached))
             {
-                return; // A newer request owns the UI now.
+                _articles = cached;
+                return;
             }
 
-            _articles = result.Articles;
+            var result = await NewsApi.GetNewsAsync(date, allowGeneration, request.Token);
+            if (request.IsCancellationRequested || _disposed || !ReferenceEquals(_loadCts, request))
+            {
+                return;
+            }
 
             if (result.Status == NewsStatus.Unavailable)
             {
-                // Show the reason in place of the grid rather than beside stale cards, so the page
-                // never implies these are the headlines for the day being viewed.
                 _errorMessage = result.Message ?? LoadFailedMessage;
-                _articles = [];
+                return;
             }
 
-            // A generation may have produced a new day; keep the selectable dates in sync.
-            await LoadAvailableDatesAsync();
+            _articles = result.Articles;
+            if (result.HasArticles)
+            {
+                // Successful days are immutable during a visit. Empty/error results remain retryable.
+                _loadedDays[date] = result.Articles;
+                _availableDates.Add(date);
+                var oldestDate = DateOnly.FromDateTime(MinSelectableDate);
+                foreach (var expired in _loadedDays.Keys.Where(day => day < oldestDate).ToArray())
+                {
+                    _loadedDays.Remove(expired);
+                }
+            }
         }
-        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        catch (OperationCanceledException) when (request.IsCancellationRequested)
         {
-            // The page was disposed mid-load; there is nothing left to update.
+            // Navigating away or selecting another date cancels work without showing an error.
         }
-        catch (Exception) when (generation == _loadGeneration)
+        catch (Exception)
         {
-            _errorMessage = LoadFailedMessage;
-            _articles = [];
-            Snackbar.SnackMessage(LoadFailedMessage, Defaults.Classes.Position.TopCenter, Severity.Error);
+            if (!_disposed && !request.IsCancellationRequested && ReferenceEquals(_loadCts, request))
+            {
+                _errorMessage = LoadFailedMessage;
+                _articles = [];
+            }
         }
         finally
         {
-            if (generation == _loadGeneration)
+            if (!_disposed && ReferenceEquals(_loadCts, request))
             {
                 _loading = false;
+                _loadCts = null;
             }
         }
     }
 
     private async Task LoadAvailableDatesAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         try
         {
-            var dates = await NewsApi.GetAvailableDatesAsync(_cts.Token);
-            _availableDates = [.. dates];
+            var dates = await NewsApi.GetAvailableDatesAsync(_lifetimeCts.Token);
+            if (!_disposed)
+            {
+                // Union preserves a freshly generated day if its request beat this metadata read.
+                _availableDates.UnionWith(dates);
+            }
         }
-        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        catch (OperationCanceledException) when (_lifetimeCts.IsCancellationRequested)
         {
-            // Disposed mid-load.
         }
         catch (Exception)
         {
-            // Non-fatal: the picker simply falls back to allowing only today.
+            // Existing dates remain available if the optional metadata request fails.
         }
     }
 
-    // Only today (so fresh news can always be fetched) and days that already have saved news
-    // are selectable; everything else is disabled.
+    private DateOnly? FindAdjacentDay(bool earlier)
+    {
+        DateOnly? nearest = null;
+        var selected = SelectedDate;
+        var today = TodayDate;
+        var oldest = today.AddDays(-MaxHistoryDays);
+
+        foreach (var day in _availableDates)
+        {
+            if (day < oldest || day > today)
+            {
+                continue;
+            }
+
+            if (earlier ? day < selected && (nearest is null || day > nearest)
+                : day > selected && (nearest is null || day < nearest))
+            {
+                nearest = day;
+            }
+        }
+
+        return !earlier && selected < today && nearest is null ? today : nearest;
+    }
+
     private bool IsDateDisabled(DateTime date)
     {
         var day = DateOnly.FromDateTime(date);
-        return day != TodayDate && !_availableDates.Contains(day);
+        return day > TodayDate || day < TodayDate.AddDays(-MaxHistoryDays)
+            || (day != TodayDate && !_availableDates.Contains(day));
     }
 
     public void Dispose()
     {
-        _cts.Cancel();
-        _cts.Dispose();
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _persistingSubscription?.Dispose();
+        _lifetimeCts.Cancel();
+        _lifetimeCts.Dispose();
+        _loadCts = null;
     }
+
+    private sealed record InitialNewsState(DateOnly Date, List<NewsArticleModel> Articles,
+        List<DateOnly> AvailableDates, string? ErrorMessage);
 }

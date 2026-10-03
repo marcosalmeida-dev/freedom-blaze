@@ -1,64 +1,57 @@
 @using FreedomBlaze.Client.Models
 
-<MudCard Class="news-card d-flex flex-column" Elevation="2">
+<article class="news-card">
     <div class="news-card__media">
-        @* A real <img> (rather than MudCardMedia's background-image) so the thumbnail can be lazy
-           loaded, carries alt text, and can fall back when a scraped source URL goes stale. *@
-        <img src="@Thumbnail" alt="" loading="lazy" decoding="async" aria-hidden="true"
+        <img src="@Thumbnail" alt="" loading="@(PrioritizeImage ? "eager" : "lazy")"
+             fetchpriority="@(PrioritizeImage ? "high" : "auto")" decoding="async" width="640" height="360"
              onerror="this.onerror=null;this.src='@DefaultThumbnail'" />
     </div>
 
-    <MudCardContent Class="flex-grow-1">
-        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+    <div class="news-card__content">
+        <div class="news-card__metadata">
             @if (!string.IsNullOrWhiteSpace(Article.SourceRegion))
             {
-                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
-                         Icon="@Icons.Material.Filled.Public" Class="ma-0">@Article.SourceRegion</MudChip>
+                <span class="news-card__region">@Article.SourceRegion</span>
             }
             @if (!string.IsNullOrWhiteSpace(Article.Source))
             {
-                <MudText Typo="Typo.caption" Color="Color.Secondary">@Article.Source</MudText>
+                <span class="news-card__source">@Article.Source</span>
             }
-        </MudStack>
+        </div>
 
-        <MudText Typo="Typo.subtitle1" Class="news-card__title mb-1" title="@Article.Title">
-            <b>@Article.Title</b>
-        </MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="news-card__summary">
-            @Article.Text
-        </MudText>
-    </MudCardContent>
+        <h3 class="news-card__title">@Article.Title</h3>
+        <p class="news-card__summary">@Article.Text</p>
+    </div>
 
-    <MudCardActions Class="justify-space-between">
-        <MudText Typo="Typo.caption" Color="Color.Secondary">
-            <time datetime="@Article.Date.ToString("yyyy-MM-dd")">@Article.Date.ToString("MMM d, yyyy")</time>
-        </MudText>
+    <footer class="news-card__footer">
+        <time datetime="@Article.Date.ToString("yyyy-MM-dd")">@Article.Date.ToString("MMM d, yyyy")</time>
         @if (HasLink)
         {
-            <MudButton Variant="Variant.Text" Color="Color.Primary"
-                       EndIcon="@Icons.Material.Filled.OpenInNew"
-                       Href="@Article.ArticleLinkUrl" Target="_blank" rel="noopener noreferrer"
-                       aria-label="@ReadMoreLabel">
-                Read more
-            </MudButton>
+            <a class="news-card__link" href="@Article.ArticleLinkUrl" target="_blank" rel="noopener noreferrer"
+               aria-label="@ReadMoreLabel">
+                Read story
+                <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" />
+            </a>
         }
-    </MudCardActions>
-</MudCard>
+    </footer>
+</article>
 
 @code {
     private const string DefaultThumbnail = "img/articles/default-img.png";
 
     [Parameter, EditorRequired] public NewsArticleModel Article { get; set; } = default!;
+    [Parameter] public bool PrioritizeImage { get; set; }
 
     private string Thumbnail =>
-        string.IsNullOrWhiteSpace(Article.NewsThumbImg) ? DefaultThumbnail : Article.NewsThumbImg;
+        IsWebUrl(Article.NewsThumbImg) ? Article.NewsThumbImg! : DefaultThumbnail;
 
-    private bool HasLink => !string.IsNullOrWhiteSpace(Article.ArticleLinkUrl);
+    private bool HasLink => IsWebUrl(Article.ArticleLinkUrl);
 
-    // Screen readers announce every link on the page in isolation, so nine identical "Read more"
-    // links are useless without the headline they belong to.
+    private static bool IsWebUrl(string? value) => Uri.TryCreate(value, UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
     private string ReadMoreLabel =>
         string.IsNullOrWhiteSpace(Article.Source)
-            ? $"Read more: {Article.Title} (opens in a new tab)"
-            : $"Read more: {Article.Title} — {Article.Source} (opens in a new tab)";
+            ? $"Read story: {Article.Title} (opens in a new tab)"
+            : $"Read story: {Article.Title} — {Article.Source} (opens in a new tab)";
 }

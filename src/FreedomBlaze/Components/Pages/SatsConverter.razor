@@ -1,518 +1,208 @@
-﻿@page "/satsconverter"
-@rendermode InteractiveAuto
+@page "/satsconverter"
+@rendermode InteractiveServer
+@using System.Globalization
+@using FreedomBlaze.Models
 
-@using System.Net.Http;
-@using System.Text.Json;
-@using System.Threading.Tasks;
-@using System.Collections.Generic;
-@using FreedomBlaze.Client.Components
-@using FreedomBlaze.Client.Enums
-@using FreedomBlaze.Client.Helpers;
-@using FreedomBlaze.Interfaces
-@using FreedomBlaze.Models;
-@using System.Globalization;
-@using FreedomBlaze.Services
-@using Microsoft.AspNetCore.Localization
-@using Microsoft.Extensions.Localization
-
-<PageSeo Title="Bitcoin Satoshi (Sats) Converter — Live Multi-Currency Rates | Freedom Blaze"
-         Description="Instantly convert between Bitcoin Satoshis (Sats), BTC and major fiat currencies. Live exchange rates aggregated from Blockchain.info, Bitstamp, CoinGecko, Coinbase, Gemini and Coingate."
+<PageSeo Title="@Localizer["SatsConverter.SeoTitle"]"
+         Description="@Localizer["SatsConverter.SeoDescription"]"
          RelativePath="satsconverter" />
 
-<style>
-    .sats-grid .mud-table-cell {
-        padding: 10px 16px;
-        border-bottom: 1px solid rgba(128,128,128,0.1);
-    }
-    .sats-grid .mud-table-head .mud-table-cell {
-        font-size: 0.72rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--mud-palette-text-secondary);
-        border-bottom: 2px solid rgba(128,128,128,0.15);
-    }
-    .sats-grid tr.selected-row > td:first-child {
-        border-left: 3px solid #f7931a;
-    }
-    .sats-grid .mud-table-cell.text-right {
-        font-variant-numeric: tabular-nums;
-    }
-    .converter-card {
-        border-radius: 16px !important;
-    }
-    /* Page-level guarantee: never let any child create a horizontal scrollbar on the page.
-       The data grid still scrolls horizontally inside its own wrapper (.sats-grid-wrapper). */
-    #main-container {
-        overflow-x: hidden;
-        max-width: 100%;
-    }
-    .sats-grid-wrapper {
-        overflow-x: auto;
-        min-width: 0;
-        max-width: 100%;
-    }
-    @@media (max-width: 600px) {
-        .sats-grid .col-usd-rate {
-            display: none;
-        }
-        .sats-grid .mud-table-cell a,
-        .sats-grid .mud-table-cell .mud-typography {
-            font-size: 1.05rem !important;
-        }
-    }
-</style>
+<div class="sats-page">
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">@Localizer["SatsConverter.Eyebrow"]</p>
+            <h1>@Localizer["SatsConverter.Title"]</h1>
+            <p class="page-description">@Localizer["SatsConverter.Description"]</p>
+        </div>
+        <span class="rate-status" role="status">
+            <span class="status-dot @(_state.HasRates && !AppState.HasRateError ? "available" : "")" aria-hidden="true"></span>
+            @Localizer[_loading ? "SatsConverter.UpdatingRates" : AppState.HasRateError ? "SatsConverter.RatesDelayed" : _state.HasRates ? "SatsConverter.LiveRates" : "SatsConverter.WaitingForRates"]
+        </span>
+    </header>
 
-<MudContainer Class="mt-1" id="main-container">
-    @if (_loading)
+    @if (_error is not null)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-3" />
+        <div class="rate-error" role="alert">
+            <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" />
+            <span>@_error</span>
+            <button type="button" class="text-action" disabled="@_loading" @onclick="RefreshRatesAsync">@Localizer["SatsConverter.Retry"]</button>
+        </div>
     }
 
-    <MudGrid Spacing="0" Justify="Justify.Center">
-        <MudItem xs="12" Class="d-flex justify-center" Style="min-width: 0;">
-            <MudPaper Elevation="3" Class="pa-5 converter-card" Style="width: 360px; max-width: 100%;">
-                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-3 d-flex align-center">
-                    <MudIcon Icon="@Icons.Material.Filled.SwapVert" Size="Size.Small" Class="mr-1" />
-                    Convert
-                </MudText>
+    <div class="converter-layout">
+        <section class="converter-card" aria-labelledby="converter-heading" aria-busy="@_initializing.ToString().ToLowerInvariant()">
+            <div class="card-heading">
+                <h2 id="converter-heading">@Localizer["SatsConverter.ConvertHeading"]</h2>
+                <MudIcon Icon="@Icons.Material.Filled.CurrencyBitcoin" Color="Color.Primary" />
+            </div>
+            <p class="field-hint">@Localizer["SatsConverter.EnterAmount"]</p>
 
-                <div class="d-flex flex-column">
-                    <div style="order: @(_satsFieldOnTop ? 3 : 1);">
-                        <MudNumericField @bind-Value="currencyValue" Label="@currencyValueLabelName" MaxLength="9"
-                                         Culture="@CultureService.CurrentCulture" Format="N2" T="decimal?"
-                                         DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToBitcoin"
-                                         HideSpinButtons="true" Variant="Variant.Outlined"
-                                         Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                                         AdornmentAriaLabel="Copy" AdornmentColor="Color.Primary"
-                                         OnAdornmentClick="@(() => WriteTextAsync(currencyValue?.ToString()))" />
-                    </div>
-
-                    <div class="d-flex align-center my-2" style="order: 2;">
-                        <MudDivider Class="flex-grow-1" />
-                        <MudIconButton Icon="@Icons.Material.Filled.SwapVert" Color="Color.Primary"
-                                       Size="Size.Small" Variant="Variant.Outlined" Class="mx-2" Style="border-radius: 50%;"
-                                       OnClick="SwapFields" aria-label="Swap fields" />
-                        <MudDivider Class="flex-grow-1" />
-                    </div>
-
-                    <div style="order: @(_satsFieldOnTop ? 1 : 3);">
-                        <MudNumericField @bind-Value="satsValue" Label="Satoshis (SATS)" MaxLength="9"
-                                         DebounceInterval="250" OnDebounceIntervalElapsed="ConvertToCurrency"
-                                         HideSpinButtons="true" Variant="Variant.Outlined"
-                                         Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FileCopy" IconSize="Size.Small"
-                                         AdornmentAriaLabel="Copy SATS" AdornmentColor="Color.Primary"
-                                         OnAdornmentClick="@(() => WriteTextAsync(satsValue?.ToString()))" />
-                    </div>
-                </div>
-
-                <div class="d-flex justify-space-between align-center mt-3">
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                        BTC @(((satsValue ?? 0) / 100_000_000m).ToString("F8"))
-                    </MudText>
-                    @if (_lastUpdateFormatted != null)
+            <div class="currency-select">
+                <MudSelect T="string" Value="_state.SelectedCurrency.CultureName" ValueChanged="SelectCurrencyAsync"
+                           InputId="converter-currency" Label="@Localizer["SatsConverter.YourCurrency"]"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_initializing"
+                           aria-label="@Localizer["Common.SelectCurrency"]"
+                           AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="320">
+                    @foreach (var currency in CurrencyModel.CurrencyListStatic)
                     {
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="opacity-70">
-                            Updated @_lastUpdateFormatted
-                        </MudText>
+                        <MudSelectItem T="string" Value="@currency.CultureName" @key="currency.CultureName">
+                            <span class="currency-option">
+                                <img src="@currency.FlagSvgPath" width="28" height="20" alt="" />
+                                <span>@currency.Value — @Localizer[$"Currency.{currency.Value}"]</span>
+                            </span>
+                        </MudSelectItem>
                     }
-                </div>
-            </MudPaper>
-        </MudItem>
+                </MudSelect>
+            </div>
 
-        <MudItem xs="12" Class="mt-2 sats-grid-wrapper">
-            <MudDataGrid T="Currency" Items="@CurrencyList" RowClassFunc="@_rowClassFunc"
-                         Hover="true" Dense="true" Elevation="0" Class="sats-grid" Style="width: 100%;">
-                <Columns>
-                    <PropertyColumn Title="Currency" Property="x => x.Name" HeaderStyle="min-width: 180px;">
-                        <CellTemplate>
-                            <div class="d-flex align-center">
-                                <MudAvatar Size="Size.Small" Class="mr-2">
-                                    <MudImage Src="@context.Item.FlagSvgPath" Alt="@context.Item.Name" />
-                                </MudAvatar>
-                                <MudText Typo="Typo.body2" Style="font-weight: 500;">@context.Item.Value</MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-1">@context.Item.Symbol</MudText>
-                            </div>
-                        </CellTemplate>
-                    </PropertyColumn>
-                    <PropertyColumn Title="BTC Price" Property="x => x.BitcoinPrice" HeaderClass="text-right" CellClass="text-right" HeaderStyle="min-width: 175px;">
-                        <CellTemplate>
-                            @if (_loading)
-                            {
-                                <MudSkeleton Width="140px" Height="29px" Animation="Animation.Wave" />
-                            }
-                            else
-                            {
-                                <MudTooltip Text="Copy">
-                                    <MudLink Color="Color.Primary" Style="font-size: 1.56rem; white-space: nowrap;" OnClick="@(() => WriteTextAsync(context.Item.BitcoinPrice.ToString()))">@context.Item.BitcoinPrice.ToString("C", context.Item.CultureInfo)</MudLink>
-                                </MudTooltip>
-                            }
-                        </CellTemplate>
-                    </PropertyColumn>
-                    <PropertyColumn Title="@currencyValueInCurrencyLabel" Property="x => x.CurrencyValueInCurrency" HeaderClass="text-right" CellClass="text-right" HeaderStyle="min-width: 175px;">
-                        <CellTemplate>
-                            @if (_loading)
-                            {
-                                <MudSkeleton Width="140px" Height="29px" Animation="Animation.Wave" />
-                            }
-                            else
-                            {
-                                <MudTooltip Text="Copy">
-                                    <MudLink Color="Color.Primary" Style="font-size: 1.56rem; white-space: nowrap;" OnClick="@(() => WriteTextAsync(context.Item.CurrencyValueInCurrency.ToString()))">@context.Item.CurrencyValueInCurrency.ToString("C", context.Item.CultureInfo)</MudLink>
-                                </MudTooltip>
-                            }
-                        </CellTemplate>
-                    </PropertyColumn>
-                    <PropertyColumn Title="@currencyValuePerUSDLabel" Property="x => x.CurrencyRateInUSD" HeaderClass="text-right col-usd-rate" CellClass="text-right col-usd-rate" HeaderStyle="min-width: 140px;">
-                        <CellTemplate>
-                            @if (_loading)
-                            {
-                                <MudSkeleton Width="110px" Height="29px" Animation="Animation.Wave" />
-                            }
-                            else
-                            {
-                                <MudText Style="font-size: 1.56rem; white-space: nowrap;" Color="Color.Default">@context.Item.CurrencyRateInUSD.ToString("C", context.Item.CultureInfo)</MudText>
-                            }
-                        </CellTemplate>
-                    </PropertyColumn>
-                </Columns>
-            </MudDataGrid>
-        </MudItem>
-
-        <MudItem xs="12" Class="mt-4">
-            <MudExpansionPanels MultiExpansion="true">
-                <MudExpansionPanel>
-                    <TitleContent>
-                        <div class="d-flex align-center">
-                            <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" Color="Color.Primary" />
-                            <MudText Typo="Typo.subtitle1">Bitcoin Denominations</MudText>
-                        </div>
-                    </TitleContent>
-                    <ChildContent>
-                        <SatsInfo />
-                    </ChildContent>
-                </MudExpansionPanel>
-                <MudExpansionPanel>
-                    <TitleContent>
-                        <div class="d-flex align-center">
-                            <MudIcon Icon="@Icons.Material.Filled.BarChart" Class="mr-2" Color="Color.Primary" />
-                            <MudText Typo="Typo.subtitle1">Exchange Status</MudText>
-                        </div>
-                    </TitleContent>
-                    <ChildContent>
-                        <BitcoinExchangeStatusList ExchangeStatusList="AppState.ExchangeStatusList" />
-                    </ChildContent>
-                </MudExpansionPanel>
-            </MudExpansionPanels>
-        </MudItem>
-    </MudGrid>
-</MudContainer>
-
-@inject IJSRuntime JS
-@inject NavigationManager Navigation
-@inject IStringLocalizer<Resources.Localization> Localizer
-@inject IHttpContextAccessor ContextAccessor
-@inject IExchangeRateService ExchangeRateService
-@inject CultureService CultureService
-@inject ISnackbar Snackbar
-@inject AppState AppState
-@inject ThemeManager ThemeManager
-
-@implements IDisposable
-
-@code {
-    private const string LastConversionTypeCookieName = "lastConversionTypeCookie";
-    private const string CurrencyCookieName = "currencyValueCookie";
-    private const string SatsCookieName = "satsValueCookie";
-    private const string _darkModeCookieName = "darkModeCookie";
-
-    CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-
-    private bool _loading = false;
-    private string? _lastUpdateFormatted;
-    private List<Currency> CurrencyList = new List<Currency>();
-
-    private string? currencyCultureName;
-
-    private string currencyValueLabelName = "USD";
-    private string currencyValueInCurrencyLabel = "Rate in Currency";
-    private string currencyValuePerUSDLabel = "1,00 in USD";
-
-    private decimal? currencyValue;
-    private decimal? lastCurrencyValue;
-    private decimal? satsValue;
-    private decimal? lastSatsValue;
-    private Func<Currency, int, string>? _rowClassFunc;
-    private bool _satsFieldOnTop;
-
-    BitcoinExchangeRateModel? _bitcoinExchangeRateModel;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            ThemeManager.OnThemeChanged += ThemeChanged;
-            AppState.OnChange += OnAppStateChanged;
-
-            currencyCultureName = CultureService.CurrentCulture.Name;
-            await ThemeChanged(ThemeManager.IsDarkMode);
-
-            _ = Task.Run(async () =>
-            {
-                await InvokeAsync(async () =>
+            <div class="conversion-fields">
+                @if (_satsFieldOnTop)
                 {
-                    await GetExchangeRates();
-                    await RefreshLastUpdatedAsync();
-                });
-            });
-        }
-
-        await base.OnAfterRenderAsync(firstRender);
-    }
-
-    private async Task OnAppStateChanged()
-    {
-        if (_loading == false)
-        {
-            await GetExchangeRates(AppState.BitcoinExchangeRate);
-        }
-        await RefreshLastUpdatedAsync();
-    }
-
-    private async Task RefreshLastUpdatedAsync()
-    {
-        if (AppState.LastUpdate == default)
-            return;
-        try
-        {
-            _lastUpdateFormatted = await JS.InvokeAsync<string>(
-                "formatLocalTime",
-                AppState.LastUpdate.ToUnixTimeMilliseconds(),
-                CultureService.CurrentCulture.Name);
-        }
-        catch (JSDisconnectedException) { }
-        catch (OperationCanceledException) { }
-    }
-
-    async Task GetExchangeRates(BitcoinExchangeRateModel? bitcoinExchangeRateModel = null)
-    {
-        try
-        {
-            _loading = true;
-            await InvokeAsync(StateHasChanged);
-
-            var conversionType = ConversionType.BitcoinToCurrency;
-            _bitcoinExchangeRateModel = bitcoinExchangeRateModel;
-            if (_bitcoinExchangeRateModel == null)
-            {
-                var localizationValue = ContextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
-                if (!string.IsNullOrEmpty(localizationValue))
+                    @SatsField
+                }
+                else
                 {
-                    var lastConversionType = await GetValueFromCookie(LastConversionTypeCookieName);
-                    if (lastConversionType == ConversionType.BitcoinToCurrency.ToString() && decimal.TryParse(await GetValueFromCookie(SatsCookieName) ?? "0", System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var sats))
-                    {
-                        satsValue = sats;
-                        conversionType = ConversionType.BitcoinToCurrency;
-                    }
-                    if (lastConversionType == ConversionType.CurrencyToBitcoin.ToString() && decimal.TryParse(await GetValueFromCookie(CurrencyCookieName) ?? "0", System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var currency))
-                    {
-                        currencyValue = currency;
-                        conversionType = ConversionType.CurrencyToBitcoin;
-                    }
+                    @CurrencyField
                 }
 
-                _bitcoinExchangeRateModel = await ExchangeRateService.GetExchangeRateAsync(cancellationTokenSource.Token);
-                AppState.BitcoinExchangeRate = _bitcoinExchangeRateModel;
-            }
+                <div class="swap-row">
+                    <span aria-hidden="true"></span>
+                    <button type="button" class="swap-button" @onclick="SwapFields" aria-label="@Localizer["SatsConverter.SwapFields"]">
+                        <MudIcon Icon="@Icons.Material.Filled.SwapVert" Size="Size.Small" />
+                    </button>
+                    <span aria-hidden="true"></span>
+                </div>
 
-            if (_bitcoinExchangeRateModel is not null)
+                @if (_satsFieldOnTop)
+                {
+                    @CurrencyField
+                }
+                else
+                {
+                    @SatsField
+                }
+            </div>
+
+            @if (_state.InputOutOfRange)
             {
-                await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName ?? "en-US", conversionType);
+                <p class="input-error" role="alert">@Localizer["SatsConverter.AmountTooLarge"]</p>
             }
-        }
-        catch (Exception ex)
-        {
-            SnackMessage($"Error loading exchange rates: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
-        }
-        finally
-        {
-            _loading = false;
-        }
+            <div class="bitcoin-equivalent">
+                <span>@Localizer["SatsConverter.BitcoinEquivalent"]</span>
+                <output aria-live="polite" aria-atomic="true">@(_state.BitcoinAmount?.ToString("N8", DisplayCulture) ?? "—") <small>BTC</small></output>
+            </div>
+            <p class="conversion-note">@Localizer["SatsConverter.ConversionNote", 100_000_000m.ToString("N0", DisplayCulture)]</p>
+            <aside class="conversion-reference" aria-labelledby="conversion-reference-heading">
+                <h3 id="conversion-reference-heading">@Localizer["SatsConverter.QuickReference"]</h3>
+                <dl>
+                    @foreach (var sats in ReferenceSatsAmounts)
+                    {
+                        <div>
+                            <dt>@Localizer["SatsConverter.ReferenceSats", sats.ToString("N0", DisplayCulture)]</dt>
+                            <dd>@FormatReferenceAmount(sats)</dd>
+                        </div>
+                    }
+                </dl>
+                <p>@Localizer["SatsConverter.RateExplanation"]</p>
+            </aside>
+        </section>
 
-        await InvokeAsync(StateHasChanged);
-    }
+        <section class="rates-card" aria-labelledby="rates-heading" aria-busy="@_loading.ToString().ToLowerInvariant()">
+            <div class="rates-heading">
+                <div>
+                    <h2 id="rates-heading">@Localizer["SatsConverter.AcrossCurrencies"]</h2>
+                    <p>@Localizer["SatsConverter.CompareHint"]</p>
+                </div>
+                <button type="button" class="refresh-button" disabled="@_loading" @onclick="RefreshRatesAsync" aria-label="@Localizer["SatsConverter.RefreshRates"]" title="@Localizer["SatsConverter.RefreshRates"]">
+                    <MudIcon Icon="@Icons.Material.Filled.Refresh" />
+                </button>
+            </div>
 
-    async Task LoadCurrencyList(BitcoinExchangeRateModel currencyRatesResult, string currencyCultureName, ConversionType conversionType)
-    {
-        CurrencyList = CurrencyModel.GetCurrencyList(currencyCultureName);
+            <table class="rates-table">
+                <caption class="visually-hidden">@Localizer["SatsConverter.TableCaption"]</caption>
+                <thead>
+                    <tr><th scope="col">@Localizer["SatsConverter.Currency"]</th><th scope="col">@Localizer["SatsConverter.OneBitcoin"]</th><th scope="col">@Localizer["SatsConverter.YourAmount"]</th><th scope="col" class="usd-rate">@Localizer["SatsConverter.OneUsd"]</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var currency in _state.Currencies)
+                    {
+                        var selected = currency == _state.SelectedCurrency;
+                        var hasAmount = _state.HasRates && !_state.InputOutOfRange && _state.BitcoinAmount.HasValue && currency.BitcoinPrice > 0;
+                        <tr @key="currency.Value" class="@(selected ? "selected-currency" : null)">
+                            <th scope="row">
+                                <button type="button" class="currency-button" aria-pressed="@selected.ToString().ToLowerInvariant()"
+                                        aria-label="@Localizer["SatsConverter.UseCurrency", Localizer[$"Currency.{currency.Value}"]]" disabled="@_initializing" @onclick="() => SelectCurrencyAsync(currency.CultureName)">
+                                    <img src="@currency.FlagSvgPath" width="28" height="20" alt="" loading="lazy" />
+                                    <span><strong>@currency.Value</strong><small>@Localizer[$"Currency.{currency.Value}"]</small></span>
+                                    @if (selected)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Class="selected-icon" />
+                                    }
+                                </button>
+                            </th>
+                            <td data-label="@Localizer["SatsConverter.OneBitcoin"]">
+                                <button type="button" class="value-button" disabled="@(currency.BitcoinPrice <= 0)"
+                                        aria-label="@Localizer["SatsConverter.CopyBitcoinPrice", currency.Value]" @onclick="() => CopyAsync(currency.BitcoinPrice)">
+                                    @(currency.BitcoinPrice > 0 ? currency.BitcoinPrice.ToString("C", currency.CultureInfo) : "—")
+                                </button>
+                            </td>
+                            <td data-label="@Localizer["SatsConverter.YourAmount"]" class="converted-value">
+                                <button type="button" class="value-button" disabled="@(!hasAmount)"
+                                        aria-label="@Localizer["SatsConverter.CopyConvertedAmount", currency.Value]" @onclick="() => CopyAsync(currency.CurrencyValueInCurrency)">
+                                    @(hasAmount ? currency.CurrencyValueInCurrency.ToString("C", currency.CultureInfo) : "—")
+                                </button>
+                            </td>
+                            <td class="usd-rate">@(currency.CurrencyRateInUSD > 0 ? currency.CurrencyRateInUSD.ToString("C", currency.CultureInfo) : "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="rates-footer" role="status">
+                @if (_lastUpdateFormatted is not null)
+                {
+                    <span>@Localizer["SatsConverter.Updated"] <time datetime="@AppState.LastUpdate.ToString("O")">@_lastUpdateFormatted</time></span>
+                }
+                else
+                {
+                    <span>@Localizer[_loading ? "SatsConverter.GettingRates" : "SatsConverter.RatesUnavailable"]</span>
+                }
+                <span>@Localizer["SatsConverter.UpdatesEveryMinute"]</span>
+            </div>
+        </section>
+    </div>
 
-        var currentCurrency = CurrencyList.FirstOrDefault(f => f.CultureName == currencyCultureName);
-        var currencyRates = currencyRatesResult.CurrencyExchangeRate;
-        if (currentCurrency is null || currencyRates is null)
-            return;
+    <div class="converter-details">
+        <MudExpansionPanels MultiExpansion="true" Elevation="0">
+            <MudExpansionPanel Text="@Localizer["SatsConverter.Denominations"]" Icon="@Icons.Material.Outlined.Info">
+                <SatsInfo />
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="@Localizer["SatsConverter.ExchangeStatus"]" Icon="@Icons.Material.Filled.BarChart">
+                <BitcoinExchangeStatusList ExchangeStatusList="AppState.ExchangeStatusList" />
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </div>
+</div>
 
-        foreach (var currency in CurrencyList)
-        {
-            // Update each currency's exchange rate to USD
-            currency.CurrencyRateInUSD = currencyRates[currency.Value].Rate;
+@code {
+    private RenderFragment CurrencyField => @<div class="amount-field">
+        <MudNumericField T="decimal?" Value="_state.CurrencyAmount" ValueChanged="SetCurrencyAmountAsync"
+                         Label="@Localizer["SatsConverter.AmountInCurrency", _state.SelectedCurrency.Value]" Culture="DisplayCulture" Format="N2"
+                         Min="0m" Max="SatsConversionState.MaximumAmount" HideSpinButtons="true" Variant="Variant.Outlined"
+                         InputMode="@(InputMode.@decimal)" Immediate="true" DebounceInterval="200" Disabled="@_initializing" />
+        <button type="button" class="copy-button" disabled="@(!_state.CurrencyAmount.HasValue)"
+                @onclick="() => CopyAsync(_state.CurrencyAmount)" aria-label="@Localizer["SatsConverter.CopyCurrencyAmount"]" title="@Localizer["SatsConverter.CopyCurrencyAmount"]">
+            <MudIcon Icon="@Icons.Material.Outlined.ContentCopy" Size="Size.Small" />
+        </button>
+    </div>;
 
-            // Update Bitcoin price in this currency based on its exchange rate to USD
-            currency.BitcoinPrice = currency.CurrencyRateInUSD * currencyRatesResult.BitcoinRateInUSD;
-
-            // Calculate currency values and satoshis based on the provided currency value
-            if (currencyValue.HasValue && currencyValue.Value != 0 && currentCurrency.CurrencyRateInUSD != 0)
-            {
-                // Calculate the currency value in USD based on the current exchange rate
-                var currencyValueInUSD = currencyValue.Value / currentCurrency.CurrencyRateInUSD;
-
-                // Calculate the equivalent currency value in the target currency using the USD rate
-                currency.CurrencyValueInCurrency = currencyValueInUSD * currency.CurrencyRateInUSD;
-            }
-        }
-
-        currencyValueLabelName = $"{currentCurrency.Value}";
-
-        if (currencyValue.HasValue && currencyValue.Value > 0 && conversionType == ConversionType.CurrencyToBitcoin)
-        {
-            satsValue = CurrencyConverterHelper.ConvertToSats(currencyValue.Value, currentCurrency.BitcoinPrice);
-            lastSatsValue = satsValue;
-        }
-        if (satsValue.HasValue && satsValue.Value > 0 && conversionType == ConversionType.BitcoinToCurrency)
-        {
-            currencyValue = CurrencyConverterHelper.ConvertSatsToCurrency(satsValue.Value, currentCurrency.BitcoinPrice);
-            currencyValueInCurrencyLabel = $"{currencyValue?.ToString("C", CultureService.CurrentCulture)} in Currency";
-            lastCurrencyValue = currencyValue;
-        }
-    }
-
-    async Task ConvertToBitcoin()
-    {
-        if (!currencyValue.HasValue || currencyValue.Value == 0)
-        {
-            await RemoveCookie(CurrencyCookieName);
-            return;
-        }
-
-        if (currencyValue.HasValue && lastCurrencyValue.HasValue && currencyValue.Value == lastCurrencyValue.Value)
-        {
-            return;
-        }
-
-        try
-        {
-            if (_bitcoinExchangeRateModel is null)
-                return;
-
-            await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName ?? "en-US", ConversionType.CurrencyToBitcoin);
-
-            await SetValueCookie(CurrencyCookieName, currencyValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
-            await SetValueCookie(LastConversionTypeCookieName, ConversionType.CurrencyToBitcoin.ToString());
-        }
-        catch (Exception ex)
-        {
-            SnackMessage($"Exception occurred converting to Bitcoin: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
-        }
-    }
-
-    async Task ConvertToCurrency()
-    {
-        try
-        {
-            if (satsValue.HasValue == false || satsValue.Value == 0)
-            {
-                await RemoveCookie(SatsCookieName);
-                return;
-            }
-
-            if (satsValue.HasValue && lastSatsValue.HasValue && satsValue.Value == lastSatsValue.Value)
-            {
-                return;
-            }
-
-            if (satsValue.HasValue && satsValue.Value > 0)
-            {
-                var btcPrice = CurrencyList.FirstOrDefault(f => f.CultureName == currencyCultureName && f.BitcoinPrice > 0)?.BitcoinPrice;
-                if (btcPrice is null or 0m)
-                    return;
-
-                currencyValue = CurrencyConverterHelper.ConvertSatsToCurrency(satsValue.Value, btcPrice.Value);
-
-                if (_bitcoinExchangeRateModel is null)
-                    return;
-
-                await LoadCurrencyList(_bitcoinExchangeRateModel, currencyCultureName ?? "en-US", ConversionType.BitcoinToCurrency);
-
-                await SetValueCookie(SatsCookieName, satsValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
-                await SetValueCookie(LastConversionTypeCookieName, ConversionType.BitcoinToCurrency.ToString());
-            }
-        }
-        catch (Exception ex)
-        {
-            SnackMessage($"Exception occurred converting to Currency: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
-        }
-    }
-
-    void SnackMessage(string message, string position = Defaults.Classes.Position.TopCenter, Severity severity = Severity.Info)
-    {
-        Snackbar.Clear();
-        Snackbar.Configuration.SnackbarVariant = Variant.Text;
-        Snackbar.Configuration.PositionClass = position;
-        Snackbar.Add(message, severity);
-    }
-
-    private void SwapFields() => _satsFieldOnTop = !_satsFieldOnTop;
-
-    private Task ThemeChanged(bool isDarkMode)
-    {
-        _rowClassFunc = (x, i) => x.CultureName == currencyCultureName ? "selected-row" : "";
-        return InvokeAsync(StateHasChanged);
-    }
-
-    async Task WriteTextAsync(string? text)
-    {
-        if (string.IsNullOrEmpty(text))
-            return;
-
-        try
-        {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
-            SnackMessage("Copied to clipboard!");
-        }
-        catch (Exception ex)
-        {
-            SnackMessage($"Error copying text: {ex.Message}", Defaults.Classes.Position.BottomCenter, Severity.Error);
-        }
-    }
-
-    async Task<string> GetValueFromCookie(string cookieName)
-    {
-        var currencyCookieValue = await JS.InvokeAsync<string>("cookieHelper.getCookie", cookieName);
-        if (!string.IsNullOrEmpty(currencyCookieValue))
-        {
-            return currencyCookieValue;
-        }
-        return string.Empty;
-    }
-
-    async Task SetValueCookie(string cookieName, string cookieValue, int totalTimeInDays = 30)
-    {
-        await JS.InvokeVoidAsync("cookieHelper.setCookie", cookieName, cookieValue, totalTimeInDays);
-    }
-
-    async Task RemoveCookie(string cookieName)
-    {
-        await JS.InvokeVoidAsync("cookieHelper.setCookie", cookieName, 0, -1);
-    }
-
-    public void Dispose()
-    {
-        if (cancellationTokenSource != null && !cancellationTokenSource.IsCancellationRequested)
-        {
-            cancellationTokenSource.Cancel();
-            cancellationTokenSource.Dispose();
-        }
-
-        AppState.OnChange -= OnAppStateChanged;
-        ThemeManager.OnThemeChanged -= ThemeChanged;
-    }
+    private RenderFragment SatsField => @<div class="amount-field">
+        <MudNumericField T="decimal?" Value="_state.SatsAmount" ValueChanged="SetSatsAmountAsync"
+                         Label="@Localizer["SatsConverter.Satoshis"]" Culture="DisplayCulture" Format="N0"
+                         Min="0m" Max="SatsConversionState.MaximumAmount" Step="1m" HideSpinButtons="true" Variant="Variant.Outlined"
+                         InputMode="InputMode.numeric" Immediate="true" DebounceInterval="200" Disabled="@_initializing" />
+        <button type="button" class="copy-button" disabled="@(!_state.SatsAmount.HasValue)"
+                @onclick="() => CopyAsync(_state.SatsAmount)" aria-label="@Localizer["SatsConverter.CopySats"]" title="@Localizer["SatsConverter.CopySats"]">
+            <MudIcon Icon="@Icons.Material.Outlined.ContentCopy" Size="Size.Small" />
+        </button>
+    </div>;
 }

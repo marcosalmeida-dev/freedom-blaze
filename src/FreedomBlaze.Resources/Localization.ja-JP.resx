@@ -72,7 +72,7 @@
   </data>
   
   <data name="SatsConverter.Title" xml:space="preserve">
-    <value>ビットコインサトシ (SATS) 変換ツール</value>
+    <value>Sats換算ツール</value>
   </data>
 
   <data name="About.Body1">
@@ -105,5 +105,254 @@
   
   <data name="SatsConverter.Body2" xml:space="preserve">
     <value>コピー アイコンまたはテーブル項目をタッチ/クリックして、BTC Sats/通貨の結果をコピーできます。</value>
+  </data>
+  <data name="SatsConverter.SeoTitle" xml:space="preserve">
+    <value>ビットコイン・サトシ（sats）換算 — 各国通貨のリアルタイムレート — Freedom Blaze</value>
+  </data>
+  <data name="SatsConverter.SeoDescription" xml:space="preserve">
+    <value>複数のプロバイダーのリアルタイムレートで、サトシ（sats）、BTC、主要な法定通貨をすぐに換算できます。</value>
+  </data>
+  <data name="SatsConverter.Eyebrow" xml:space="preserve">
+    <value>ビットコインを身近な通貨に</value>
+  </data>
+  <data name="SatsConverter.Description" xml:space="preserve">
+    <value>少しのビットコインを、さまざまな通貨に。あなたのsatsの価値を確認しましょう。</value>
+  </data>
+  <data name="SatsConverter.UpdatingRates" xml:space="preserve">
+    <value>レートを更新中…</value>
+  </data>
+  <data name="SatsConverter.RatesDelayed" xml:space="preserve">
+    <value>レートの更新が遅れています</value>
+  </data>
+  <data name="SatsConverter.LiveRates" xml:space="preserve">
+    <value>リアルタイムレート</value>
+  </data>
+  <data name="SatsConverter.WaitingForRates" xml:space="preserve">
+    <value>レートを待機中</value>
+  </data>
+  <data name="SatsConverter.Retry" xml:space="preserve">
+    <value>再試行</value>
+  </data>
+  <data name="SatsConverter.ConvertHeading" xml:space="preserve">
+    <value>金額を換算</value>
+  </data>
+  <data name="SatsConverter.EnterAmount" xml:space="preserve">
+    <value>どちらかの金額を入力すると換算できます。</value>
+  </data>
+  <data name="SatsConverter.YourCurrency" xml:space="preserve">
+    <value>通貨</value>
+  </data>
+  <data name="SatsConverter.SwapFields" xml:space="preserve">
+    <value>通貨とサトシの入力欄の順序を入れ替え</value>
+  </data>
+  <data name="SatsConverter.AmountTooLarge" xml:space="preserve">
+    <value>現在のレートでは金額が大きすぎます。より小さい金額を入力してください。</value>
+  </data>
+  <data name="SatsConverter.BitcoinEquivalent" xml:space="preserve">
+    <value>ビットコイン換算額</value>
+  </data>
+  <data name="SatsConverter.ConversionNote" xml:space="preserve">
+    <value>1 BTC = {0} sats。概算額には両替手数料は含まれません。</value>
+  </data>
+  <data name="SatsConverter.AcrossCurrencies" xml:space="preserve">
+    <value>各通貨で比較</value>
+  </data>
+  <data name="SatsConverter.CompareHint" xml:space="preserve">
+    <value>金額を比較できます。値をタップするとコピーできます。</value>
+  </data>
+  <data name="SatsConverter.RefreshRates" xml:space="preserve">
+    <value>為替レートを更新</value>
+  </data>
+  <data name="SatsConverter.TableCaption" xml:space="preserve">
+    <value>各通貨のビットコイン価格と換算額。換算ツールで使用する通貨を選択できます。</value>
+  </data>
+  <data name="SatsConverter.Currency" xml:space="preserve">
+    <value>通貨</value>
+  </data>
+  <data name="SatsConverter.OneBitcoin" xml:space="preserve">
+    <value>1ビットコイン</value>
+  </data>
+  <data name="SatsConverter.YourAmount" xml:space="preserve">
+    <value>換算額</value>
+  </data>
+  <data name="SatsConverter.OneUsd" xml:space="preserve">
+    <value>1米ドル</value>
+  </data>
+  <data name="SatsConverter.UseCurrency" xml:space="preserve">
+    <value>換算ツールで{0}を使用</value>
+  </data>
+  <data name="SatsConverter.CopyBitcoinPrice" xml:space="preserve">
+    <value>{0}でのビットコイン価格をコピー</value>
+  </data>
+  <data name="SatsConverter.CopyConvertedAmount" xml:space="preserve">
+    <value>{0}での換算額をコピー</value>
+  </data>
+  <data name="SatsConverter.Updated" xml:space="preserve">
+    <value>更新時刻</value>
+  </data>
+  <data name="SatsConverter.GettingRates" xml:space="preserve">
+    <value>最新の為替レートを取得中…</value>
+  </data>
+  <data name="SatsConverter.RatesUnavailable" xml:space="preserve">
+    <value>現在レートを取得できません。</value>
+  </data>
+  <data name="SatsConverter.UpdatesEveryMinute" xml:space="preserve">
+    <value>1分ごとに更新</value>
+  </data>
+  <data name="SatsConverter.Denominations" xml:space="preserve">
+    <value>ビットコインの単位について</value>
+  </data>
+  <data name="SatsConverter.ExchangeStatus" xml:space="preserve">
+    <value>取引所の稼働状況</value>
+  </data>
+  <data name="SatsConverter.AmountInCurrency" xml:space="preserve">
+    <value>{0}での金額</value>
+  </data>
+  <data name="SatsConverter.Satoshis" xml:space="preserve">
+    <value>サトシ（sats）</value>
+  </data>
+  <data name="SatsConverter.CopyCurrencyAmount" xml:space="preserve">
+    <value>通貨の金額をコピー</value>
+  </data>
+  <data name="SatsConverter.CopySats" xml:space="preserve">
+    <value>サトシの数量をコピー</value>
+  </data>
+  <data name="SatsConverter.StaleRates" xml:space="preserve">
+    <value>リアルタイムレートを一時的に取得できません。最後に取得したレートを表示しています。</value>
+  </data>
+  <data name="SatsConverter.NoRates" xml:space="preserve">
+    <value>為替レートを一時的に取得できません。再接続中も入力した金額は保持されます。</value>
+  </data>
+  <data name="SatsConverter.MissingCurrencyRate" xml:space="preserve">
+    <value>この通貨のレートを取得できません。別の通貨を選ぶか、再試行してください。</value>
+  </data>
+  <data name="SatsConverter.PreferencesUnavailable" xml:space="preserve">
+    <value>次回のアクセス用に、この換算をブラウザーに保存できませんでした。</value>
+  </data>
+  <data name="SatsConverter.Copied" xml:space="preserve">
+    <value>クリップボードにコピーしました。</value>
+  </data>
+  <data name="SatsConverter.ClipboardUnavailable" xml:space="preserve">
+    <value>クリップボードにアクセスできません。値を選択して手動でコピーしてください。</value>
+  </data>
+  <data name="Currency.USD" xml:space="preserve">
+    <value>米ドル</value>
+  </data>
+  <data name="Currency.EUR" xml:space="preserve">
+    <value>ユーロ</value>
+  </data>
+  <data name="Currency.GBP" xml:space="preserve">
+    <value>英ポンド</value>
+  </data>
+  <data name="Currency.AUD" xml:space="preserve">
+    <value>豪ドル</value>
+  </data>
+  <data name="Currency.JPY" xml:space="preserve">
+    <value>日本円</value>
+  </data>
+  <data name="Currency.ZAR" xml:space="preserve">
+    <value>南アフリカランド</value>
+  </data>
+  <data name="Currency.ARS" xml:space="preserve">
+    <value>アルゼンチンペソ</value>
+  </data>
+  <data name="Currency.BRL" xml:space="preserve">
+    <value>ブラジルレアル</value>
+  </data>
+  <data name="Common.SelectLanguage" xml:space="preserve">
+    <value>言語を選択</value>
+  </data>
+  <data name="Common.Available" xml:space="preserve">
+    <value>利用可能</value>
+  </data>
+  <data name="Common.Unavailable" xml:space="preserve">
+    <value>利用不可</value>
+  </data>
+  <data name="SatsInfo.Sats" xml:space="preserve">
+    <value>サトシ</value>
+  </data>
+  <data name="SatsInfo.Bitcoin" xml:space="preserve">
+    <value>ビットコイン</value>
+  </data>
+  <data name="SatsInfo.Name" xml:space="preserve">
+    <value>名称</value>
+  </data>
+  <data name="SatsInfo.OneSatoshi" xml:space="preserve">
+    <value>1サトシ（sat）</value>
+  </data>
+  <data name="SatsInfo.OneBit" xml:space="preserve">
+    <value>1ビット</value>
+  </data>
+  <data name="SatsInfo.OneBitcoin" xml:space="preserve">
+    <value>1ビットコイン（BTC）</value>
+  </data>
+  <data name="SatsInfo.FaqTitle" xml:space="preserve">
+    <value>よくある質問</value>
+  </data>
+  <data name="SatsInfo.FaqLabel" xml:space="preserve">
+    <value>ビットコインとサトシについてのよくある質問</value>
+  </data>
+  <data name="SatsInfo.Faq1Question" xml:space="preserve">
+    <value>サトシ（sat）とは何ですか？</value>
+  </data>
+  <data name="SatsInfo.Faq1Answer" xml:space="preserve">
+    <value>サトシ（sat）はビットコインの最小単位です。1サトシは0.00000001 BTCに相当し、1億サトシで1ビットコインになります。ビットコインの考案者の仮名「サトシ・ナカモト」に由来します。</value>
+  </data>
+  <data name="SatsInfo.Faq2Question" xml:space="preserve">
+    <value>1ビットコインは何サトシですか？</value>
+  </data>
+  <data name="SatsInfo.Faq2Answer" xml:space="preserve">
+    <value>1ビットコイン（BTC）は正確に100,000,000（1億）サトシです。</value>
+  </data>
+  <data name="SatsInfo.Faq3Question" xml:space="preserve">
+    <value>サトシを自国の通貨に換算するにはどうすればよいですか？</value>
+  </data>
+  <data name="SatsInfo.Faq3Answer" xml:space="preserve">
+    <value>換算ツールに金額を入力すると、選択した通貨での価値を確認したり、通貨からsatsに換算したりできます。通貨は換算ツールまたは表で選択します。サイトの表示言語は上部バーで変更できます。</value>
+  </data>
+  <data name="SatsInfo.Faq4Question" xml:space="preserve">
+    <value>取引所によってビットコインの価格が少し異なるのはなぜですか？</value>
+  </data>
+  <data name="SatsInfo.Faq4Answer" xml:space="preserve">
+    <value>取引所ごとに注文状況や流動性が異なるため、価格は変動します。Freedom BlazeはBlockchain.info、Bitstamp、CoinGecko、Coinbase、Gemini、Coingateから取得できたレートを組み合わせ、平均価格を算出します。</value>
+  </data>
+  <data name="SatsInfo.Faq5Question" xml:space="preserve">
+    <value>Freedom BlazeのSats換算ツールは無料ですか？</value>
+  </data>
+  <data name="SatsInfo.Faq5Answer" xml:space="preserve">
+    <value>はい。換算ツール、リアルタイムレート、ビットコインニュースはすべて無料で、登録やアカウントは不要です。</value>
+  </data>
+  <data name="Common.SkipToContent" xml:space="preserve">
+    <value>メインコンテンツへ移動</value>
+  </data>
+  <data name="Common.ToggleNavigation" xml:space="preserve">
+    <value>ナビゲーションメニューの開閉</value>
+  </data>
+  <data name="Common.ToggleDarkMode" xml:space="preserve">
+    <value>ダークモードの切り替え</value>
+  </data>
+  <data name="Common.DarkMode" xml:space="preserve">
+    <value>ダークモード</value>
+  </data>
+  <data name="Common.News" xml:space="preserve">
+    <value>ビットコインニュース</value>
+  </data>
+  <data name="Common.About" xml:space="preserve">
+    <value>このサイトについて</value>
+  </data>
+  <data name="Common.Donate" xml:space="preserve">
+    <value>Lightningで寄付</value>
+  </data>
+  <data name="Common.SelectCurrency" xml:space="preserve">
+    <value>通貨を選択</value>
+  </data>
+  <data name="SatsConverter.QuickReference" xml:space="preserve">
+    <value>現在のレートでの目安</value>
+  </data>
+  <data name="SatsConverter.ReferenceSats" xml:space="preserve">
+    <value>{0} sats</value>
+  </data>
+  <data name="SatsConverter.RateExplanation" xml:space="preserve">
+    <value>satsの数量は変わりませんが、通貨での価値はビットコインの価格に応じて変わります。</value>
   </data>
 </root>

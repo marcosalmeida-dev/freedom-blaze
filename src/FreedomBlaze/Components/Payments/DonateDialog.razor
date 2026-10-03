@@ -373,13 +373,22 @@
                 return null;
             }
 
-            var currency = CurrencyModel.GetCurrencyList(Culture.CurrencyCultureName).FirstOrDefault();
+            var currency = CurrencyModel.CurrencyListStatic
+                .FirstOrDefault(item => item.CultureName == Culture.CurrentCulture.Name)
+                ?? CurrencyModel.CurrencyListStatic[0];
             if (currency is null)
             {
                 return null;
             }
 
-            var btcInLocalCurrency = currency.CurrencyRateInUSD * rate.BitcoinRateInUSD;
+            var fiatRate = rate.CurrencyExchangeRate?.Rates
+                .FirstOrDefault(item => item.Currency == currency.Value)?.Rate;
+            if (fiatRate is not > 0)
+            {
+                return null;
+            }
+
+            var btcInLocalCurrency = fiatRate.Value * rate.BitcoinRateInUSD;
             var value = (decimal)sats / 100_000_000m * btcInLocalCurrency;
             return value.ToString("C", currency.CultureInfo);
         }

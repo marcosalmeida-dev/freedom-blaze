@@ -1,5 +1,5 @@
-using System.Globalization;
-using FreedomBlaze.Services;
+using FreedomBlaze.Helpers;
+using FreedomBlaze.Models;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,23 +7,16 @@ namespace FreedomBlaze.Controllers;
 
 [Route("[controller]/[action]")]
 [ApiExplorerSettings(IgnoreApi = true)]
-public class CultureController(CultureService cultureService) : Controller
+public class CultureController : Controller
 {
     public IActionResult Set(string culture, string redirectUri)
     {
-        if (culture != null)
-        {
-            var requestCulture = new RequestCulture(culture, culture);
-            HttpContext.Response.Cookies.Append(
-                CookieRequestCultureProvider.DefaultCookieName,
-                CookieRequestCultureProvider.MakeCookieValue(requestCulture));
+        var currency = CurrencyModel.CurrencyListStatic.FirstOrDefault(item =>
+            string.Equals(item.CultureName, culture, StringComparison.OrdinalIgnoreCase));
+        if (currency is null || !Url.IsLocalUrl(redirectUri))
+            return BadRequest();
 
-            // Manually update the RequestCulture in the current HttpContext
-            HttpContext.Features.Set<IRequestCultureFeature>(new RequestCultureFeature(requestCulture, new CookieRequestCultureProvider()));
-
-            cultureService.CurrencyCultureName = new CultureInfo(culture).Name;
-        }
-
+        CultureCookieHelper.Write(HttpContext, new RequestCulture(currency.CultureName));
         return LocalRedirect(redirectUri);
     }
 }

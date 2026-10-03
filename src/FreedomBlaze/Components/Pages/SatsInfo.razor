@@ -1,4 +1,5 @@
 ﻿@using Microsoft.Extensions.Localization
+@using System.Globalization
 
 @inject IStringLocalizer<Resources.Localization> Localizer
 
@@ -10,31 +11,30 @@
     <MudSimpleTable Dense="true" Style="overflow-x: auto;">
         <thead>
             <tr>
-                <th>Sats</th>
-                <th>Bitcoin</th>
-                <th>Name</th>
+                <th scope="col">@Localizer["SatsInfo.Sats"]</th>
+                <th scope="col">@Localizer["SatsInfo.Bitcoin"]</th>
+                <th scope="col">@Localizer["SatsInfo.Name"]</th>
             </tr>
         </thead>
         <tbody>
-            <tr><td>1 Satoshi</td><td>0.00000001 BTC</td><td>1 Satoshi (sat)</td></tr>
-            <tr><td>10 Satoshi</td><td>0.00000010 BTC</td><td>—</td></tr>
-            <tr><td>100 Satoshi</td><td>0.00000100 BTC</td><td>1 Bit</td></tr>
-            <tr><td>1,000 Satoshi</td><td>0.00001000 BTC</td><td>—</td></tr>
-            <tr><td>10,000 Satoshi</td><td>0.00010000 BTC</td><td>—</td></tr>
-            <tr><td>100,000 Satoshi</td><td>0.00100000 BTC</td><td>1 mBTC</td></tr>
-            <tr><td>1,000,000 Satoshi</td><td>0.01000000 BTC</td><td>1 cBTC</td></tr>
-            <tr><td>10,000,000 Satoshi</td><td>0.10000000 BTC</td><td>—</td></tr>
-            <tr><td>100,000,000 Satoshi</td><td>1.00000000 BTC</td><td>1 Bitcoin (BTC)</td></tr>
+            @foreach (var sats in Denominations)
+            {
+                <tr>
+                    <td>@sats.ToString("N0", CultureInfo.CurrentCulture) sats</td>
+                    <td>@((sats / 100_000_000m).ToString("N8", CultureInfo.CurrentCulture)) BTC</td>
+                    <td>@GetDenominationName(sats)</td>
+                </tr>
+            }
         </tbody>
     </MudSimpleTable>
 
     <MudText Typo="Typo.subtitle1" Class="mt-6 mb-3 d-flex align-center">
         <MudIcon Icon="@Icons.Material.Filled.QuestionAnswer" Class="mr-2" Color="Color.Primary" />
-        Frequently Asked Questions
+        @Localizer["SatsInfo.FaqTitle"]
     </MudText>
 
-    <section aria-label="Frequently asked questions about Bitcoin and Satoshis">
-        @foreach (var faq in Faqs)
+    <section aria-label="@Localizer["SatsInfo.FaqLabel"]">
+        @foreach (var faq in _faqs)
         {
             <div class="mb-3">
                 <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">@faq.Question</MudText>
@@ -44,36 +44,47 @@
     </section>
 </div>
 
-@* FAQPage structured data — generated from the same source as the list above so the two never drift,
-   making these answers eligible for FAQ rich results in search engines. *@
-@FaqStructuredData
+@* Keep the structured data in the same language as the visible answers. *@
+@_faqStructuredData
 
 @code {
     private sealed record Faq(string Question, string Answer);
 
-    private static readonly Faq[] Faqs =
-    [
-        new("What is a Satoshi (sat)?",
-            "A Satoshi, or “sat”, is the smallest unit of Bitcoin. One Satoshi equals 0.00000001 BTC, and 100,000,000 Satoshis make up a single Bitcoin. It is named after Bitcoin's pseudonymous creator, Satoshi Nakamoto."),
-        new("How many Satoshis are in one Bitcoin?",
-            "There are exactly 100,000,000 (one hundred million) Satoshis in one Bitcoin (BTC)."),
-        new("How do I convert Satoshis to my local currency?",
-            "Enter an amount in the converter above and Freedom Blaze instantly shows its value in your selected currency using live exchange rates — and the other way around. Switch currencies from the selector in the top bar."),
-        new("Why do Bitcoin prices differ slightly between exchanges?",
-            "Each exchange keeps its own order book and liquidity, so prices vary moment to moment. Freedom Blaze aggregates rates from six providers — Blockchain.info, Bitstamp, CoinGecko, Coinbase, Gemini and Coingate — for a reliable, blended price."),
-        new("Is the Freedom Blaze Sats converter free to use?",
-            "Yes. The converter, live exchange rates and Bitcoin news are completely free, with no sign-up or account required."),
-    ];
+    private static readonly int[] Denominations = [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000];
+    private Faq[] _faqs = [];
+    private MarkupString _faqStructuredData;
+    private string? _contentCultureName;
 
-    private MarkupString FaqStructuredData => (MarkupString)BuildFaqJsonLd();
+    protected override void OnParametersSet()
+    {
+        var cultureName = CultureInfo.CurrentUICulture.Name;
+        if (_contentCultureName == cultureName)
+            return;
 
-    private static string BuildFaqJsonLd()
+        _contentCultureName = cultureName;
+        _faqs = Enumerable.Range(1, 5)
+            .Select(index => new Faq(Localizer[$"SatsInfo.Faq{index}Question"], Localizer[$"SatsInfo.Faq{index}Answer"]))
+            .ToArray();
+        _faqStructuredData = (MarkupString)BuildFaqJsonLd();
+    }
+
+    private string GetDenominationName(int sats) => sats switch
+    {
+        1 => Localizer["SatsInfo.OneSatoshi"],
+        100 => Localizer["SatsInfo.OneBit"],
+        100_000 => "1 mBTC",
+        1_000_000 => "1 cBTC",
+        100_000_000 => Localizer["SatsInfo.OneBitcoin"],
+        _ => "—"
+    };
+
+    private string BuildFaqJsonLd()
     {
         var payload = new Dictionary<string, object?>
         {
             ["@context"] = "https://schema.org",
             ["@type"] = "FAQPage",
-            ["mainEntity"] = Faqs.Select(f => new Dictionary<string, object?>
+            ["mainEntity"] = _faqs.Select(f => new Dictionary<string, object?>
             {
                 ["@type"] = "Question",
                 ["name"] = f.Question,

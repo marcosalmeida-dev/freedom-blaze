@@ -1,38 +1,38 @@
 ﻿using System.Globalization;
 using Microsoft.AspNetCore.Localization;
+using FreedomBlaze.Models;
 
 namespace FreedomBlaze.Services;
 
 public class CultureService
 {
-    public CultureInfo CurrentCulture { get; private set; } = CultureInfo.InvariantCulture;
+    public CultureInfo CurrentCulture { get; private set; } = CultureInfo.GetCultureInfo("en-US");
 
     public CultureService(IHttpContextAccessor contextAccessor)
     {
         var localizationValue = contextAccessor?.HttpContext?.Features.Get<IRequestCultureFeature>()?.RequestCulture?.Culture?.Name;
         if (!string.IsNullOrEmpty(localizationValue))
         {
-            CurrentCulture = new CultureInfo(localizationValue);
-            CurrencyCultureName = CurrentCulture.Name;
+            LanguageCultureName = localizationValue;
         }
     }
 
-    private string _currencyCultureName = string.Empty;
-    public string CurrencyCultureName
+    private string _languageCultureName = "en-US";
+    public string LanguageCultureName
     {
-        get => _currencyCultureName;
+        get => _languageCultureName;
         set
         {
-            if (_currencyCultureName != value)
+            var currency = CurrencyModel.CurrencyListStatic.FirstOrDefault(currency =>
+                string.Equals(currency.CultureName, value, StringComparison.OrdinalIgnoreCase));
+            if (currency is not null && _languageCultureName != currency.CultureName)
             {
-                _currencyCultureName = value;
-                // Optionally notify components that the currency culture has changed
-                OnCurrencyCultureChanged?.Invoke(this, EventArgs.Empty);
+                _languageCultureName = currency.CultureName;
+                CurrentCulture = CultureInfo.GetCultureInfo(currency.CultureName);
+                OnLanguageChanged?.Invoke(this, EventArgs.Empty);
             }
         }
     }
 
-    // Event for notifying about the currency change
-    public event EventHandler? OnCurrencyCultureChanged;
+    public event EventHandler? OnLanguageChanged;
 }
-

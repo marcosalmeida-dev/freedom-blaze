@@ -1,13 +1,18 @@
 @using FreedomBlaze.Models
 @using MudBlazor
+@using Microsoft.Extensions.Localization
+
+@inject IStringLocalizer<Resources.Localization> Localizer
 
 <div class="d-flex flex-wrap gap-2 pa-3">
     @foreach (var exchange in ExchangeStatusList)
     {
+        var status = Localizer[exchange.IsExchangeAvailable ? "Common.Available" : "Common.Unavailable"];
         <MudChip T="string"
                  Icon="@(exchange.IsExchangeAvailable ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
                  Color="@(exchange.IsExchangeAvailable ? Color.Success : Color.Error)"
-                 Variant="Variant.Outlined" Size="Size.Small">
+                 Variant="Variant.Outlined" Size="Size.Small"
+                 title="@($"{exchange.ExchangeName}: {status}")" aria-label="@($"{exchange.ExchangeName}: {status}")">
             @exchange.ExchangeName
         </MudChip>
     }

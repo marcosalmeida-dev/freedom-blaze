@@ -72,7 +72,7 @@
   </data>
   
   <data name="SatsConverter.Title" xml:space="preserve">
-    <value>Convertidor de Bitcoin Satoshis (SATS)</value>
+    <value>Conversor de sats</value>
   </data>
 
   <data name="About.Body1">
@@ -105,5 +105,254 @@
   
   <data name="SatsConverter.Body2" xml:space="preserve">
     <value>Puedes copiar el resultado de BTC Sats/Moneda tocando o haciendo clic en el icono de copia o en el resultado del elemento de la tabla.</value>
+  </data>
+  <data name="SatsConverter.SeoTitle" xml:space="preserve">
+    <value>Conversor de Satoshis (Sats) — Cotizaciones en vivo en varias monedas — Freedom Blaze</value>
+  </data>
+  <data name="SatsConverter.SeoDescription" xml:space="preserve">
+    <value>Convierte al instante entre Satoshis (Sats), BTC y las principales monedas con cotizaciones en vivo de varios proveedores.</value>
+  </data>
+  <data name="SatsConverter.Eyebrow" xml:space="preserve">
+    <value>BITCOIN EN MONEDAS DE USO DIARIO</value>
+  </data>
+  <data name="SatsConverter.Description" xml:space="preserve">
+    <value>Un poco de Bitcoin. Cualquier moneda. Descubre cuánto valen tus sats.</value>
+  </data>
+  <data name="SatsConverter.UpdatingRates" xml:space="preserve">
+    <value>Actualizando cotizaciones…</value>
+  </data>
+  <data name="SatsConverter.RatesDelayed" xml:space="preserve">
+    <value>Cotizaciones demoradas</value>
+  </data>
+  <data name="SatsConverter.LiveRates" xml:space="preserve">
+    <value>Cotizaciones en vivo</value>
+  </data>
+  <data name="SatsConverter.WaitingForRates" xml:space="preserve">
+    <value>Esperando cotizaciones</value>
+  </data>
+  <data name="SatsConverter.Retry" xml:space="preserve">
+    <value>Intentar de nuevo</value>
+  </data>
+  <data name="SatsConverter.ConvertHeading" xml:space="preserve">
+    <value>Haz la conversión</value>
+  </data>
+  <data name="SatsConverter.EnterAmount" xml:space="preserve">
+    <value>Introduce uno de los importes para convertir.</value>
+  </data>
+  <data name="SatsConverter.YourCurrency" xml:space="preserve">
+    <value>Tu moneda</value>
+  </data>
+  <data name="SatsConverter.SwapFields" xml:space="preserve">
+    <value>Invertir el orden de los campos de moneda y satoshis</value>
+  </data>
+  <data name="SatsConverter.AmountTooLarge" xml:space="preserve">
+    <value>Este importe es demasiado alto para las cotizaciones actuales. Introduce un importe menor.</value>
+  </data>
+  <data name="SatsConverter.BitcoinEquivalent" xml:space="preserve">
+    <value>Equivalente en Bitcoin</value>
+  </data>
+  <data name="SatsConverter.ConversionNote" xml:space="preserve">
+    <value>1 BTC = {0} sats. Las estimaciones no incluyen comisiones de cambio.</value>
+  </data>
+  <data name="SatsConverter.AcrossCurrencies" xml:space="preserve">
+    <value>Compara las monedas</value>
+  </data>
+  <data name="SatsConverter.CompareHint" xml:space="preserve">
+    <value>Compara tu importe. Toca un valor para copiarlo.</value>
+  </data>
+  <data name="SatsConverter.RefreshRates" xml:space="preserve">
+    <value>Actualizar cotizaciones</value>
+  </data>
+  <data name="SatsConverter.TableCaption" xml:space="preserve">
+    <value>Precio del Bitcoin y tu importe convertido en cada moneda. Selecciona una moneda para usarla en el conversor.</value>
+  </data>
+  <data name="SatsConverter.Currency" xml:space="preserve">
+    <value>Moneda</value>
+  </data>
+  <data name="SatsConverter.OneBitcoin" xml:space="preserve">
+    <value>1 Bitcoin</value>
+  </data>
+  <data name="SatsConverter.YourAmount" xml:space="preserve">
+    <value>Tu importe</value>
+  </data>
+  <data name="SatsConverter.OneUsd" xml:space="preserve">
+    <value>1 USD</value>
+  </data>
+  <data name="SatsConverter.UseCurrency" xml:space="preserve">
+    <value>Usar {0} en el conversor</value>
+  </data>
+  <data name="SatsConverter.CopyBitcoinPrice" xml:space="preserve">
+    <value>Copiar precio del Bitcoin en {0}</value>
+  </data>
+  <data name="SatsConverter.CopyConvertedAmount" xml:space="preserve">
+    <value>Copiar tu importe en {0}</value>
+  </data>
+  <data name="SatsConverter.Updated" xml:space="preserve">
+    <value>Actualizado a las</value>
+  </data>
+  <data name="SatsConverter.GettingRates" xml:space="preserve">
+    <value>Obteniendo las cotizaciones más recientes…</value>
+  </data>
+  <data name="SatsConverter.RatesUnavailable" xml:space="preserve">
+    <value>Las cotizaciones no están disponibles en este momento.</value>
+  </data>
+  <data name="SatsConverter.UpdatesEveryMinute" xml:space="preserve">
+    <value>Se actualiza cada minuto</value>
+  </data>
+  <data name="SatsConverter.Denominations" xml:space="preserve">
+    <value>Conoce las unidades del Bitcoin</value>
+  </data>
+  <data name="SatsConverter.ExchangeStatus" xml:space="preserve">
+    <value>Estado de las plataformas de intercambio</value>
+  </data>
+  <data name="SatsConverter.AmountInCurrency" xml:space="preserve">
+    <value>Importe en {0}</value>
+  </data>
+  <data name="SatsConverter.Satoshis" xml:space="preserve">
+    <value>Satoshis (sats)</value>
+  </data>
+  <data name="SatsConverter.CopyCurrencyAmount" xml:space="preserve">
+    <value>Copiar importe en moneda</value>
+  </data>
+  <data name="SatsConverter.CopySats" xml:space="preserve">
+    <value>Copiar cantidad de satoshis</value>
+  </data>
+  <data name="SatsConverter.StaleRates" xml:space="preserve">
+    <value>Las cotizaciones en vivo no están disponibles temporalmente. Se muestran las últimas cotizaciones disponibles.</value>
+  </data>
+  <data name="SatsConverter.NoRates" xml:space="preserve">
+    <value>Las cotizaciones no están disponibles temporalmente. Tu importe se conserva mientras intentamos reconectar.</value>
+  </data>
+  <data name="SatsConverter.MissingCurrencyRate" xml:space="preserve">
+    <value>La cotización de esta moneda no está disponible. Elige otra moneda o inténtalo de nuevo.</value>
+  </data>
+  <data name="SatsConverter.PreferencesUnavailable" xml:space="preserve">
+    <value>Tu navegador no pudo guardar esta conversión para tu próxima visita.</value>
+  </data>
+  <data name="SatsConverter.Copied" xml:space="preserve">
+    <value>Copiado al portapapeles.</value>
+  </data>
+  <data name="SatsConverter.ClipboardUnavailable" xml:space="preserve">
+    <value>No se pudo acceder al portapapeles. Selecciona y copia el valor manualmente.</value>
+  </data>
+  <data name="Currency.USD" xml:space="preserve">
+    <value>Dólar estadounidense</value>
+  </data>
+  <data name="Currency.EUR" xml:space="preserve">
+    <value>Euro</value>
+  </data>
+  <data name="Currency.GBP" xml:space="preserve">
+    <value>Libra esterlina</value>
+  </data>
+  <data name="Currency.AUD" xml:space="preserve">
+    <value>Dólar australiano</value>
+  </data>
+  <data name="Currency.JPY" xml:space="preserve">
+    <value>Yen japonés</value>
+  </data>
+  <data name="Currency.ZAR" xml:space="preserve">
+    <value>Rand sudafricano</value>
+  </data>
+  <data name="Currency.ARS" xml:space="preserve">
+    <value>Peso argentino</value>
+  </data>
+  <data name="Currency.BRL" xml:space="preserve">
+    <value>Real brasileño</value>
+  </data>
+  <data name="Common.SelectLanguage" xml:space="preserve">
+    <value>Seleccionar idioma</value>
+  </data>
+  <data name="Common.Available" xml:space="preserve">
+    <value>Disponible</value>
+  </data>
+  <data name="Common.Unavailable" xml:space="preserve">
+    <value>No disponible</value>
+  </data>
+  <data name="SatsInfo.Sats" xml:space="preserve">
+    <value>Sats</value>
+  </data>
+  <data name="SatsInfo.Bitcoin" xml:space="preserve">
+    <value>Bitcoin</value>
+  </data>
+  <data name="SatsInfo.Name" xml:space="preserve">
+    <value>Nombre</value>
+  </data>
+  <data name="SatsInfo.OneSatoshi" xml:space="preserve">
+    <value>1 Satoshi (sat)</value>
+  </data>
+  <data name="SatsInfo.OneBit" xml:space="preserve">
+    <value>1 Bit</value>
+  </data>
+  <data name="SatsInfo.OneBitcoin" xml:space="preserve">
+    <value>1 Bitcoin (BTC)</value>
+  </data>
+  <data name="SatsInfo.FaqTitle" xml:space="preserve">
+    <value>Preguntas frecuentes</value>
+  </data>
+  <data name="SatsInfo.FaqLabel" xml:space="preserve">
+    <value>Preguntas frecuentes sobre Bitcoin y Satoshis</value>
+  </data>
+  <data name="SatsInfo.Faq1Question" xml:space="preserve">
+    <value>¿Qué es un Satoshi (sat)?</value>
+  </data>
+  <data name="SatsInfo.Faq1Answer" xml:space="preserve">
+    <value>Un Satoshi, o “sat”, es la unidad más pequeña del Bitcoin. Un Satoshi equivale a 0,00000001 BTC, y 100.000.000 de Satoshis forman un Bitcoin. Su nombre hace referencia a Satoshi Nakamoto, el seudónimo del creador del Bitcoin.</value>
+  </data>
+  <data name="SatsInfo.Faq2Question" xml:space="preserve">
+    <value>¿Cuántos Satoshis hay en un Bitcoin?</value>
+  </data>
+  <data name="SatsInfo.Faq2Answer" xml:space="preserve">
+    <value>Un Bitcoin (BTC) contiene exactamente 100.000.000 (cien millones) de Satoshis.</value>
+  </data>
+  <data name="SatsInfo.Faq3Question" xml:space="preserve">
+    <value>¿Cómo convierto Satoshis a mi moneda local?</value>
+  </data>
+  <data name="SatsInfo.Faq3Answer" xml:space="preserve">
+    <value>Ingresá un importe en el conversor para ver su valor en la moneda seleccionada o convertir tu moneda a sats. Elegí la moneda en el conversor o en la tabla. Usá la barra superior para cambiar el idioma del sitio.</value>
+  </data>
+  <data name="SatsInfo.Faq4Question" xml:space="preserve">
+    <value>¿Por qué el precio del Bitcoin varía entre las plataformas de intercambio?</value>
+  </data>
+  <data name="SatsInfo.Faq4Answer" xml:space="preserve">
+    <value>Cada plataforma tiene su propio libro de órdenes y liquidez, por lo que los precios varían con el tiempo. Freedom Blaze combina las cotizaciones disponibles de Blockchain.info, Bitstamp, CoinGecko, Coinbase, Gemini y Coingate para calcular un precio promedio.</value>
+  </data>
+  <data name="SatsInfo.Faq5Question" xml:space="preserve">
+    <value>¿El conversor de sats de Freedom Blaze es gratuito?</value>
+  </data>
+  <data name="SatsInfo.Faq5Answer" xml:space="preserve">
+    <value>Sí. El conversor, las cotizaciones en vivo y las noticias sobre Bitcoin son totalmente gratuitos, sin necesidad de registro ni cuenta.</value>
+  </data>
+  <data name="Common.SkipToContent" xml:space="preserve">
+    <value>Ir al contenido principal</value>
+  </data>
+  <data name="Common.ToggleNavigation" xml:space="preserve">
+    <value>Abrir o cerrar el menú de navegación</value>
+  </data>
+  <data name="Common.ToggleDarkMode" xml:space="preserve">
+    <value>Activar o desactivar el modo oscuro</value>
+  </data>
+  <data name="Common.DarkMode" xml:space="preserve">
+    <value>Modo oscuro</value>
+  </data>
+  <data name="Common.News" xml:space="preserve">
+    <value>Noticias de Bitcoin</value>
+  </data>
+  <data name="Common.About" xml:space="preserve">
+    <value>Acerca de</value>
+  </data>
+  <data name="Common.Donate" xml:space="preserve">
+    <value>Donar con Lightning</value>
+  </data>
+  <data name="Common.SelectCurrency" xml:space="preserve">
+    <value>Seleccionar moneda</value>
+  </data>
+  <data name="SatsConverter.QuickReference" xml:space="preserve">
+    <value>A la cotización actual</value>
+  </data>
+  <data name="SatsConverter.ReferenceSats" xml:space="preserve">
+    <value>{0} sats</value>
+  </data>
+  <data name="SatsConverter.RateExplanation" xml:space="preserve">
+    <value>La cantidad de sats permanece igual; su valor en moneda cambia con el precio de Bitcoin.</value>
   </data>
 </root>

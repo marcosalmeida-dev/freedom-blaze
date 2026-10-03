@@ -1,0 +1,125 @@
+.news-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 16px;
+    background: var(--mud-palette-surface);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.news-card:focus-within {
+    border-color: var(--mud-palette-primary);
+}
+
+.news-card__media {
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--mud-palette-background-grey);
+}
+
+.news-card__media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.news-card__content {
+    flex: 1;
+    padding: 20px 20px 12px;
+}
+
+.news-card__metadata {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: .75rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.news-card__region {
+    padding: 3px 8px;
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 6px;
+    color: var(--mud-palette-text-primary);
+    font-weight: 600;
+}
+
+.news-card__source,
+.news-card__summary,
+.news-card__footer time {
+    color: var(--mud-palette-text-secondary);
+}
+
+.news-card__title {
+    margin: 0 0 10px;
+    font-size: 1.0625rem;
+    font-weight: 650;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.news-card__summary {
+    margin: 0;
+    font-size: .875rem;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.news-card__footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 12px;
+    margin: 0 20px;
+    padding: 8px 0 12px;
+    border-top: 1px solid var(--mud-palette-divider);
+}
+
+.news-card__footer time {
+    font-size: .75rem;
+}
+
+.news-card__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 8px;
+    border-radius: 6px;
+    color: var(--mud-palette-primary);
+    font-size: .875rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.news-card__link:hover {
+    background: var(--mud-palette-action-default-hover);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.news-card__link:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+}
+
+@media (hover: hover) {
+    .news-card:hover {
+        box-shadow: var(--mud-elevation-4);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .news-card {
+        transition: none;
+    }
+}

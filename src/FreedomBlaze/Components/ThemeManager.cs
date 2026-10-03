@@ -10,6 +10,9 @@ public class ThemeManager
         get => _isDarkMode;
         set
         {
+            if (_isDarkMode == value)
+                return;
+
             _isDarkMode = value;
             _ = OnThemeChanged?.Invoke(_isDarkMode);
         }

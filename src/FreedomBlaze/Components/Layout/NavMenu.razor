@@ -1,11 +1,12 @@
 <MudNavMenu>
-    <MudNavLink Href="satsconverter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CurrencyBitcoin" IconColor="Color.Primary">Sats Converter</MudNavLink>
-    <MudNavLink Href="bitcoinnews" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Newspaper" IconColor="Color.Primary">Bitcoin News</MudNavLink>
-    <MudNavLink Href="about" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Info" IconColor="Color.Primary">About</MudNavLink>
+    <MudNavLink Href="satsconverter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CurrencyBitcoin" IconColor="Color.Primary">@Localizer["SatsConverter.Title"]</MudNavLink>
+    <MudNavLink Href="bitcoinnews" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Newspaper" IconColor="Color.Primary">@Localizer["Common.News"]</MudNavLink>
+    <MudNavLink Href="about" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Info" IconColor="Color.Primary">@Localizer["Common.About"]</MudNavLink>
     <MudDivider Class="my-2 drawer-toggle-divider" />
     <div class="px-4 drawer-dark-toggle">
-        <MudSwitch @bind-Value="@ThemeManager.IsDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" T="bool" Label="Dark Mode" />
+        <MudSwitch @bind-Value="@ThemeManager.IsDarkMode" UncheckedColor="Color.Primary" Color="Color.Primary" T="bool" Label="@Localizer["Common.DarkMode"]" />
     </div>
 </MudNavMenu>
 
 @inject ThemeManager ThemeManager
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Resources.Localization> Localizer

@@ -32,7 +32,19 @@ public class CurrencyModel
 
     public static List<Currency> GetCurrencyList(string currentCultureName = "en-US")
     {
-        return CurrencyListStatic.OrderByDescending(ob => ob.CultureName == currentCultureName).ToList();
+        // Rate and conversion values belong to the caller, never the shared currency catalog.
+        return CurrencyListStatic
+            .OrderByDescending(currency => currency.CultureName == currentCultureName)
+            .Select(currency => new Currency
+            {
+                Name = currency.Name,
+                Value = currency.Value,
+                CultureName = currency.CultureName,
+                Symbol = currency.Symbol,
+                FlagSvgPath = currency.FlagSvgPath,
+                CultureInfo = CultureInfo.GetCultureInfo(currency.CultureName)
+            })
+            .ToList();
     }
 }
 

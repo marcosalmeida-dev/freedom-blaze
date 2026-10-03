@@ -1,0 +1,131 @@
+.sats-page {
+    --converter-border: var(--mud-palette-lines-default);
+    width: 100%;
+    min-width: 0;
+    padding: 1.5rem 0 2rem;
+    color: var(--mud-palette-text-primary);
+}
+
+.page-heading, .card-heading, .rates-heading, .rates-footer, .rate-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.page-heading { margin-bottom: 1.5rem; flex-wrap: wrap; }
+.eyebrow { font-size: .68rem; font-weight: 700; letter-spacing: .12em; color: var(--mud-palette-text-secondary); margin: 0 0 .45rem; }
+h1 { font-size: clamp(1.75rem, 4vw, 2.4rem); font-weight: 750; line-height: 1.15; letter-spacing: -.04em; }
+h2 { font-size: 1.05rem; line-height: 1.35; font-weight: 650; margin: 0; }
+.page-description { color: var(--mud-palette-text-secondary); margin: .65rem 0 0; font-size: .95rem; }
+.rate-status { justify-content: flex-start; gap: .45rem; color: var(--mud-palette-text-secondary); font-size: .75rem; white-space: nowrap; }
+.status-dot { width: .5rem; height: .5rem; flex: 0 0 auto; border-radius: 50%; background: var(--mud-palette-text-secondary); }
+.status-dot.available { background: var(--mud-palette-success); }
+.converter-layout { display: grid; grid-template-columns: minmax(275px, .9fr) minmax(0, 1.8fr); gap: 1.25rem; align-items: stretch; }
+.converter-card, .rates-card { min-width: 0; border: 1px solid var(--converter-border); background: var(--mud-palette-surface); border-radius: 18px; }
+.converter-card { padding: 1.4rem; border-top: 3px solid var(--mud-palette-primary); }
+.converter-card h2 { font-size: 1.3125rem; }
+.converter-card ::deep .mud-input-label { font-size: 1.25rem; }
+.field-hint { font-size: 1rem; color: var(--mud-palette-text-secondary); margin: .5rem 0 1.5rem; }
+.currency-select { min-width: 0; }
+.currency-select ::deep .mud-input-control { margin-top: 0; }
+.currency-select ::deep .mud-input { min-height: 48px; }
+.currency-select ::deep .mud-input-outlined { border-radius: 8px; }
+.currency-select ::deep .mud-select-input { min-width: 0; font-size: 1.25rem; }
+.currency-option { display: flex; align-items: center; justify-content: flex-start; gap: .6rem; min-width: 0; text-align: start; }
+.currency-option img { width: 28px; height: 20px; object-fit: contain; flex: 0 0 28px; }
+.currency-option > span { min-width: 0; overflow-wrap: anywhere; }
+.conversion-fields { margin-top: 1.25rem; }
+.amount-field { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: .35rem; }
+.amount-field ::deep .mud-input-control { min-width: 0; }
+.amount-field ::deep input { font-size: 1.4375rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.amount-field ::deep .mud-input-outlined { border-radius: 10px; }
+.copy-button, .swap-button, .refresh-button, .text-action, .currency-button, .value-button { font: inherit; color: inherit; cursor: pointer; background: transparent; border: 0; }
+.copy-button, .swap-button, .refresh-button { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; border-radius: 10px; color: var(--mud-palette-text-secondary); }
+.copy-button:hover, .swap-button:hover, .refresh-button:hover, .currency-button:hover, .value-button:hover { background: var(--mud-palette-action-default-hover); }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible, select:focus-visible { outline: 3px solid var(--mud-palette-primary); outline-offset: 3px; }
+.swap-row { display: flex; align-items: center; gap: .8rem; margin: .2rem 0; padding-right: 47px; }
+.swap-row > span { flex: 1; border-top: 1px solid var(--converter-border); }
+.swap-button { border: 1px solid var(--converter-border); border-radius: 50%; color: var(--mud-palette-primary); }
+.bitcoin-equivalent { margin-top: 1.3rem; padding: 1rem; border-radius: 10px; background: var(--mud-palette-background); }
+.bitcoin-equivalent > span { display: block; color: var(--mud-palette-text-secondary); font-size: .9rem; margin-bottom: .25rem; }
+.bitcoin-equivalent output { font-size: 1.4375rem; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bitcoin-equivalent small { font-size: .9rem; color: var(--mud-palette-text-secondary); font-weight: 500; }
+.conversion-note { margin: .85rem 0 0; color: var(--mud-palette-text-secondary); font-size: .875rem; line-height: 1.6; }
+.conversion-reference { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--converter-border); }
+.conversion-reference h3 { margin: 0 0 .6rem; font-size: 1rem; font-weight: 650; }
+.conversion-reference dl { margin: 0; font-size: .9rem; }
+.conversion-reference dl > div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .25rem .75rem; margin-top: .35rem; }
+.conversion-reference dt { color: var(--mud-palette-text-secondary); }
+.conversion-reference dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.conversion-reference p { margin: .65rem 0 0; font-size: .875rem; line-height: 1.5; color: var(--mud-palette-text-secondary); }
+.rates-heading { padding: 1.15rem 1.25rem .8rem; }
+.rates-heading p { font-size: .75rem; color: var(--mud-palette-text-secondary); margin: .4rem 0 0; }
+.rates-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .85rem; }
+.rates-table th, .rates-table td { border-bottom: 1px solid var(--converter-border); padding: .35rem .55rem; text-align: right; vertical-align: middle; overflow-wrap: anywhere; }
+.rates-table th:first-child { text-align: left; width: 30%; padding-left: 1.25rem; }
+.rates-table thead th { font-size: .65rem; font-weight: 600; color: var(--mud-palette-text-secondary); padding-top: .65rem; padding-bottom: .65rem; }
+.rates-table thead th:first-child { padding-left: 1.25rem; }
+.rates-table th:last-child, .rates-table td:last-child { padding-right: 1rem; }
+.rates-table .usd-rate { width: 16%; font-size: .75rem; color: var(--mud-palette-text-secondary); }
+.currency-button { width: 100%; min-height: 48px; display: grid; grid-template-columns: 28px minmax(0, 1fr) 16px; align-items: center; justify-content: start; justify-items: start; gap: .6rem; text-align: start; padding: .35rem 0; border-radius: 8px; }
+.currency-button img { width: 28px; height: 20px; object-fit: contain; border-radius: 3px; }
+.currency-button > span { min-width: 0; text-align: start; }
+.currency-button strong { display: block; font-size: .85rem; font-weight: 600; }
+.currency-button small { display: block; font-size: .63rem; color: var(--mud-palette-text-secondary); font-weight: 400; margin-top: .1rem; }
+.currency-button ::deep .selected-icon { color: var(--mud-palette-primary); flex-shrink: 0; width: 15px; }
+.selected-currency { background: var(--mud-palette-primary-hover); }
+.value-button { min-height: 44px; max-width: 100%; padding: .4rem .2rem; border-radius: 6px; text-align: right; font-size: .85rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.converted-value .value-button { font-weight: 650; }
+.rates-footer { padding: .9rem 1.25rem; color: var(--mud-palette-text-secondary); font-size: .67rem; flex-wrap: wrap; gap: .4rem; }
+.converter-details { margin-top: 1.5rem; }
+.converter-details ::deep .mud-expand-panel { border: 1px solid var(--converter-border); border-radius: 10px !important; margin-bottom: .5rem; }
+.converter-details ::deep .mud-expand-panel-header { min-height: 52px; font-size: .85rem; }
+.rate-error { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; padding: .7rem 1rem; margin-bottom: 1rem; border: 1px solid var(--converter-border); border-radius: 10px; background: var(--mud-palette-surface); font-size: .8rem; }
+.rate-error > span { flex: 1; min-width: 160px; }
+.text-action { min-height: 44px; padding: .4rem .75rem; font-weight: 600; text-decoration: underline; }
+.input-error { color: var(--mud-palette-error); font-size: 1rem; margin-top: .65rem; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+@media (max-width: 1100px) {
+    .converter-layout { grid-template-columns: minmax(260px, .85fr) minmax(0, 1.4fr); gap: 1rem; }
+    .rates-table .usd-rate { display: none; }
+    .rates-table th:first-child { width: 34%; }
+    .currency-button { gap: .4rem; }
+    .currency-button small { display: none; }
+    .converter-card { padding: 1.1rem; }
+}
+
+@media (max-width: 800px) {
+    .sats-page { padding-top: 1rem; }
+    .converter-layout { grid-template-columns: minmax(0, 1fr); align-items: start; }
+    .converter-card { padding: 1.25rem; }
+    .currency-button small { display: block; }
+    .page-heading { gap: .75rem; margin-bottom: 1.1rem; }
+    .page-description { font-size: .85rem; max-width: 36ch; }
+    .converter-card, .rates-card { border-radius: 14px; }
+    .converter-details { margin-top: 1rem; }
+}
+
+@media (max-width: 480px) {
+    .converter-card { padding: 1rem; }
+    .rates-heading { padding: 1rem; gap: .25rem; }
+    .rates-table, .rates-table tbody { display: block; }
+    .rates-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .rates-table tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: .65rem 1rem .75rem; border-top: 1px solid var(--converter-border); gap: .15rem .5rem; }
+    .rates-table th, .rates-table td { display: block; border: 0; padding: 0; text-align: left; }
+    .rates-table th:first-child { width: 100%; grid-column: 1 / -1; padding: 0; }
+    .rates-table td:last-child { padding: 0; }
+    .currency-button { min-height: 44px; padding: 0; gap: .55rem; }
+    .currency-button span { display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap; }
+    .currency-button small { margin: 0; font-size: .68rem; }
+    .rates-table td::before { content: attr(data-label); display: block; font-size: .68rem; color: var(--mud-palette-text-secondary); margin: .3rem 0 0; }
+    .value-button { text-align: left; font-size: .95rem; padding: .25rem 0; min-height: 44px; }
+    .rates-table .usd-rate { display: none; }
+    .rates-footer { padding: .85rem 1rem; border-top: 1px solid var(--converter-border); }
+}
+
+@media (max-width: 599.98px) {
+    .sats-page { padding-inline: 16px; }
+}

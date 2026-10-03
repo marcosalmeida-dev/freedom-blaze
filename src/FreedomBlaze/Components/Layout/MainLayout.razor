@@ -1,9 +1,10 @@
 ﻿@using FreedomBlaze.Models
 @using FreedomBlaze.Services
 @using FreedomBlaze.Components.Payments
+@using Microsoft.Extensions.Localization
 
 @inherits LayoutComponentBase
-@implements IDisposable
+@implements IAsyncDisposable
 
 <MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@ThemeManager.IsDarkMode" Theme="_theme" />
 <MudSnackbarProvider />
@@ -16,23 +17,25 @@
     Position="DialogPosition.Center" />
 
 <MudLayout>
-    <a href="#main-content" class="skip-to-content">Skip to main content</a>
+    <a href="#main-content" class="skip-to-content">@Localizer["Common.SkipToContent"]</a>
     <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" aria-label="Toggle navigation menu" />
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" aria-label="@Localizer["Common.ToggleNavigation"]" />
         <MudImage Src="/img/freedom-blaze-logo-3-4-small.png" Class="app-icon" Alt="Freedom Blaze logo" Height="40" Width="30" />
         <MudText Typo="Typo.h5" Class="app-name ml-3">Freedom Blaze</MudText>
         <MudSpacer />
 
-        <MudSelect T="string" @bind-Value="CultureService.CurrencyCultureName"
+        <MudSelect T="string" @bind-Value="CultureService.LanguageCultureName"
                    Variant="Variant.Text" Margin="Margin.Dense"
-                   Class="appbar-currency-select" PopoverClass="currency-dropdown"
+                   Class="appbar-language-select" PopoverClass="language-dropdown"
                    AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter"
-                   Underline="false" aria-label="Select currency">
-            @foreach (var currency in CurrencyModel.CurrencyListStatic)
+                   Underline="false" aria-label="@Localizer["Common.SelectLanguage"]">
+            @foreach (var language in CurrencyModel.CurrencyListStatic)
             {
-                <MudSelectItem Value="@currency.CultureName" @key="@currency.CultureName">
-                    <img src="@currency.FlagSvgPath" height="14" class="mr-1" />
-                    @currency.Value (@currency.Symbol)
+                <MudSelectItem Value="@language.CultureName" @key="@language.CultureName">
+                    <span class="language-option">
+                        <img src="@language.FlagSvgPath" height="14" width="20" alt="" />
+                        <span>@language.CultureInfo.NativeName</span>
+                    </span>
                 </MudSelectItem>
             }
         </MudSelect>
@@ -40,26 +43,26 @@
         {
             <MudChip T="string" Icon="@Icons.Material.Filled.CurrencyBitcoin"
                      Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small"
-                     OnClick="@(() => WriteTextAsync(_btcPriceCulture))" Class="ml-2">
+                     OnClick="@(() => WriteTextAsync(_btcPriceCulture))" Class="ml-2 appbar-btc-price">
                 @_btcPriceCulture
             </MudChip>
         }
         @if (PaymentsEnabled)
         {
-            <MudTooltip Text="Tip in Bitcoin over Lightning">
+            <MudTooltip Text="@Localizer["Common.Donate"]">
                 <MudIconButton Icon="@Icons.Material.Filled.Bolt" Color="Color.Inherit"
-                               OnClick="OpenDonateDialogAsync" aria-label="Donate with Lightning" Class="ml-1" />
+                               OnClick="OpenDonateDialogAsync" aria-label="@Localizer["Common.Donate"]" Class="ml-1" />
             </MudTooltip>
         }
         <MudIconButton Icon="@(ThemeManager.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                        Color="Color.Inherit" OnClick="ThemeManager.ToggleTheme"
-                       aria-label="Toggle dark mode" Class="ml-1" />
+                       aria-label="@Localizer["Common.ToggleDarkMode"]" Class="ml-1 toggle-switch" />
     </MudAppBar>
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Temporary">
         <NavMenu />
     </MudDrawer>
     <MudMainContent id="main-content">
-        <MudContainer>
+        <MudContainer Class="main-content-container">
             <ErrorBoundary>
                 <ChildContent>@Body</ChildContent>
                 <ErrorContent Context="ex">
@@ -82,6 +85,7 @@
 @inject AppState AppState
 @inject ThemeManager ThemeManager
 @inject IDialogService DialogService
+@inject IStringLocalizer<Resources.Localization> Localizer
 
 @code {
     MudTheme _theme = new MudTheme()
@@ -110,10 +114,12 @@
     private MudThemeProvider _mudThemeProvider = null!;
 
     private DotNetObjectReference<MainLayout>? _dotNetRef;
+    private int? _themeWatcherId;
 
     private string _darkModeCookieName = "darkModeCookie";
 
     private bool _drawerOpen = false;
+    private bool _disposed;
 
     private string? _btcPriceCulture;
 
@@ -127,17 +133,17 @@
         {
             try
             {
-                _cultureChangedHandler = (_, _) => OnCurrencyChanged();
-                CultureService.OnCurrencyCultureChanged += _cultureChangedHandler;
+                _cultureChangedHandler = (_, _) => OnLanguageChanged();
+                CultureService.OnLanguageChanged += _cultureChangedHandler;
                 AppState.OnChange += OnAppStateChanged;
                 ThemeManager.OnThemeChanged += ThemeChanged;
 
                 _dotNetRef = DotNetObjectReference.Create(this);
-                await JS.InvokeVoidAsync("darkModeHelper.watchSystemPreference", cancellationTokenSource.Token, _dotNetRef);
+                _themeWatcherId = await JS.InvokeAsync<int>("darkModeHelper.watchSystemPreference", cancellationTokenSource.Token, _dotNetRef);
                 var savedDarkMode = await JS.InvokeAsync<string>("cookieHelper.getCookie", cancellationTokenSource.Token, _darkModeCookieName);
-                if (!string.IsNullOrEmpty(savedDarkMode))
+                if (bool.TryParse(savedDarkMode, out var isDarkMode))
                 {
-                    ThemeManager.IsDarkMode = bool.Parse(savedDarkMode);
+                    ThemeManager.IsDarkMode = isDarkMode;
                 }
                 else
                 {
@@ -145,6 +151,8 @@
                 }
 
                 await InvokeAsync(StateHasChanged);
+                await AppState.EnsureRatesAsync(cancellationTokenSource.Token);
+                await OnAppStateChanged();
             }
             catch (JSDisconnectedException) { }
             catch (OperationCanceledException) { }
@@ -166,29 +174,39 @@
         try
         {
             await JS.InvokeVoidAsync("cookieHelper.setCookie", cancellationTokenSource.Token, _darkModeCookieName, isDarkMode.ToString(), 365);
+            if (!_disposed)
+                await InvokeAsync(StateHasChanged);
         }
         catch (JSDisconnectedException) { }
         catch (OperationCanceledException) { }
     }
 
-    private async Task OnAppStateChanged()
+    private Task OnAppStateChanged() => InvokeAsync(() =>
     {
-        var currentCurrencyInfo = CurrencyModel.GetCurrencyList(CultureService.CurrencyCultureName).FirstOrDefault();
-        if (currentCurrencyInfo is null || AppState.BitcoinExchangeRate is null)
+        if (_disposed)
             return;
 
-        _btcPriceCulture = (currentCurrencyInfo.CurrencyRateInUSD * AppState.BitcoinExchangeRate.BitcoinRateInUSD).ToString("C", currentCurrencyInfo.CultureInfo);
+        var rates = AppState.BitcoinExchangeRate;
+        if (rates is null || rates.BitcoinRateInUSD <= 0)
+            return;
 
-        await InvokeAsync(StateHasChanged);
-    }
+        _btcPriceCulture = $"{rates.BitcoinRateInUSD.ToString("N2", CultureService.CurrentCulture)} USD";
+        StateHasChanged();
+    });
 
-    private void OnCurrencyChanged()
+    private void OnLanguageChanged()
     {
-        var uri = new Uri(Navigation.Uri).GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
-        var uriEscaped = Uri.EscapeDataString(uri);
+        // A previous language in the URL must not override the newly saved cookie.
+        // Keep other query values escaped and retain the current anchor.
+        var destination = new Uri(Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["culture"] = null,
+            ["ui-culture"] = null
+        }));
+        var uriEscaped = Uri.EscapeDataString(destination.PathAndQuery + destination.Fragment);
 
         Navigation.NavigateTo(
-            $"Culture/Set?culture={CultureService.CurrencyCultureName}&redirectUri={uriEscaped}",
+            $"Culture/Set?culture={CultureService.LanguageCultureName}&redirectUri={uriEscaped}",
             forceLoad: true);
     }
 
@@ -235,17 +253,27 @@
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        CultureService.OnCurrencyCultureChanged -= _cultureChangedHandler;
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        CultureService.OnLanguageChanged -= _cultureChangedHandler;
         AppState.OnChange -= OnAppStateChanged;
         ThemeManager.OnThemeChanged -= ThemeChanged;
 
-        _dotNetRef?.Dispose();
-
-        if (cancellationTokenSource != null && !cancellationTokenSource.IsCancellationRequested)
+        await cancellationTokenSource.CancelAsync();
+        try
         {
-            cancellationTokenSource.Cancel();
+            if (_themeWatcherId is { } watcherId)
+                await JS.InvokeVoidAsync("darkModeHelper.unwatchSystemPreference", watcherId);
+        }
+        catch (JSDisconnectedException) { }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            _dotNetRef?.Dispose();
             cancellationTokenSource.Dispose();
         }
     }

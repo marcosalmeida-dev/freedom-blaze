@@ -34,14 +34,24 @@ window.getUserEnvironment = function () {
 };
 
 window.darkModeHelper = {
+    watchers: new Map(),
+    nextWatcherId: 0,
     getSystemPreference: function () {
         return window.matchMedia('(prefers-color-scheme: dark)').matches;
     },
     watchSystemPreference: function (dotNetHelper) {
         const mq = window.matchMedia('(prefers-color-scheme: dark)');
-        mq.addEventListener('change', (e) => {
-            dotNetHelper.invokeMethodAsync('SystemPreferenceChanged', e.matches);
-        });
+        const listener = (e) => {
+            dotNetHelper.invokeMethodAsync('SystemPreferenceChanged', e.matches).catch(() => {});
+        };
+        mq.addEventListener('change', listener);
+        const watcherId = ++this.nextWatcherId;
+        this.watchers.set(watcherId, () => mq.removeEventListener('change', listener));
+        return watcherId;
+    },
+    unwatchSystemPreference: function (watcherId) {
+        this.watchers.get(watcherId)?.();
+        this.watchers.delete(watcherId);
     }
 };
 

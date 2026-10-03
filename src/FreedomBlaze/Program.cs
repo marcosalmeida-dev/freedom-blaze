@@ -10,6 +10,7 @@ using FreedomBlaze.Components;
 using FreedomBlaze.Data;
 using FreedomBlaze.Data.Repositories;
 using FreedomBlaze.Helpers;
+using FreedomBlaze.Extensions;
 using FreedomBlaze.Interfaces;
 using FreedomBlaze.Models;
 using FreedomBlaze.OpenApi;
@@ -82,7 +83,7 @@ builder.Services.AddScoped<CultureService>();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<AppState>();
-builder.Services.AddSingleton<ThemeManager>();
+builder.Services.AddScoped<ThemeManager>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddResponseCompression(opts =>
@@ -280,6 +281,7 @@ var localizationOptions = new RequestLocalizationOptions()
     .AddSupportedUICultures(supportedCultures);
 
 app.UseRequestLocalization(localizationOptions);
+app.UseLanguageCulture();
 
 app.UseRouting();
 
