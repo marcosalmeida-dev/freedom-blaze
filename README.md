@@ -62,6 +62,48 @@ Run the offline news integration tests with:
 dotnet test tests/FreedomBlaze.Tests/FreedomBlaze.Tests.csproj
 ```
 
+## Bitcoin transaction tracking
+
+Open `/transactions` to look up a Bitcoin mainnet address or transaction ID. The
+tracker shows confirmation status, fees, individual inputs/outputs, and address
+balances/history in sats, BTC, and the selected fiat currency. Fiat values use the
+current exchange rate. An address lookup covers one address, rather than every
+address belonging to a wallet.
+
+Updates run every 30 seconds while the page is open. Loading older address history
+pauses automatic updates; Refresh returns to the latest page. Pending transactions
+can change or disappear before confirmation. Provider failures retain the last
+successful result and its check time.
+
+The server uses the public Esplora-compatible API at `https://mempool.space/api/` by
+default. No additional API key or database migration is required. Searches are not
+saved to browser storage or placed in URLs. Outbound request logs/traces are disabled
+for the tracking client because their URLs contain the searched public identifier.
+The configured provider receives those identifiers.
+
+Optional server configuration (the defaults shown are application request budgets,
+not a guarantee of the public provider's allowance):
+
+```json
+"BitcoinTracking": {
+  "BaseUrl": "https://mempool.space/api/",
+  "RequestTimeout": "00:00:15",
+  "CacheDuration": "00:00:30",
+  "FailureCooldown": "00:00:05",
+  "MaxCacheEntries": 256,
+  "MaxProviderRequestsPerMinute": 60,
+  "MaxConcurrentRequests": 4
+}
+```
+
+Set `BitcoinTracking__BaseUrl` to a mainnet Esplora-compatible endpoint to change
+the provider. HTTPS is required. Shared requests, a bounded cache, and provider cooldowns reduce
+duplicate requests across Blazor circuits. Saved watchlists, background alerts,
+and Lightning payment lookup are separate future features.
+
+Run the tracker validation, client/service, and rendering tests with the existing
+`dotnet test tests/FreedomBlaze.Tests/FreedomBlaze.Tests.csproj` command.
+
 ## Code Styles & Formatting
 
 The template includes [EditorConfig](https://editorconfig.org/) support to help maintain consistent coding styles for multiple developers working on the same project across various editors and IDEs. The **.editorconfig** file defines the coding styles applicable to this solution.

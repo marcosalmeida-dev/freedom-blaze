@@ -5,6 +5,7 @@ using FreedomBlaze.Client.Interfaces;
 using FreedomBlaze.Client.Services;
 using FreedomBlaze.Clients;
 using FreedomBlaze.Clients.BitcoinExchanges;
+using FreedomBlaze.Clients.BitcoinTracking;
 using FreedomBlaze.Clients.CurrencyExchanges;
 using FreedomBlaze.Components;
 using FreedomBlaze.Data;
@@ -86,6 +87,42 @@ builder.Services.AddSingleton<AppState>();
 builder.Services.AddScoped<ThemeManager>();
 
 builder.Services.AddMemoryCache();
+
+// Public on-chain lookup: all calls are read-only and share a bounded cache/provider budget.
+builder.Services.AddOptions<BitcoinTrackingOptions>()
+    .Bind(builder.Configuration.GetSection(BitcoinTrackingOptions.Section))
+    .Validate(options => Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var uri)
+        && uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo)
+        && string.IsNullOrEmpty(uri.Query) && string.IsNullOrEmpty(uri.Fragment)
+        && options.BaseUrl.EndsWith('/'), "BitcoinTracking:BaseUrl must be an HTTPS API URL ending in '/'.")
+    .Validate(options => options.RequestTimeout > TimeSpan.Zero && options.RequestTimeout <= TimeSpan.FromMinutes(1),
+        "BitcoinTracking:RequestTimeout must be positive and no longer than one minute.")
+    .Validate(options => options.CacheDuration > TimeSpan.Zero && options.CacheDuration <= TimeSpan.FromSeconds(30),
+        "BitcoinTracking:CacheDuration must be positive and no longer than 30 seconds.")
+    .Validate(options => options.FailureCooldown > TimeSpan.Zero && options.FailureCooldown <= TimeSpan.FromMinutes(1),
+        "BitcoinTracking:FailureCooldown must be positive and no longer than one minute.")
+    .Validate(options => options.MaxCacheEntries > 0 && options.MaxProviderRequestsPerMinute > 0
+        && options.MaxConcurrentRequests >= 2, "BitcoinTracking cache/request budgets must be positive; at least two requests may run concurrently.")
+    .ValidateOnStart();
+#pragma warning disable EXTEXP0001 // Required to remove Aspire's inherited retry handlers for this privacy-sensitive, budgeted client.
+builder.Services.AddHttpClient(EsploraClient.HttpClientName, (provider, client) =>
+{
+    var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BitcoinTrackingOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = options.RequestTimeout;
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("FreedomBlaze/1.0");
+})
+    // Addresses and transaction IDs must not appear in the default request-URI logs. No automatic
+    // retries: every actual HTTP attempt is counted by the singleton provider budget.
+    .RemoveAllLoggers()
+    .RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
+builder.Services.AddSingleton(provider => new EsploraClient(
+    provider.GetRequiredService<IHttpClientFactory>().CreateClient(EsploraClient.HttpClientName),
+    provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BitcoinTrackingOptions>>(),
+    provider.GetRequiredService<TimeProvider>()));
+builder.Services.AddSingleton<IBitcoinTrackingService, BitcoinTrackingService>();
+
 builder.Services.AddResponseCompression(opts =>
 {
     opts.EnableForHttps = true;

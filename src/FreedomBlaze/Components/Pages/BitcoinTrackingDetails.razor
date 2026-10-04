@@ -1,0 +1,199 @@
+@using System.Globalization
+@using FreedomBlaze.Models
+@using FreedomBlaze.Models.BitcoinTracking
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Resources.Localization> Localizer
+
+<div class="tracking-details">
+    @if (Result.Kind == BitcoinTrackingKind.Address && Result.Address is { } address)
+    {
+        <div class="summary-grid">
+            <section class="summary-card">
+                <h3>@Localizer["Tracker.ConfirmedBalance"]</h3>
+                <p class="main-value">@FormatSats(address.ConfirmedBalanceSats) <small>sats</small></p>
+                <p class="secondary-value">@FormatBtc(address.ConfirmedBalanceSats) BTC · @FormatFiat(address.ConfirmedBalanceSats)</p>
+            </section>
+            <section class="summary-card">
+                <h3>@Localizer["Tracker.PendingChange"]</h3>
+                <p class="main-value">@FormatSats(address.PendingBalanceChangeSats, signed: true) <small>sats</small></p>
+                <p class="secondary-value">@FormatFiat(address.PendingBalanceChangeSats)</p>
+            </section>
+            <section class="summary-card">
+                <h3>@Localizer["Tracker.Transactions"]</h3>
+                <p class="main-value">@address.ConfirmedTransactionCount.ToString("N0", DisplayCulture)</p>
+                <p class="secondary-value">@Localizer["Tracker.PendingCount", address.PendingTransactionCount.ToString("N0", DisplayCulture)]</p>
+            </section>
+        </div>
+        <p class="explanation">@Localizer["Tracker.AddressNote"]</p>
+        <section class="detail-card" aria-labelledby="tracker-history-heading">
+            <div class="card-heading"><h3 id="tracker-history-heading">@Localizer["Tracker.History"]</h3></div>
+            @if (Result.Transactions.Count == 0)
+            {
+                <p class="empty-history">@Localizer["Tracker.NoTransactions"]</p>
+            }
+            else
+            {
+                <table class="history-table">
+                    <caption class="visually-hidden">@Localizer["Tracker.HistoryCaption"]</caption>
+                    <thead><tr><th scope="col">@Localizer["Tracker.TransactionId"]</th><th scope="col">@Localizer["Tracker.Status"]</th><th scope="col">@Localizer["Tracker.NetChange"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var transaction in Result.Transactions)
+                        {
+                            <tr @key="transaction.TxId">
+                                <td data-label="@Localizer["Tracker.TransactionId"]">
+                                    <button type="button" class="transaction-link" title="@transaction.TxId"
+                                            aria-label="@Localizer["Tracker.OpenTransaction", transaction.TxId]"
+                                            disabled="@LoadingMore" @onclick="() => OnSelectTransaction.InvokeAsync(transaction.TxId)">@ShortId(transaction.TxId)</button>
+                                    @if (transaction.BlockTime is { } time)
+                                    {
+                                        <small class="transaction-time"><time datetime="@time.ToString("O")">@FormatTime(time)</time></small>
+                                    }
+                                </td>
+                                <td data-label="@Localizer["Tracker.Status"]"><span class="status-badge @(transaction.Confirmed ? "confirmed" : "pending")">@StatusLabel(transaction)</span></td>
+                                <td data-label="@Localizer["Tracker.NetChange"]" class="net-value">
+                                    @if (transaction.AddressNetSats is { } netSats)
+                                    {
+                                        <strong>@FormatSats(netSats, signed: true) sats</strong>
+                                        <small>@FormatFiat(netSats)</small>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            @if (Result.NextCursor is not null)
+            {
+                <div class="pagination"><button type="button" class="outline-button" disabled="@LoadingMore" @onclick="() => OnLoadMore.InvokeAsync()">@Localizer[LoadingMore ? "Tracker.LoadingMore" : "Tracker.LoadMore"]</button></div>
+            }
+            @if (address.PendingTransactionCount > 50)
+            {
+                <p class="explanation history-limit">@Localizer["Tracker.MempoolLimit"]</p>
+            }
+        </section>
+    }
+    else if (Result.Transaction is { } transaction)
+    {
+        <div class="summary-grid">
+            <section class="summary-card">
+                <h3>@Localizer["Tracker.Status"]</h3>
+                <p class="main-value"><span class="status-badge @(transaction.Confirmed ? "confirmed" : "pending")">@Localizer[transaction.Confirmed ? "Tracker.Confirmed" : "Tracker.Pending"]</span></p>
+                <p class="secondary-value">@Localizer["Tracker.ConfirmationsValue", transaction.Confirmations.ToString("N0", DisplayCulture)]</p>
+            </section>
+            <section class="summary-card">
+                <h3>@Localizer["Tracker.Fee"]</h3>
+                <p class="main-value">@FormatSats(transaction.FeeSats) <small>sats</small></p>
+                <p class="secondary-value">@FormatFiat(transaction.FeeSats)</p>
+            </section>
+            <section class="summary-card">
+                <h3>@Localizer["Tracker.FeeRate"]</h3>
+                <p class="main-value">@FormatFeeRate(transaction) <small>sat/vB</small></p>
+                <p class="secondary-value">@Localizer["Tracker.VirtualSize", VirtualSize(transaction).ToString("N0", DisplayCulture)]</p>
+            </section>
+        </div>
+        @if (transaction.BlockHeight is { } height && transaction.Confirmed)
+        {
+            <p class="explanation">@Localizer["Tracker.BlockHeight", height.ToString("N0", DisplayCulture)]
+                @if (transaction.BlockTime is { } blockTime)
+                {
+                    <span> · <time datetime="@blockTime.ToString("O")">@FormatTime(blockTime)</time></span>
+                }
+            </p>
+        }
+        else
+        {
+            <p class="explanation">@Localizer["Tracker.PendingNote"]</p>
+        }
+        <p class="explanation">@Localizer["Tracker.OutputsNote"]</p>
+        <div class="io-grid">
+            <section class="detail-card" aria-labelledby="tracker-inputs-heading">
+                <div class="card-heading"><h3 id="tracker-inputs-heading">@Localizer["Tracker.Inputs"] <small>(@transaction.Inputs.Count.ToString("N0", DisplayCulture))</small></h3></div>
+                <ol class="io-list">
+                    @foreach (var input in transaction.Inputs.Take(_inputLimit))
+                    {
+                        <li>
+                            <span class="io-address">@(input.IsCoinbase ? Localizer["Tracker.CoinbaseInput"].Value : input.Address ?? Localizer["Tracker.Script"].Value)</span>
+                            @if (input.ValueSats is { } inputSats)
+                            {
+                                <strong>@FormatSats(inputSats) sats</strong>
+                                <small>@FormatBtc(inputSats) BTC · @FormatFiat(inputSats)</small>
+                            }
+                        </li>
+                    }
+                </ol>
+                @if (transaction.Inputs.Count > _inputLimit)
+                {
+                    <div class="pagination"><button type="button" class="outline-button" @onclick="() => _inputLimit += 25">@Localizer["Tracker.ShowMoreInputs"]</button></div>
+                }
+            </section>
+            <section class="detail-card" aria-labelledby="tracker-outputs-heading">
+                <div class="card-heading"><h3 id="tracker-outputs-heading">@Localizer["Tracker.Outputs"] <small>(@transaction.Outputs.Count.ToString("N0", DisplayCulture))</small></h3></div>
+                <ol class="io-list" start="0">
+                    @foreach (var output in transaction.Outputs.Take(_outputLimit))
+                    {
+                        <li>
+                            <span class="io-address">@(output.Address ?? Localizer["Tracker.Script"].Value)</span>
+                            <strong>@FormatSats(output.ValueSats) sats</strong>
+                            <small>@FormatBtc(output.ValueSats) BTC · @FormatFiat(output.ValueSats)</small>
+                        </li>
+                    }
+                </ol>
+                @if (transaction.Outputs.Count > _outputLimit)
+                {
+                    <div class="pagination"><button type="button" class="outline-button" @onclick="() => _outputLimit += 25">@Localizer["Tracker.ShowMoreOutputs"]</button></div>
+                }
+            </section>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public BitcoinTrackingResult Result { get; set; } = default!;
+    [Parameter] public Currency SelectedCurrency { get; set; } = CurrencyModel.CurrencyListStatic[0];
+    [Parameter] public decimal? FiatPricePerBitcoin { get; set; }
+    [Parameter] public bool LoadingMore { get; set; }
+    [Parameter] public EventCallback OnLoadMore { get; set; }
+    [Parameter] public EventCallback<string> OnSelectTransaction { get; set; }
+
+    private int _inputLimit = 25;
+    private int _outputLimit = 25;
+    private string? _displayedQuery;
+    private static CultureInfo DisplayCulture => CultureInfo.CurrentCulture;
+
+    protected override void OnParametersSet()
+    {
+        if (_displayedQuery != Result.Query)
+        {
+            _displayedQuery = Result.Query;
+            _inputLimit = _outputLimit = 25;
+        }
+    }
+
+    private static string FormatSats(long sats, bool signed = false) =>
+        (signed && sats > 0 ? "+" : string.Empty) + sats.ToString("N0", DisplayCulture);
+
+    private static string FormatBtc(long sats) => (sats / 100_000_000m).ToString("N8", DisplayCulture);
+
+    private string FormatFiat(long sats) => sats == 0
+        ? 0m.ToString("C", SelectedCurrency.CultureInfo)
+        : FiatPricePerBitcoin is { } price
+            ? "≈ " + (sats / 100_000_000m * price).ToString("C", SelectedCurrency.CultureInfo)
+            : "—";
+
+    private string StatusLabel(BitcoinTransaction transaction) => transaction.Confirmed
+        ? Localizer["Tracker.ConfirmationsValue", transaction.Confirmations.ToString("N0", DisplayCulture)].Value
+        : Localizer["Tracker.Pending"].Value;
+
+    private static long VirtualSize(BitcoinTransaction transaction) => (transaction.Weight + 3L) / 4;
+
+    private static string FormatFeeRate(BitcoinTransaction transaction) => VirtualSize(transaction) > 0
+        ? (transaction.FeeSats / (decimal)VirtualSize(transaction)).ToString("N2", DisplayCulture)
+        : "—";
+
+    private static string ShortId(string txId) => txId.Length > 24 ? txId[..12] + "…" + txId[^8..] : txId;
+
+    private static string FormatTime(DateTimeOffset time) => time.UtcDateTime.ToString("g", DisplayCulture) + " UTC";
+}

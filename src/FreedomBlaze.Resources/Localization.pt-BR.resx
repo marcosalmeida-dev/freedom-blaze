@@ -400,4 +400,181 @@
   <data name="SatsConverter.RateExplanation" xml:space="preserve">
     <value>A quantidade de sats permanece a mesma; seu valor em moeda muda com o preço do Bitcoin.</value>
   </data>
+  <data name="Tracker.SeoTitle" xml:space="preserve">
+    <value>Rastreador de transações Bitcoin — Freedom Blaze</value>
+  </data>
+  <data name="Tracker.SeoDescription" xml:space="preserve">
+    <value>Consulte transações e endereços Bitcoin. Acompanhe confirmações, taxas, saldos em sats e estimativas em moedas locais.</value>
+  </data>
+  <data name="Tracker.Eyebrow" xml:space="preserve">
+    <value>BITCOIN ON-CHAIN</value>
+  </data>
+  <data name="Tracker.Title" xml:space="preserve">
+    <value>Rastreador de transações</value>
+  </data>
+  <data name="Tracker.Description" xml:space="preserve">
+    <value>Acompanhe uma transação Bitcoin ou consulte a atividade de um endereço público.</value>
+  </data>
+  <data name="Tracker.SearchHeading" xml:space="preserve">
+    <value>Buscar uma transação ou endereço</value>
+  </data>
+  <data name="Tracker.SearchLabel" xml:space="preserve">
+    <value>Endereço Bitcoin ou ID da transação</value>
+  </data>
+  <data name="Tracker.SearchPlaceholder" xml:space="preserve">
+    <value>Cole um endereço Bitcoin ou ID da transação</value>
+  </data>
+  <data name="Tracker.SearchHint" xml:space="preserve">
+    <value>Use endereços e IDs de transações da rede principal do Bitcoin. Faturas Lightning usam outra rede de pagamentos.</value>
+  </data>
+  <data name="Tracker.Search" xml:space="preserve">
+    <value>Rastrear</value>
+  </data>
+  <data name="Tracker.Searching" xml:space="preserve">
+    <value>Buscando…</value>
+  </data>
+  <data name="Tracker.AutoRefresh" xml:space="preserve">
+    <value>Atualizar automaticamente a cada 30 segundos</value>
+  </data>
+  <data name="Tracker.PrivacyNote" xml:space="preserve">
+    <value>O identificador público consultado é enviado ao provedor de dados da blockchain. Suas buscas não são salvas neste navegador.</value>
+  </data>
+  <data name="Tracker.Loading" xml:space="preserve">
+    <value>Consultando a rede Bitcoin…</value>
+  </data>
+  <data name="Tracker.Retry" xml:space="preserve">
+    <value>Tentar novamente</value>
+  </data>
+  <data name="Tracker.AddressResult" xml:space="preserve">
+    <value>Atividade do endereço</value>
+  </data>
+  <data name="Tracker.TransactionResult" xml:space="preserve">
+    <value>Detalhes da transação</value>
+  </data>
+  <data name="Tracker.Refresh" xml:space="preserve">
+    <value>Atualizar a atividade recente</value>
+  </data>
+  <data name="Tracker.Updated" xml:space="preserve">
+    <value>Consultado em</value>
+  </data>
+  <data name="Tracker.CurrentFiat" xml:space="preserve">
+    <value>Os valores em moedas locais são estimativas pela cotação atual.</value>
+  </data>
+  <data name="Tracker.FiatUnavailable" xml:space="preserve">
+    <value>As estimativas em moedas locais estão indisponíveis no momento. Os valores em Bitcoin continuam disponíveis.</value>
+  </data>
+  <data name="Tracker.FiatDelayed" xml:space="preserve">
+    <value>As cotações estão atrasadas; as estimativas usam a última cotação disponível.</value>
+  </data>
+  <data name="Tracker.OlderHistoryNote" xml:space="preserve">
+    <value>As atualizações automáticas ficam pausadas enquanto você consulta transações antigas. Atualize para voltar à atividade recente.</value>
+  </data>
+  <data name="Tracker.EmptyTitle" xml:space="preserve">
+    <value>Veja o andamento da sua transação</value>
+  </data>
+  <data name="Tracker.EmptyDescription" xml:space="preserve">
+    <value>Cole um ID de transação para consultar confirmações e taxas, ou um endereço para ver seu saldo e histórico.</value>
+  </data>
+  <data name="Tracker.ConfirmedBalance" xml:space="preserve">
+    <value>Saldo confirmado</value>
+  </data>
+  <data name="Tracker.PendingChange" xml:space="preserve">
+    <value>Variação pendente do saldo</value>
+  </data>
+  <data name="Tracker.Transactions" xml:space="preserve">
+    <value>Transações confirmadas</value>
+  </data>
+  <data name="Tracker.PendingCount" xml:space="preserve">
+    <value>{0} transações pendentes</value>
+  </data>
+  <data name="Tracker.AddressNote" xml:space="preserve">
+    <value>Este saldo pertence a este endereço. Uma carteira pode usar vários endereços. Os valores pendentes podem mudar antes da confirmação.</value>
+  </data>
+  <data name="Tracker.History" xml:space="preserve">
+    <value>Histórico de transações</value>
+  </data>
+  <data name="Tracker.NoTransactions" xml:space="preserve">
+    <value>Nenhuma transação foi encontrada para este endereço.</value>
+  </data>
+  <data name="Tracker.HistoryCaption" xml:space="preserve">
+    <value>Transações e variações de saldo do endereço consultado</value>
+  </data>
+  <data name="Tracker.TransactionId" xml:space="preserve">
+    <value>ID da transação</value>
+  </data>
+  <data name="Tracker.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Tracker.NetChange" xml:space="preserve">
+    <value>Variação do saldo do endereço</value>
+  </data>
+  <data name="Tracker.OpenTransaction" xml:space="preserve">
+    <value>Ver transação {0}</value>
+  </data>
+  <data name="Tracker.LoadMore" xml:space="preserve">
+    <value>Carregar transações antigas</value>
+  </data>
+  <data name="Tracker.LoadingMore" xml:space="preserve">
+    <value>Carregando transações antigas…</value>
+  </data>
+  <data name="Tracker.MempoolLimit" xml:space="preserve">
+    <value>São exibidas até 50 transações pendentes. A variação pendente do saldo inclui toda a atividade pendente informada pelo provedor.</value>
+  </data>
+  <data name="Tracker.Confirmed" xml:space="preserve">
+    <value>Confirmada</value>
+  </data>
+  <data name="Tracker.Pending" xml:space="preserve">
+    <value>Pendente</value>
+  </data>
+  <data name="Tracker.ConfirmationsValue" xml:space="preserve">
+    <value>{0} confirmações</value>
+  </data>
+  <data name="Tracker.Fee" xml:space="preserve">
+    <value>Taxa da transação</value>
+  </data>
+  <data name="Tracker.FeeRate" xml:space="preserve">
+    <value>Taxa por byte virtual</value>
+  </data>
+  <data name="Tracker.VirtualSize" xml:space="preserve">
+    <value>{0} bytes virtuais</value>
+  </data>
+  <data name="Tracker.BlockHeight" xml:space="preserve">
+    <value>Incluída no bloco {0}</value>
+  </data>
+  <data name="Tracker.PendingNote" xml:space="preserve">
+    <value>Esta transação aguarda confirmação. Seu status e as taxas necessárias podem mudar conforme as condições da rede.</value>
+  </data>
+  <data name="Tracker.OutputsNote" xml:space="preserve">
+    <value>As saídas podem incluir troco devolvido ao remetente e pagamentos a vários destinatários. Cada saída é exibida separadamente.</value>
+  </data>
+  <data name="Tracker.Inputs" xml:space="preserve">
+    <value>Entradas</value>
+  </data>
+  <data name="Tracker.Outputs" xml:space="preserve">
+    <value>Saídas</value>
+  </data>
+  <data name="Tracker.CoinbaseInput" xml:space="preserve">
+    <value>Bitcoin recém-minerado (coinbase)</value>
+  </data>
+  <data name="Tracker.Script" xml:space="preserve">
+    <value>Script sem endereço padrão</value>
+  </data>
+  <data name="Tracker.ShowMoreInputs" xml:space="preserve">
+    <value>Mostrar mais entradas</value>
+  </data>
+  <data name="Tracker.ShowMoreOutputs" xml:space="preserve">
+    <value>Mostrar mais saídas</value>
+  </data>
+  <data name="Tracker.Error.InvalidInput" xml:space="preserve">
+    <value>Digite um endereço válido da rede principal do Bitcoin ou um ID de transação com 64 caracteres.</value>
+  </data>
+  <data name="Tracker.Error.NotFound" xml:space="preserve">
+    <value>Esta transação não foi encontrada pelo provedor de dados. Confira o ID ou tente novamente após sua transmissão à rede.</value>
+  </data>
+  <data name="Tracker.Error.RateLimited" xml:space="preserve">
+    <value>O provedor de dados está recebendo muitas solicitações. Aguarde antes de tentar novamente.</value>
+  </data>
+  <data name="Tracker.Error.Unavailable" xml:space="preserve">
+    <value>Os dados da rede Bitcoin estão indisponíveis no momento. Tente novamente em breve.</value>
+  </data>
 </root>

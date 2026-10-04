@@ -1,0 +1,107 @@
+@page "/transactions"
+@rendermode InteractiveServer
+@using FreedomBlaze.Models
+@using FreedomBlaze.Models.BitcoinTracking
+
+<PageSeo Title="@Localizer["Tracker.SeoTitle"]"
+         Description="@Localizer["Tracker.SeoDescription"]"
+         RelativePath="transactions" />
+
+<div class="tracker-page">
+    <header class="page-heading">
+        <p class="eyebrow">@Localizer["Tracker.Eyebrow"]</p>
+        <h1>@Localizer["Tracker.Title"]</h1>
+        <p class="page-description">@Localizer["Tracker.Description"]</p>
+    </header>
+
+    <section class="search-card" aria-labelledby="tracker-search-heading">
+        <h2 id="tracker-search-heading">@Localizer["Tracker.SearchHeading"]</h2>
+        <form class="search-form" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+            <div class="query-field">
+                <label for="tracker-query">@Localizer["Tracker.SearchLabel"]</label>
+                <input id="tracker-query" type="text" @bind="_query" @bind:event="oninput"
+                       placeholder="@Localizer["Tracker.SearchPlaceholder"]" maxlength="128"
+                       autocomplete="off" autocapitalize="off" spellcheck="false"
+                       aria-describedby="tracker-search-hint" />
+            </div>
+            <button class="search-button" type="submit" disabled="@(_loading || string.IsNullOrWhiteSpace(_query))">
+                <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" />
+                @Localizer[_loading ? "Tracker.Searching" : "Tracker.Search"]
+            </button>
+        </form>
+        <p id="tracker-search-hint" class="hint">@Localizer["Tracker.SearchHint"]</p>
+        <div class="search-options">
+            <div class="currency-select">
+                <MudSelect T="string" Value="_selectedCurrency.Value" ValueChanged="SelectCurrency"
+                           Label="@Localizer["Common.SelectCurrency"]" Variant="Variant.Outlined"
+                           Margin="Margin.Dense" InputId="tracker-currency">
+                    @foreach (var currency in CurrencyModel.CurrencyListStatic)
+                    {
+                        <MudSelectItem T="string" Value="@currency.Value">@currency.Value — @Localizer[$"Currency.{currency.Value}"]</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+            <label class="refresh-toggle">
+                <input type="checkbox" checked="@_autoRefresh" @onchange="SetAutoRefreshAsync" />
+                <span>@Localizer["Tracker.AutoRefresh"]</span>
+            </label>
+        </div>
+        <p class="privacy-note">@Localizer["Tracker.PrivacyNote"]</p>
+    </section>
+
+    @if (_loading)
+    {
+        <div class="loading-state" role="status">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
+            <span>@Localizer["Tracker.Loading"]</span>
+        </div>
+    }
+
+    @if (_error is not null)
+    {
+        <div class="tracker-error" role="alert">
+            <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" />
+            <span>@_error</span>
+            @if (_result is not null)
+            {
+                <button type="button" class="text-button" disabled="@_loading" @onclick="RefreshAsync">@Localizer["Tracker.Retry"]</button>
+            }
+        </div>
+    }
+
+    @if (_result is not null)
+    {
+        <div class="results-heading">
+            <div>
+                <h2>@Localizer[_result.Kind == BitcoinTrackingKind.Address ? "Tracker.AddressResult" : "Tracker.TransactionResult"]</h2>
+                <p class="identifier">@_result.Query</p>
+            </div>
+            <button type="button" class="refresh-button" disabled="@(_loading || _loadingMore)" @onclick="RefreshAsync"
+                    aria-label="@Localizer["Tracker.Refresh"]" title="@Localizer["Tracker.Refresh"]">
+                <MudIcon Icon="@Icons.Material.Filled.Refresh" />
+            </button>
+        </div>
+        <div class="update-note" role="status">
+            <span>@Localizer["Tracker.Updated"] <time datetime="@_result.UpdatedAt.ToString("O")">@FormatTime(_result.UpdatedAt)</time></span>
+            <span>@Localizer["Tracker.CurrentFiat"]</span>
+        </div>
+        @if (FiatPricePerBitcoin is null || AppState.HasRateError)
+        {
+            <p class="hint">@Localizer[FiatPricePerBitcoin is null ? "Tracker.FiatUnavailable" : "Tracker.FiatDelayed"]</p>
+        }
+        @if (_browsingHistory)
+        {
+            <p class="hint">@Localizer["Tracker.OlderHistoryNote"]</p>
+        }
+        <BitcoinTrackingDetails Result="_result" SelectedCurrency="_selectedCurrency" FiatPricePerBitcoin="FiatPricePerBitcoin"
+                                LoadingMore="_loadingMore" OnLoadMore="LoadMoreAsync" OnSelectTransaction="SelectTransactionAsync" />
+    }
+    else if (!_loading)
+    {
+        <div class="empty-state">
+            <MudIcon Icon="@Icons.Material.Outlined.AccountBalanceWallet" Color="Color.Primary" Size="Size.Large" />
+            <h2>@Localizer["Tracker.EmptyTitle"]</h2>
+            <p>@Localizer["Tracker.EmptyDescription"]</p>
+        </div>
+    }
+</div>

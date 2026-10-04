@@ -402,4 +402,181 @@
   <data name="SatsConverter.RateExplanation" xml:space="preserve">
     <value>The sats stay the same; their currency value changes with Bitcoin’s price.</value>
   </data>
+  <data name="Tracker.SeoTitle" xml:space="preserve">
+    <value>Bitcoin Transaction Tracker — Freedom Blaze</value>
+  </data>
+  <data name="Tracker.SeoDescription" xml:space="preserve">
+    <value>Look up Bitcoin transactions and addresses. Track confirmations, fees, balances in sats, and current fiat estimates.</value>
+  </data>
+  <data name="Tracker.Eyebrow" xml:space="preserve">
+    <value>BITCOIN ON-CHAIN</value>
+  </data>
+  <data name="Tracker.Title" xml:space="preserve">
+    <value>Transaction tracker</value>
+  </data>
+  <data name="Tracker.Description" xml:space="preserve">
+    <value>Follow a Bitcoin transaction or explore the activity of a public address.</value>
+  </data>
+  <data name="Tracker.SearchHeading" xml:space="preserve">
+    <value>Find a transaction or address</value>
+  </data>
+  <data name="Tracker.SearchLabel" xml:space="preserve">
+    <value>Bitcoin address or transaction ID</value>
+  </data>
+  <data name="Tracker.SearchPlaceholder" xml:space="preserve">
+    <value>Paste a Bitcoin address or transaction ID</value>
+  </data>
+  <data name="Tracker.SearchHint" xml:space="preserve">
+    <value>Bitcoin mainnet addresses and transaction IDs are supported. Lightning invoices use a separate payment network.</value>
+  </data>
+  <data name="Tracker.Search" xml:space="preserve">
+    <value>Track</value>
+  </data>
+  <data name="Tracker.Searching" xml:space="preserve">
+    <value>Searching…</value>
+  </data>
+  <data name="Tracker.AutoRefresh" xml:space="preserve">
+    <value>Update automatically every 30 seconds</value>
+  </data>
+  <data name="Tracker.PrivacyNote" xml:space="preserve">
+    <value>The searched public identifier is sent to the blockchain data provider. Your searches are not saved in this browser.</value>
+  </data>
+  <data name="Tracker.Loading" xml:space="preserve">
+    <value>Checking the Bitcoin network…</value>
+  </data>
+  <data name="Tracker.Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Tracker.AddressResult" xml:space="preserve">
+    <value>Address activity</value>
+  </data>
+  <data name="Tracker.TransactionResult" xml:space="preserve">
+    <value>Transaction details</value>
+  </data>
+  <data name="Tracker.Refresh" xml:space="preserve">
+    <value>Refresh latest activity</value>
+  </data>
+  <data name="Tracker.Updated" xml:space="preserve">
+    <value>Checked</value>
+  </data>
+  <data name="Tracker.CurrentFiat" xml:space="preserve">
+    <value>Fiat amounts are estimates at the current exchange rate.</value>
+  </data>
+  <data name="Tracker.FiatUnavailable" xml:space="preserve">
+    <value>Fiat estimates are temporarily unavailable. Bitcoin amounts remain available.</value>
+  </data>
+  <data name="Tracker.FiatDelayed" xml:space="preserve">
+    <value>Exchange rates are delayed; fiat estimates use the last available rate.</value>
+  </data>
+  <data name="Tracker.OlderHistoryNote" xml:space="preserve">
+    <value>Automatic updates are paused while you browse older transactions. Refresh returns to the latest activity.</value>
+  </data>
+  <data name="Tracker.EmptyTitle" xml:space="preserve">
+    <value>See where your transaction stands</value>
+  </data>
+  <data name="Tracker.EmptyDescription" xml:space="preserve">
+    <value>Paste a transaction ID to check confirmations and fees, or an address to see its balance and history.</value>
+  </data>
+  <data name="Tracker.ConfirmedBalance" xml:space="preserve">
+    <value>Confirmed balance</value>
+  </data>
+  <data name="Tracker.PendingChange" xml:space="preserve">
+    <value>Pending balance change</value>
+  </data>
+  <data name="Tracker.Transactions" xml:space="preserve">
+    <value>Confirmed transactions</value>
+  </data>
+  <data name="Tracker.PendingCount" xml:space="preserve">
+    <value>{0} pending transactions</value>
+  </data>
+  <data name="Tracker.AddressNote" xml:space="preserve">
+    <value>This balance belongs to this address. A wallet can use multiple addresses. Pending amounts can change before confirmation.</value>
+  </data>
+  <data name="Tracker.History" xml:space="preserve">
+    <value>Transaction history</value>
+  </data>
+  <data name="Tracker.NoTransactions" xml:space="preserve">
+    <value>No transactions were found for this address.</value>
+  </data>
+  <data name="Tracker.HistoryCaption" xml:space="preserve">
+    <value>Transactions and balance changes for the searched address</value>
+  </data>
+  <data name="Tracker.TransactionId" xml:space="preserve">
+    <value>Transaction ID</value>
+  </data>
+  <data name="Tracker.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Tracker.NetChange" xml:space="preserve">
+    <value>Address balance change</value>
+  </data>
+  <data name="Tracker.OpenTransaction" xml:space="preserve">
+    <value>View transaction {0}</value>
+  </data>
+  <data name="Tracker.LoadMore" xml:space="preserve">
+    <value>Load older transactions</value>
+  </data>
+  <data name="Tracker.LoadingMore" xml:space="preserve">
+    <value>Loading older transactions…</value>
+  </data>
+  <data name="Tracker.MempoolLimit" xml:space="preserve">
+    <value>Up to 50 pending transactions are shown. The pending balance change includes all pending activity reported by the provider.</value>
+  </data>
+  <data name="Tracker.Confirmed" xml:space="preserve">
+    <value>Confirmed</value>
+  </data>
+  <data name="Tracker.Pending" xml:space="preserve">
+    <value>Pending</value>
+  </data>
+  <data name="Tracker.ConfirmationsValue" xml:space="preserve">
+    <value>{0} confirmations</value>
+  </data>
+  <data name="Tracker.Fee" xml:space="preserve">
+    <value>Transaction fee</value>
+  </data>
+  <data name="Tracker.FeeRate" xml:space="preserve">
+    <value>Fee rate</value>
+  </data>
+  <data name="Tracker.VirtualSize" xml:space="preserve">
+    <value>{0} virtual bytes</value>
+  </data>
+  <data name="Tracker.BlockHeight" xml:space="preserve">
+    <value>Included in block {0}</value>
+  </data>
+  <data name="Tracker.PendingNote" xml:space="preserve">
+    <value>This transaction is awaiting confirmation. Its status and fee requirements can change as network conditions change.</value>
+  </data>
+  <data name="Tracker.OutputsNote" xml:space="preserve">
+    <value>Outputs can include change returned to the sender and payments to multiple recipients. Each output is shown separately.</value>
+  </data>
+  <data name="Tracker.Inputs" xml:space="preserve">
+    <value>Inputs</value>
+  </data>
+  <data name="Tracker.Outputs" xml:space="preserve">
+    <value>Outputs</value>
+  </data>
+  <data name="Tracker.CoinbaseInput" xml:space="preserve">
+    <value>Newly mined bitcoin (coinbase)</value>
+  </data>
+  <data name="Tracker.Script" xml:space="preserve">
+    <value>Script without a standard address</value>
+  </data>
+  <data name="Tracker.ShowMoreInputs" xml:space="preserve">
+    <value>Show more inputs</value>
+  </data>
+  <data name="Tracker.ShowMoreOutputs" xml:space="preserve">
+    <value>Show more outputs</value>
+  </data>
+  <data name="Tracker.Error.InvalidInput" xml:space="preserve">
+    <value>Enter a valid Bitcoin mainnet address or a 64-character transaction ID.</value>
+  </data>
+  <data name="Tracker.Error.NotFound" xml:space="preserve">
+    <value>This transaction was not found by the data provider. Check the ID or try again after it has been broadcast.</value>
+  </data>
+  <data name="Tracker.Error.RateLimited" xml:space="preserve">
+    <value>The data provider is receiving too many requests. Please wait before trying again.</value>
+  </data>
+  <data name="Tracker.Error.Unavailable" xml:space="preserve">
+    <value>Bitcoin network data is temporarily unavailable. Please try again shortly.</value>
+  </data>
 </root>

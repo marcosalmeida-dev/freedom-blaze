@@ -16,6 +16,7 @@ public class SeoController : ControllerBase
     [
         ("/", "1.0", "daily"),
         ("/satsconverter", "1.0", "daily"),
+        ("/transactions", "0.8", "weekly"),
         ("/bitcoinnews", "0.8", "daily"),
         ("/about", "0.5", "monthly"),
     ];
