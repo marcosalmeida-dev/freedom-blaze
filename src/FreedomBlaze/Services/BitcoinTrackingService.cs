@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 using FreedomBlaze.Clients.BitcoinTracking;
 using FreedomBlaze.Exceptions;
 using FreedomBlaze.Helpers;
@@ -16,10 +18,13 @@ namespace FreedomBlaze.Services;
 /// </summary>
 public sealed class BitcoinTrackingService : IBitcoinTrackingService, IDisposable
 {
+    public const int MaxWalletAddresses = 10;
+    private static readonly TimeSpan WalletCursorLifetime = TimeSpan.FromMinutes(10);
     private readonly EsploraClient _client;
     private readonly BitcoinTrackingOptions _options;
     private readonly TimeProvider _time;
     private readonly MemoryCache _cache;
+    private readonly MemoryCache _walletCursors;
     private readonly ConcurrentDictionary<string, Lazy<Task<CacheEntry>>> _inFlight = new(StringComparer.Ordinal);
 
     public BitcoinTrackingService(EsploraClient client, IOptions<BitcoinTrackingOptions> options, TimeProvider time)
@@ -28,6 +33,9 @@ public sealed class BitcoinTrackingService : IBitcoinTrackingService, IDisposabl
         _options = options.Value;
         _time = time;
         _cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = _options.MaxCacheEntries });
+        // Cursor weight counts retained transaction IDs, preventing long browsing sessions from
+        // retaining unbounded deduplication sets. IDs never leave this server-side cache.
+        _walletCursors = new MemoryCache(new MemoryCacheOptions { SizeLimit = checked(_options.MaxCacheEntries * 100L) });
     }
 
     public Task<BitcoinTrackingResult> LookupAsync(string query, CancellationToken cancellationToken = default)
@@ -50,8 +58,32 @@ public sealed class BitcoinTrackingService : IBitcoinTrackingService, IDisposabl
             token => FetchPageAsync(normalized, cursor, token), cancellationToken);
     }
 
+    public Task<BitcoinTrackingResult> LookupWalletAsync(IReadOnlyCollection<string> addresses,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = NormalizeWalletAddresses(addresses);
+        var group = WalletGroup(normalized);
+        return GetSharedAsync<BitcoinTrackingResult>($"wallet:{group}",
+            token => FetchWalletAsync(normalized, group, token), cancellationToken, WalletTimeout(normalized.Length));
+    }
+
+    public Task<BitcoinTransactionPage> GetWalletTransactionsAsync(IReadOnlyCollection<string> addresses, string cursor,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = NormalizeWalletAddresses(addresses);
+        var group = WalletGroup(normalized);
+        if (cursor is not { Length: 35 } || !cursor.StartsWith("w1_", StringComparison.Ordinal)
+            || !cursor.AsSpan(3).ToArray().All(Uri.IsHexDigit)
+            || !_walletCursors.TryGetValue<WalletCursorState>(cursor, out var state) || state is null
+            || state.Group != group || state.ExpiresAt <= _time.GetUtcNow()
+            || !IsCurrentGeneration(state))
+            throw new BitcoinTrackingException(BitcoinTrackingError.InvalidInput);
+        return GetSharedAsync<BitcoinTransactionPage>($"wallet-page:{cursor}",
+            token => FetchWalletPageAsync(state, token), cancellationToken, WalletTimeout(normalized.Length));
+    }
+
     private async Task<T> GetSharedAsync<T>(string key, Func<CancellationToken, Task<T>> fetch,
-        CancellationToken cancellationToken) where T : class
+        CancellationToken cancellationToken, TimeSpan? operationTimeout = null) where T : class
     {
         cancellationToken.ThrowIfCancellationRequested();
         CacheEntry entry;
@@ -62,7 +94,7 @@ public sealed class BitcoinTrackingService : IBitcoinTrackingService, IDisposabl
             if (_inFlight.Count >= _options.MaxCacheEntries && !_inFlight.ContainsKey(key))
                 throw new BitcoinTrackingException(BitcoinTrackingError.RateLimited);
             var shared = _inFlight.GetOrAdd(key, _ => new Lazy<Task<CacheEntry>>(
-                () => FetchAndCacheAsync(key, fetch), LazyThreadSafetyMode.ExecutionAndPublication));
+                () => FetchAndCacheAsync(key, fetch, operationTimeout), LazyThreadSafetyMode.ExecutionAndPublication));
             entry = await shared.Value.WaitAsync(cancellationToken);
         }
         if (entry.Error is { } error)
@@ -78,14 +110,14 @@ public sealed class BitcoinTrackingService : IBitcoinTrackingService, IDisposabl
         return false;
     }
 
-    private async Task<CacheEntry> FetchAndCacheAsync<T>(string key, Func<CancellationToken, Task<T>> fetch)
+    private async Task<CacheEntry> FetchAndCacheAsync<T>(string key, Func<CancellationToken, Task<T>> fetch, TimeSpan? operationTimeout)
         where T : class
     {
         try
         {
             if (TryReadCache(key, out var cached))
                 return cached!;
-            using var timeout = new CancellationTokenSource(_options.RequestTimeout, _time);
+            using var timeout = new CancellationTokenSource(operationTimeout ?? _options.RequestTimeout, _time);
             CacheEntry entry;
             try
             {
@@ -174,9 +206,14 @@ public sealed class BitcoinTrackingService : IBitcoinTrackingService, IDisposabl
             {
                 ConfirmedBalanceSats = checked(address.Chain.FundedSats - address.Chain.SpentSats),
                 PendingBalanceChangeSats = checked(address.Mempool.FundedSats - address.Mempool.SpentSats),
+                ConfirmedReceivedSats = address.Chain.FundedSats,
+                ConfirmedSpentSats = address.Chain.SpentSats,
+                PendingReceivedSats = address.Mempool.FundedSats,
+                PendingSpentSats = address.Mempool.SpentSats,
                 ConfirmedTransactionCount = address.Chain.TransactionCount,
                 PendingTransactionCount = address.Mempool.TransactionCount,
             },
+            TrackedAddresses = Array.AsReadOnly(new[] { query }),
             // Each list response carries fresh current-chain statuses. They are only retained for
             // CacheDuration, so refreshed pages can lower confirmations or return a tx to the mempool.
             Transactions = Array.AsReadOnly(transactions.Select(tx => MapTransaction(tx, height, query)).ToArray()),
@@ -185,6 +222,171 @@ public sealed class BitcoinTrackingService : IBitcoinTrackingService, IDisposabl
             UpdatedAt = _time.GetUtcNow(),
         };
     }
+
+    private async Task<BitcoinTrackingResult> FetchWalletAsync(string[] addresses, string group, CancellationToken cancellationToken)
+    {
+        var snapshots = new List<BitcoinTrackingResult>(addresses.Length);
+        var parallel = Math.Max(1, _options.MaxConcurrentRequests / 2);
+        for (var offset = 0; offset < addresses.Length; offset += parallel)
+            snapshots.AddRange(await Task.WhenAll(addresses.Skip(offset).Take(parallel)
+                .Select(address => LookupAsync(address, cancellationToken))));
+        var tip = await _client.GetTipHeightAsync(cancellationToken);
+        var wallet = new BitcoinWalletSummary
+        {
+            AddressCount = addresses.Length,
+            ConfirmedBalanceSats = snapshots.Sum(snapshot => snapshot.Address!.ConfirmedBalanceSats),
+            PendingBalanceChangeSats = snapshots.Sum(snapshot => snapshot.Address!.PendingBalanceChangeSats),
+            ConfirmedReceivedSats = snapshots.Sum(snapshot => snapshot.Address!.ConfirmedReceivedSats),
+            ConfirmedSpentSats = snapshots.Sum(snapshot => snapshot.Address!.ConfirmedSpentSats),
+            PendingReceivedSats = snapshots.Sum(snapshot => snapshot.Address!.PendingReceivedSats),
+            PendingSpentSats = snapshots.Sum(snapshot => snapshot.Address!.PendingSpentSats),
+        };
+        ValidateCombinedTotals(wallet.ConfirmedBalanceSats, wallet.PendingBalanceChangeSats,
+            wallet.ConfirmedReceivedSats, wallet.PendingReceivedSats, wallet.ConfirmedSpentSats, wallet.PendingSpentSats);
+        var generation = Guid.NewGuid().ToString("N");
+        var expires = _time.GetUtcNow() + WalletCursorLifetime;
+        _walletCursors.Set($"group:{group}", new WalletGeneration(generation, expires),
+            new MemoryCacheEntryOptions { Size = 1, AbsoluteExpirationRelativeToNow = WalletCursorLifetime });
+        var allTransactions = snapshots.SelectMany(snapshot => snapshot.Transactions).ToArray();
+        var confirmedIds = allTransactions.Where(transaction => transaction.Confirmed)
+            .Select(transaction => transaction.TxId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var pending = allTransactions.Where(transaction => !transaction.Confirmed && !confirmedIds.Contains(transaction.TxId))
+            .DistinctBy(transaction => transaction.TxId, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(transaction => transaction.TxId, StringComparer.Ordinal)
+            .Select(transaction => BitcoinWalletAccounting.ApplyContext(transaction, addresses)).ToArray();
+        var seen = pending.Select(transaction => transaction.TxId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var histories = snapshots.Select(snapshot => new WalletAddressHistory(
+            new WalletAddressPosition(snapshot.Query, null, true),
+            snapshot.Transactions.Where(transaction => transaction.Confirmed).ToArray())).ToArray();
+        var merged = MergeWalletHistory(histories, seen, tip, addresses);
+        var cursor = StoreWalletCursor(group, generation, addresses, merged.Positions, seen, expires);
+        return new BitcoinTrackingResult
+        {
+            Query = string.Join('\n', addresses), Kind = BitcoinTrackingKind.Wallet,
+            TrackedAddresses = Array.AsReadOnly(addresses), Wallet = wallet,
+            Transactions = Array.AsReadOnly(pending.Concat(merged.Transactions).ToArray()),
+            NextCursor = cursor, TipHeight = tip, UpdatedAt = _time.GetUtcNow(),
+        };
+    }
+
+    private async Task<BitcoinTransactionPage> FetchWalletPageAsync(WalletCursorState state, CancellationToken cancellationToken)
+    {
+        if (!IsCurrentGeneration(state))
+            throw new BitcoinTrackingException(BitcoinTrackingError.InvalidInput);
+        var pages = new List<(WalletAddressPosition Position, EsploraTransaction[] Transactions)>(state.Positions.Length);
+        // Read current statuses on every new page; the cursor retains positions and IDs, not stale
+        // transaction bodies. Re-querying unconsumed prefixes avoids skipping a different address's history.
+        foreach (var position in state.Positions)
+        {
+            if (!position.HasMore)
+            {
+                pages.Add((position, []));
+                continue;
+            }
+            var transactions = await _client.GetAddressTransactionsAsync(position.Address, position.LastSeenTxId, cancellationToken);
+            ValidateHistory(transactions, EsploraClient.ConfirmedPageSize, chainOnly: true);
+            if (position.LastSeenTxId is { } previous
+                && transactions.Any(transaction => string.Equals(transaction.TxId, previous, StringComparison.OrdinalIgnoreCase)))
+                throw new BitcoinTrackingException(BitcoinTrackingError.Unavailable);
+            pages.Add((position, transactions));
+        }
+        var tip = await _client.GetTipHeightAsync(cancellationToken);
+        var histories = pages.Select(page => new WalletAddressHistory(page.Position,
+            page.Transactions.Select(transaction => MapTransaction(transaction, tip)).ToArray())).ToArray();
+        var seen = state.SeenTxIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var merged = MergeWalletHistory(histories, seen, tip, state.Addresses);
+        var cursor = StoreWalletCursor(state.Group, state.Generation, state.Addresses, merged.Positions, seen, state.ExpiresAt);
+        return new BitcoinTransactionPage
+        {
+            Transactions = Array.AsReadOnly(merged.Transactions), NextCursor = cursor,
+            TipHeight = tip, UpdatedAt = _time.GetUtcNow(),
+        };
+    }
+
+    private static WalletMerge MergeWalletHistory(IReadOnlyList<WalletAddressHistory> histories, HashSet<string> seen,
+        int tip, string[] addresses)
+    {
+        var indexes = new int[histories.Count];
+        var result = new List<BitcoinTransaction>(EsploraClient.ConfirmedPageSize);
+        while (result.Count < EsploraClient.ConfirmedPageSize)
+        {
+            for (var index = 0; index < histories.Count; index++)
+                while (indexes[index] < histories[index].Transactions.Length
+                    && seen.Contains(histories[index].Transactions[indexes[index]].TxId))
+                    indexes[index]++;
+            var heads = Enumerable.Range(0, histories.Count)
+                .Where(index => indexes[index] < histories[index].Transactions.Length).ToArray();
+            if (heads.Length == 0) break;
+            // Advance only source heads, preserving each Esplora page's order even for transactions
+            // in the same block. A cursor never advances beyond an unconsumed transaction.
+            var selected = heads.OrderByDescending(index => histories[index].Transactions[indexes[index]].BlockHeight)
+                .ThenBy(index => histories[index].Transactions[indexes[index]].TxId, StringComparer.Ordinal).First();
+            var transaction = histories[selected].Transactions[indexes[selected]++];
+            if (transaction.BlockHeight is not { } height || height > tip)
+                throw new BitcoinTrackingException(BitcoinTrackingError.Unavailable);
+            transaction = transaction with { Confirmations = checked(tip - height + 1) };
+            seen.Add(transaction.TxId);
+            result.Add(BitcoinWalletAccounting.ApplyContext(transaction, addresses));
+        }
+        // Consume duplicated heads even when the visible page is full, so the next cursor does not
+        // needlessly reload those copies from another tracked address.
+        var positions = histories.Select((history, index) =>
+        {
+            while (indexes[index] < history.Transactions.Length && seen.Contains(history.Transactions[indexes[index]].TxId))
+                indexes[index]++;
+            return history.Position with
+            {
+                LastSeenTxId = indexes[index] > 0 ? history.Transactions[indexes[index] - 1].TxId : history.Position.LastSeenTxId,
+                HasMore = indexes[index] < history.Transactions.Length || history.Transactions.Length == EsploraClient.ConfirmedPageSize,
+            };
+        }).ToArray();
+        return new WalletMerge(result.ToArray(), positions);
+    }
+
+    private string? StoreWalletCursor(string group, string generation, string[] addresses, WalletAddressPosition[] positions,
+        HashSet<string> seen, DateTimeOffset expires)
+    {
+        if (!positions.Any(position => position.HasMore)) return null;
+        var state = new WalletCursorState(group, generation, addresses, positions, seen.ToArray(), expires);
+        if (!IsCurrentGeneration(state) || expires <= _time.GetUtcNow())
+            throw new BitcoinTrackingException(BitcoinTrackingError.InvalidInput);
+        var weight = checked(1L + seen.Count + addresses.Length * 5L);
+        if (weight > _options.MaxCacheEntries * 100L)
+            throw new BitcoinTrackingException(BitcoinTrackingError.RateLimited);
+        var cursor = "w1_" + Guid.NewGuid().ToString("N");
+        _walletCursors.Set(cursor, state, new MemoryCacheEntryOptions
+        {
+            Size = weight, AbsoluteExpirationRelativeToNow = expires - _time.GetUtcNow(),
+        });
+        return cursor;
+    }
+
+    private bool IsCurrentGeneration(WalletCursorState state) =>
+        _walletCursors.TryGetValue<WalletGeneration>($"group:{state.Group}", out var generation)
+        && generation is not null && generation.Id == state.Generation && generation.ExpiresAt > _time.GetUtcNow();
+
+    private TimeSpan WalletTimeout(int addressCount)
+    {
+        var parallel = Math.Max(1, _options.MaxConcurrentRequests / 2);
+        var batches = Math.Max(1, (addressCount + parallel - 1) / parallel);
+        return TimeSpan.FromTicks(Math.Min(TimeSpan.FromMinutes(2).Ticks, _options.RequestTimeout.Ticks * batches));
+    }
+
+    private static string[] NormalizeWalletAddresses(IReadOnlyCollection<string> addresses)
+    {
+        if (addresses is null || addresses.Count is < 1 or > MaxWalletAddresses)
+            throw new BitcoinTrackingException(BitcoinTrackingError.InvalidInput);
+        var normalized = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var address in addresses)
+        {
+            if (!BitcoinTrackingInput.TryParse(address, out var kind, out var value) || kind != BitcoinTrackingKind.Address)
+                throw new BitcoinTrackingException(BitcoinTrackingError.InvalidInput);
+            normalized.Add(value);
+        }
+        return normalized.OrderBy(address => address, StringComparer.Ordinal).ToArray();
+    }
+
+    private static string WalletGroup(string[] addresses) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('\n', addresses))));
 
     private async Task<BitcoinTransactionPage> FetchPageAsync(string address, string cursor, CancellationToken cancellationToken)
     {
@@ -211,15 +413,7 @@ public sealed class BitcoinTrackingService : IBitcoinTrackingService, IDisposabl
         var status = transaction.Status;
         if (status.Confirmed && status.BlockHeight > tip)
             throw new BitcoinTrackingException(BitcoinTrackingError.Unavailable);
-        long? net = null;
-        if (address is not null && transaction.Inputs.All(input => input.IsCoinbase || input.PreviousOutput is not null))
-        {
-            var received = transaction.Outputs.Where(output => MatchesAddress(output.Address, address)).Sum(output => output.Value);
-            var spent = transaction.Inputs.Where(input => MatchesAddress(input.PreviousOutput?.Address, address))
-                .Sum(input => input.PreviousOutput!.Value);
-            net = checked(received - spent);
-        }
-        return new BitcoinTransaction
+        var mapped = new BitcoinTransaction
         {
             TxId = transaction.TxId.ToLowerInvariant(), FeeSats = transaction.Fee, Weight = transaction.Weight,
             SizeBytes = transaction.Size, Confirmed = status.Confirmed,
@@ -235,8 +429,8 @@ public sealed class BitcoinTrackingService : IBitcoinTrackingService, IDisposabl
             {
                 Address = output.Address, ValueSats = output.Value,
             }).ToArray()),
-            AddressNetSats = net,
         };
+        return address is null ? mapped : BitcoinWalletAccounting.ApplyContext(mapped, new[] { address });
     }
 
     private static bool MatchesAddress(string? value, string address) => string.Equals(value, address,
@@ -276,9 +470,32 @@ public sealed class BitcoinTrackingService : IBitcoinTrackingService, IDisposabl
             || address.Chain.SpentSats > address.Chain.FundedSats || address.Chain.TransactionCount < 0
             || address.Mempool.FundedSats < 0 || address.Mempool.SpentSats < 0 || address.Mempool.TransactionCount < 0)
             throw new BitcoinTrackingException(BitcoinTrackingError.Unavailable);
+        ValidateCombinedTotals(checked(address.Chain.FundedSats - address.Chain.SpentSats),
+            checked(address.Mempool.FundedSats - address.Mempool.SpentSats),
+            address.Chain.FundedSats, address.Mempool.FundedSats, address.Chain.SpentSats, address.Mempool.SpentSats);
     }
 
-    public void Dispose() => _cache.Dispose();
+    private static void ValidateCombinedTotals(long confirmedBalance, long pendingBalance,
+        long confirmedReceived, long pendingReceived, long confirmedSpent, long pendingSpent)
+    {
+        // The UI presents these combined figures. Validate them before a successful snapshot is
+        // cached so malformed provider numbers become Unavailable, never a rendering exception.
+        _ = checked(confirmedBalance + pendingBalance);
+        _ = checked(confirmedReceived + pendingReceived);
+        _ = checked(confirmedSpent + pendingSpent);
+    }
+
+    public void Dispose()
+    {
+        _cache.Dispose();
+        _walletCursors.Dispose();
+    }
 
     private sealed record CacheEntry(object? Value, BitcoinTrackingError? Error, DateTimeOffset ExpiresAt);
+    private sealed record WalletGeneration(string Id, DateTimeOffset ExpiresAt);
+    private sealed record WalletAddressPosition(string Address, string? LastSeenTxId, bool HasMore);
+    private sealed record WalletAddressHistory(WalletAddressPosition Position, BitcoinTransaction[] Transactions);
+    private sealed record WalletCursorState(string Group, string Generation, string[] Addresses,
+        WalletAddressPosition[] Positions, string[] SeenTxIds, DateTimeOffset ExpiresAt);
+    private sealed record WalletMerge(BitcoinTransaction[] Transactions, WalletAddressPosition[] Positions);
 }

@@ -123,6 +123,41 @@ builder.Services.AddSingleton(provider => new EsploraClient(
     provider.GetRequiredService<TimeProvider>()));
 builder.Services.AddSingleton<IBitcoinTrackingService, BitcoinTrackingService>();
 
+builder.Services.AddOptions<BitcoinHistoricalPriceOptions>()
+    .Bind(builder.Configuration.GetSection(BitcoinHistoricalPriceOptions.Section))
+    .Validate(options => new[] { options.CandleBaseUrl, options.FxBaseUrl }.All(value =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
+        && string.IsNullOrEmpty(uri.UserInfo) && string.IsNullOrEmpty(uri.Query)
+        && string.IsNullOrEmpty(uri.Fragment) && value.EndsWith('/')),
+        "BitcoinHistoricalPrice provider URLs must use HTTPS and end in '/'.")
+    .Validate(options => options.RequestTimeout > TimeSpan.Zero && options.RequestTimeout <= TimeSpan.FromMinutes(2)
+        && options.CacheDuration > TimeSpan.Zero && options.CacheDuration <= TimeSpan.FromDays(7)
+        && options.FailureCooldown > TimeSpan.Zero && options.FailureCooldown <= TimeSpan.FromMinutes(5),
+        "BitcoinHistoricalPrice timeouts and cache/cooldown durations must be within their supported ranges.")
+    .Validate(options => options.MaxCacheEntries > 0 && options.MaxProviderRequestsPerMinute > 0
+        && options.MaxConcurrentRequests > 0 && options.MaxQueuedRequests > 0,
+        "BitcoinHistoricalPrice cache and request budgets must be positive.")
+    .ValidateOnStart();
+#pragma warning disable EXTEXP0001
+foreach (var clientName in new[] { BitcoinHistoricalPriceClient.CandleHttpClientName, BitcoinHistoricalPriceClient.FxHttpClientName })
+{
+    builder.Services.AddHttpClient(clientName, (provider, client) =>
+    {
+        var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BitcoinHistoricalPriceOptions>>().Value;
+        client.BaseAddress = new Uri(clientName == BitcoinHistoricalPriceClient.CandleHttpClientName
+            ? options.CandleBaseUrl : options.FxBaseUrl);
+        client.Timeout = options.RequestTimeout;
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("FreedomBlaze/1.0");
+    }).RemoveAllLoggers().RemoveAllResilienceHandlers();
+}
+#pragma warning restore EXTEXP0001
+builder.Services.AddSingleton(provider => new BitcoinHistoricalPriceClient(
+    provider.GetRequiredService<IHttpClientFactory>().CreateClient(BitcoinHistoricalPriceClient.CandleHttpClientName),
+    provider.GetRequiredService<IHttpClientFactory>().CreateClient(BitcoinHistoricalPriceClient.FxHttpClientName),
+    provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<BitcoinHistoricalPriceOptions>>(),
+    provider.GetRequiredService<TimeProvider>()));
+builder.Services.AddSingleton<IBitcoinHistoricalPriceService, BitcoinHistoricalPriceService>();
+
 builder.Services.AddResponseCompression(opts =>
 {
     opts.EnableForHttps = true;

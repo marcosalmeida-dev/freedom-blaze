@@ -1,64 +1,109 @@
-@using System.Globalization
-@using FreedomBlaze.Models
 @using FreedomBlaze.Models.BitcoinTracking
-@inject Microsoft.Extensions.Localization.IStringLocalizer<Resources.Localization> Localizer
-
 <div class="tracking-details">
-    @if (Result.Kind == BitcoinTrackingKind.Address && Result.Address is { } address)
+    @if (Result.Kind is BitcoinTrackingKind.Address or BitcoinTrackingKind.Wallet)
     {
+        var history = HistoryTransactions.ToArray();
+        var averages = _averages!;
         <div class="summary-grid">
             <section class="summary-card">
-                <h3>@Localizer["Tracker.ConfirmedBalance"]</h3>
-                <p class="main-value">@FormatSats(address.ConfirmedBalanceSats) <small>sats</small></p>
-                <p class="secondary-value">@FormatBtc(address.ConfirmedBalanceSats) BTC · @FormatFiat(address.ConfirmedBalanceSats)</p>
+                <h3>@Localizer["Tracker.TotalBalance"]</h3>
+                <p class="main-value">@FormatSats(TotalBalance) <small>sats</small></p>
+                <p class="secondary-value">@FormatBtc(TotalBalance) BTC · @FormatFiat(TotalBalance)</p>
+                <dl class="balance-breakdown">
+                    <div><dt>@Localizer["Tracker.ConfirmedBalance"]</dt><dd>@FormatSats(ConfirmedBalance) sats</dd></div>
+                    <div><dt>@Localizer["Tracker.PendingChange"]</dt><dd class="@FlowClass(PendingChange)">@FormatSats(PendingChange, signed: true) sats</dd></div>
+                </dl>
             </section>
             <section class="summary-card">
-                <h3>@Localizer["Tracker.PendingChange"]</h3>
-                <p class="main-value">@FormatSats(address.PendingBalanceChangeSats, signed: true) <small>sats</small></p>
-                <p class="secondary-value">@FormatFiat(address.PendingBalanceChangeSats)</p>
+                <h3>@Localizer["Tracker.TotalReceived"]</h3>
+                <p class="main-value incoming-value">@FormatSats(TotalReceived) <small>sats</small></p>
+                <p class="secondary-value incoming-value">@FormatBtc(TotalReceived) BTC · @FormatFiat(TotalReceived)</p>
+                @RenderAverage(averages.Received, "received")
             </section>
             <section class="summary-card">
-                <h3>@Localizer["Tracker.Transactions"]</h3>
-                <p class="main-value">@address.ConfirmedTransactionCount.ToString("N0", DisplayCulture)</p>
-                <p class="secondary-value">@Localizer["Tracker.PendingCount", address.PendingTransactionCount.ToString("N0", DisplayCulture)]</p>
+                <h3>@Localizer["Tracker.TotalSpent"]</h3>
+                <p class="main-value outgoing-value">@FormatSats(TotalSpent) <small>sats</small></p>
+                <p class="secondary-value outgoing-value">@FormatBtc(TotalSpent) BTC · @FormatFiat(TotalSpent)</p>
+                @RenderAverage(averages.Spent, "spent")
             </section>
         </div>
-        <p class="explanation">@Localizer["Tracker.AddressNote"]</p>
-        <section class="detail-card" aria-labelledby="tracker-history-heading">
-            <div class="card-heading"><h3 id="tracker-history-heading">@Localizer["Tracker.History"]</h3></div>
-            @if (Result.Transactions.Count == 0)
+        <div class="summary-footer">
+            @if (Result.Address is { } address)
             {
-                <p class="empty-history">@Localizer["Tracker.NoTransactions"]</p>
+                <span class="history-count">@Localizer["Tracker.Transactions"]: @address.ConfirmedTransactionCount.ToString("N0", DisplayCulture) · @Localizer["Tracker.PendingCount", address.PendingTransactionCount.ToString("N0", DisplayCulture)]</span>
+            }
+            <details class="calculation-notes">
+                <summary>@Localizer["Tracker.CalculationDetails"]</summary>
+                <p>@Localizer[Result.Kind == BitcoinTrackingKind.Wallet ? "Tracker.WalletNote" : "Tracker.AddressNote"]</p>
+                <p>@Localizer["Tracker.GrossTotalsNote"]</p>
+                <p>@Localizer["Tracker.HistoricalNote"]</p>
+            </details>
+        </div>
+        <div class="average-notes">
+            <p>@Localizer["Tracker.AverageScopeNote"]</p>
+            @if (Result.NextCursor is not null)
+            {
+                <button type="button" class="average-more" disabled="@LoadingMore" @onclick="() => OnLoadMore.InvokeAsync()">@Localizer[LoadingMore ? "Tracker.LoadingMore" : "Tracker.ExtendAverages"]</button>
+            }
+        </div>
+        <section class="detail-card" aria-labelledby="tracker-history-heading">
+            <div class="card-heading history-heading">
+                <h3 id="tracker-history-heading">@Localizer["Tracker.History"]</h3>
+                <div class="period-controls">
+                    <label for="tracker-from-date">@Localizer["Tracker.FromDate"]<input id="tracker-from-date" type="date" @bind="_fromDate" max="@Today" /></label>
+                    <label for="tracker-to-date">@Localizer["Tracker.ToDate"]<input id="tracker-to-date" type="date" @bind="_toDate" max="@Today" /></label>
+                    <button type="button" class="outline-button" @onclick="ClearPeriod" disabled="@(!HasPeriod)">@Localizer["Tracker.ClearPeriod"]</button>
+                </div>
+            </div>
+            @if (InvalidPeriod) { <p class="period-error" role="alert">@Localizer["Tracker.InvalidPeriod"]</p> }
+            @if (HasPeriod && !InvalidPeriod)
+            {
+                <div class="period-summary">
+                    <span>@Localizer["Tracker.PeriodLoadedCount", history.Length.ToString("N0", DisplayCulture)]</span>
+                    <span class="incoming-value">@Localizer["Tracker.Incoming"]: @FormatSats(SumKnown(history.Select(Incoming))) sats</span>
+                    <span class="outgoing-value">@Localizer["Tracker.Outgoing"]: @FormatSats(SumKnown(history.Select(Outgoing))) sats</span>
+                </div>
+                <p class="explanation history-note">@Localizer["Tracker.PeriodScope"]</p>
+            }
+            @if (history.Length == 0)
+            {
+                <p class="empty-history">@Localizer[HasPeriod ? "Tracker.NoPeriodTransactions" : "Tracker.NoTransactions"]</p>
             }
             else
             {
                 <table class="history-table">
                     <caption class="visually-hidden">@Localizer["Tracker.HistoryCaption"]</caption>
-                    <thead><tr><th scope="col">@Localizer["Tracker.TransactionId"]</th><th scope="col">@Localizer["Tracker.Status"]</th><th scope="col">@Localizer["Tracker.NetChange"]</th></tr></thead>
+                    <thead><tr><th scope="col">@Localizer["Tracker.TransactionId"]</th><th scope="col">@Localizer["Tracker.Status"]</th><th scope="col">@Localizer["Tracker.Incoming"]</th><th scope="col">@Localizer["Tracker.Outgoing"]</th><th scope="col">@Localizer["Tracker.NetChange"]</th><th scope="col">@Localizer["Tracker.HistoricalBitcoinPrice"]</th></tr></thead>
                     <tbody>
-                        @foreach (var transaction in Result.Transactions)
+                        @foreach (var transaction in history)
                         {
+                            var incoming = Incoming(transaction);
+                            var outgoing = Outgoing(transaction);
+                            var net = Net(transaction);
+                            var quote = HistoricalQuote(transaction);
                             <tr @key="transaction.TxId">
                                 <td data-label="@Localizer["Tracker.TransactionId"]">
-                                    <button type="button" class="transaction-link" title="@transaction.TxId"
-                                            aria-label="@Localizer["Tracker.OpenTransaction", transaction.TxId]"
-                                            disabled="@LoadingMore" @onclick="() => OnSelectTransaction.InvokeAsync(transaction.TxId)">@ShortId(transaction.TxId)</button>
-                                    @if (transaction.BlockTime is { } time)
-                                    {
-                                        <small class="transaction-time"><time datetime="@time.ToString("O")">@FormatTime(time)</time></small>
-                                    }
+                                    <button type="button" class="transaction-link" title="@transaction.TxId" aria-label="@Localizer["Tracker.OpenTransaction", transaction.TxId]" disabled="@LoadingMore" @onclick="() => OnSelectTransaction.InvokeAsync(transaction.TxId)">@ShortId(transaction.TxId)</button>
+                                    @if (transaction.BlockTime is { } time) { <small class="transaction-time"><time datetime="@time.ToString("O")">@FormatTime(time)</time></small> }
                                 </td>
                                 <td data-label="@Localizer["Tracker.Status"]"><span class="status-badge @(transaction.Confirmed ? "confirmed" : "pending")">@StatusLabel(transaction)</span></td>
-                                <td data-label="@Localizer["Tracker.NetChange"]" class="net-value">
-                                    @if (transaction.AddressNetSats is { } netSats)
+                                <td data-label="@Localizer["Tracker.Incoming"]" class="flow-value @(incoming > 0 ? "incoming-value" : "neutral-value")">
+                                    <strong>@FormatSats(incoming, signed: true) sats</strong><small>@FormatHistorical(incoming, transaction)</small>
+                                </td>
+                                <td data-label="@Localizer["Tracker.Outgoing"]" class="flow-value @(outgoing > 0 ? "outgoing-value" : "neutral-value")">
+                                    <strong>@FormatOutgoing(outgoing) sats</strong><small>@FormatHistorical(outgoing is { } sent ? -sent : null, transaction)</small>
+                                </td>
+                                <td data-label="@Localizer["Tracker.NetChange"]" class="net-value @FlowClass(net)">
+                                    @if (net is not null) { <strong>@FormatSats(net, signed: true) sats</strong><small>@FormatHistorical(net, transaction)</small> }
+                                    else { <span>—</span> }
+                                </td>
+                                <td data-label="@Localizer["Tracker.HistoricalBitcoinPrice"]" class="historical-quote">
+                                    @if (IsAvailable(quote))
                                     {
-                                        <strong>@FormatSats(netSats, signed: true) sats</strong>
-                                        <small>@FormatFiat(netSats)</small>
+                                        <strong>1 BTC ≈ @FormatMoney(quote!.PricePerBitcoin!.Value)</strong><small>@FormatDate(quote.Date) UTC</small>
+                                        @if (quote.FxDate is { } fxDate && fxDate != quote.Date) { <small>@Localizer["Tracker.FxDate", FormatDate(fxDate)]</small> }
                                     }
-                                    else
-                                    {
-                                        <span>—</span>
-                                    }
+                                    else { <small>@HistoricalStatus(transaction, quote)</small> }
                                 </td>
                             </tr>
                         }
@@ -69,14 +114,15 @@
             {
                 <div class="pagination"><button type="button" class="outline-button" disabled="@LoadingMore" @onclick="() => OnLoadMore.InvokeAsync()">@Localizer[LoadingMore ? "Tracker.LoadingMore" : "Tracker.LoadMore"]</button></div>
             }
-            @if (address.PendingTransactionCount > 50)
-            {
-                <p class="explanation history-limit">@Localizer["Tracker.MempoolLimit"]</p>
-            }
+            @if (Result.Address?.PendingTransactionCount > 50) { <p class="explanation history-limit">@Localizer["Tracker.MempoolLimit"]</p> }
+            <p class="explanation history-note">@Localizer["Tracker.FlowNote"] @Localizer["Tracker.HistoricalSources"]</p>
         </section>
     }
     else if (Result.Transaction is { } transaction)
     {
+        var quote = HistoricalQuote(transaction);
+        var totalInput = SumKnown(transaction.Inputs.Select(input => input.ValueSats));
+        var totalOutput = SumKnown(transaction.Outputs.Select(output => (long?)output.ValueSats));
         <div class="summary-grid">
             <section class="summary-card">
                 <h3>@Localizer["Tracker.Status"]</h3>
@@ -85,29 +131,45 @@
             </section>
             <section class="summary-card">
                 <h3>@Localizer["Tracker.Fee"]</h3>
-                <p class="main-value">@FormatSats(transaction.FeeSats) <small>sats</small></p>
-                <p class="secondary-value">@FormatFiat(transaction.FeeSats)</p>
+                <p class="main-value">@FormatSats(transaction.FeeSats) <small>sats</small></p><p class="secondary-value">@FormatFiat(transaction.FeeSats)</p>
             </section>
             <section class="summary-card">
                 <h3>@Localizer["Tracker.FeeRate"]</h3>
-                <p class="main-value">@FormatFeeRate(transaction) <small>sat/vB</small></p>
-                <p class="secondary-value">@Localizer["Tracker.VirtualSize", VirtualSize(transaction).ToString("N0", DisplayCulture)]</p>
+                <p class="main-value">@FormatFeeRate(transaction) <small>sat/vB</small></p><p class="secondary-value">@Localizer["Tracker.VirtualSize", VirtualSize(transaction).ToString("N0", DisplayCulture)]</p>
             </section>
         </div>
+        <div class="summary-grid transaction-totals">
+            <section class="summary-card">
+                <h3>@Localizer["Tracker.TotalInputs"]</h3>
+                <p class="main-value incoming-value">@FormatSats(totalInput) <small>sats</small></p><p class="secondary-value">@FormatHistorical(totalInput, transaction)</p>
+            </section>
+            <section class="summary-card">
+                <h3>@Localizer["Tracker.TotalOutputs"]</h3>
+                <p class="main-value outgoing-value">@FormatSats(totalOutput) <small>sats</small></p><p class="secondary-value">@FormatHistorical(totalOutput, transaction)</p>
+            </section>
+            <section class="summary-card historical-quote">
+                <h3>@Localizer["Tracker.HistoricalBitcoinPrice"]</h3>
+                @if (IsAvailable(quote))
+                {
+                    <p class="main-value">@FormatMoney(quote!.PricePerBitcoin!.Value)</p><p class="secondary-value">1 BTC · @FormatDate(quote.Date) UTC</p>
+                    @if (quote.FxDate is { } fxDate && fxDate != quote.Date) { <p class="secondary-value">@Localizer["Tracker.FxDate", FormatDate(fxDate)]</p> }
+                }
+                else { <p class="secondary-value quote-status">@HistoricalStatus(transaction, quote)</p> }
+            </section>
+        </div>
+        @if (Result.TrackedAddresses.Count > 0)
+        {
+            <p class="wallet-transaction-net @FlowClass(Net(transaction))">@Localizer["Tracker.WalletNetChange"]: <strong>@FormatSats(Net(transaction), signed: true) sats</strong> · @FormatHistorical(Net(transaction), transaction)</p>
+            <details class="tracked-context"><summary>@Localizer["Tracker.TrackedAddresses"] (@Result.TrackedAddresses.Count)</summary><ul>@foreach (var tracked in Result.TrackedAddresses) { <li>@tracked</li> }</ul></details>
+        }
         @if (transaction.BlockHeight is { } height && transaction.Confirmed)
         {
             <p class="explanation">@Localizer["Tracker.BlockHeight", height.ToString("N0", DisplayCulture)]
-                @if (transaction.BlockTime is { } blockTime)
-                {
-                    <span> · <time datetime="@blockTime.ToString("O")">@FormatTime(blockTime)</time></span>
-                }
+                @if (transaction.BlockTime is { } blockTime) { <span> · <time datetime="@blockTime.ToString("O")">@FormatTime(blockTime)</time></span> }
             </p>
         }
-        else
-        {
-            <p class="explanation">@Localizer["Tracker.PendingNote"]</p>
-        }
-        <p class="explanation">@Localizer["Tracker.OutputsNote"]</p>
+        else { <p class="explanation">@Localizer["Tracker.PendingNote"]</p> }
+        <p class="explanation">@Localizer["Tracker.OutputsNote"] @Localizer["Tracker.HistoricalNote"]</p>
         <div class="io-grid">
             <section class="detail-card" aria-labelledby="tracker-inputs-heading">
                 <div class="card-heading"><h3 id="tracker-inputs-heading">@Localizer["Tracker.Inputs"] <small>(@transaction.Inputs.Count.ToString("N0", DisplayCulture))</small></h3></div>
@@ -118,16 +180,13 @@
                             <span class="io-address">@(input.IsCoinbase ? Localizer["Tracker.CoinbaseInput"].Value : input.Address ?? Localizer["Tracker.Script"].Value)</span>
                             @if (input.ValueSats is { } inputSats)
                             {
-                                <strong>@FormatSats(inputSats) sats</strong>
-                                <small>@FormatBtc(inputSats) BTC · @FormatFiat(inputSats)</small>
+                                <strong class="incoming-value">@FormatSats(inputSats) sats</strong><small>@FormatBtc(inputSats) BTC · @FormatFiat(inputSats)</small>
+                                <small class="historical-value incoming-value">@Localizer["Tracker.AtTransactionDate"]: @FormatHistorical(inputSats, transaction)</small>
                             }
                         </li>
                     }
                 </ol>
-                @if (transaction.Inputs.Count > _inputLimit)
-                {
-                    <div class="pagination"><button type="button" class="outline-button" @onclick="() => _inputLimit += 25">@Localizer["Tracker.ShowMoreInputs"]</button></div>
-                }
+                @if (transaction.Inputs.Count > _inputLimit) { <div class="pagination"><button type="button" class="outline-button" @onclick="() => _inputLimit += 25">@Localizer["Tracker.ShowMoreInputs"]</button></div> }
             </section>
             <section class="detail-card" aria-labelledby="tracker-outputs-heading">
                 <div class="card-heading"><h3 id="tracker-outputs-heading">@Localizer["Tracker.Outputs"] <small>(@transaction.Outputs.Count.ToString("N0", DisplayCulture))</small></h3></div>
@@ -136,64 +195,33 @@
                     {
                         <li>
                             <span class="io-address">@(output.Address ?? Localizer["Tracker.Script"].Value)</span>
-                            <strong>@FormatSats(output.ValueSats) sats</strong>
-                            <small>@FormatBtc(output.ValueSats) BTC · @FormatFiat(output.ValueSats)</small>
+                            <strong class="outgoing-value">@FormatSats(output.ValueSats) sats</strong><small>@FormatBtc(output.ValueSats) BTC · @FormatFiat(output.ValueSats)</small>
+                            <small class="historical-value outgoing-value">@Localizer["Tracker.AtTransactionDate"]: @FormatHistorical(output.ValueSats, transaction)</small>
                         </li>
                     }
                 </ol>
-                @if (transaction.Outputs.Count > _outputLimit)
-                {
-                    <div class="pagination"><button type="button" class="outline-button" @onclick="() => _outputLimit += 25">@Localizer["Tracker.ShowMoreOutputs"]</button></div>
-                }
+                @if (transaction.Outputs.Count > _outputLimit) { <div class="pagination"><button type="button" class="outline-button" @onclick="() => _outputLimit += 25">@Localizer["Tracker.ShowMoreOutputs"]</button></div> }
             </section>
         </div>
+        <p class="explanation">@Localizer["Tracker.HistoricalSources"]</p>
     }
 </div>
 
 @code {
-    [Parameter, EditorRequired] public BitcoinTrackingResult Result { get; set; } = default!;
-    [Parameter] public Currency SelectedCurrency { get; set; } = CurrencyModel.CurrencyListStatic[0];
-    [Parameter] public decimal? FiatPricePerBitcoin { get; set; }
-    [Parameter] public bool LoadingMore { get; set; }
-    [Parameter] public EventCallback OnLoadMore { get; set; }
-    [Parameter] public EventCallback<string> OnSelectTransaction { get; set; }
-
-    private int _inputLimit = 25;
-    private int _outputLimit = 25;
-    private string? _displayedQuery;
-    private static CultureInfo DisplayCulture => CultureInfo.CurrentCulture;
-
-    protected override void OnParametersSet()
-    {
-        if (_displayedQuery != Result.Query)
+    private RenderFragment RenderAverage(BitcoinWeightedAverageCoverage average, string direction) => @<div class="average-price" data-direction="@direction" data-complete="@average.CoverageComplete.ToString().ToLowerInvariant()">
+        <div class="average-heading">
+            <span>@Localizer["Tracker.AverageBitcoinPrice"]</span>
+            <span class="coverage-badge">@Localizer[average.AveragePricePerBitcoin is null ? (LoadingPrices ? "Tracker.AverageLoading" : "Tracker.AverageEmpty") : average.CoverageComplete ? "Tracker.AverageComplete" : "Tracker.AveragePartial"]</span>
+        </div>
+        <p class="average-value">@FormatAverage(average) <small>/ BTC</small></p>
+        @if (average.CalculationUnavailable)
         {
-            _displayedQuery = Result.Query;
-            _inputLimit = _outputLimit = 25;
+            <small class="average-coverage">@Localizer["Tracker.AverageInconsistent"]</small>
         }
-    }
-
-    private static string FormatSats(long sats, bool signed = false) =>
-        (signed && sats > 0 ? "+" : string.Empty) + sats.ToString("N0", DisplayCulture);
-
-    private static string FormatBtc(long sats) => (sats / 100_000_000m).ToString("N8", DisplayCulture);
-
-    private string FormatFiat(long sats) => sats == 0
-        ? 0m.ToString("C", SelectedCurrency.CultureInfo)
-        : FiatPricePerBitcoin is { } price
-            ? "≈ " + (sats / 100_000_000m * price).ToString("C", SelectedCurrency.CultureInfo)
-            : "—";
-
-    private string StatusLabel(BitcoinTransaction transaction) => transaction.Confirmed
-        ? Localizer["Tracker.ConfirmationsValue", transaction.Confirmations.ToString("N0", DisplayCulture)].Value
-        : Localizer["Tracker.Pending"].Value;
-
-    private static long VirtualSize(BitcoinTransaction transaction) => (transaction.Weight + 3L) / 4;
-
-    private static string FormatFeeRate(BitcoinTransaction transaction) => VirtualSize(transaction) > 0
-        ? (transaction.FeeSats / (decimal)VirtualSize(transaction)).ToString("N2", DisplayCulture)
-        : "—";
-
-    private static string ShortId(string txId) => txId.Length > 24 ? txId[..12] + "…" + txId[^8..] : txId;
-
-    private static string FormatTime(DateTimeOffset time) => time.UtcDateTime.ToString("g", DisplayCulture) + " UTC";
+        else
+        {
+            <small class="average-coverage">@Localizer["Tracker.AverageCoverage", FormatAverageBtc(average.PricedSats), FormatAverageBtc(average.ConfirmedTotalSats)]</small>
+            <small class="average-scope">@Localizer["Tracker.AverageWeighted"]</small>
+        }
+    </div>;
 }

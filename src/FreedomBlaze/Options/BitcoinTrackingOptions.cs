@@ -8,6 +8,6 @@ public sealed class BitcoinTrackingOptions
     public TimeSpan CacheDuration { get; set; } = TimeSpan.FromSeconds(30);
     public TimeSpan FailureCooldown { get; set; } = TimeSpan.FromSeconds(5);
     public int MaxCacheEntries { get; set; } = 256;
-    public int MaxProviderRequestsPerMinute { get; set; } = 60;
+    public int MaxProviderRequestsPerMinute { get; set; } = 120;
     public int MaxConcurrentRequests { get; set; } = 4;
 }

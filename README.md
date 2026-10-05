@@ -64,16 +64,61 @@ dotnet test tests/FreedomBlaze.Tests/FreedomBlaze.Tests.csproj
 
 ## Bitcoin transaction tracking
 
-Open `/transactions` to look up a Bitcoin mainnet address or transaction ID. The
-tracker shows confirmation status, fees, individual inputs/outputs, and address
-balances/history in sats, BTC, and the selected fiat currency. Fiat values use the
-current exchange rate. An address lookup covers one address, rather than every
-address belonging to a wallet.
+Open `/transactions` to look up a Bitcoin mainnet transaction ID, one public
+address, or a watch-only wallet of up to 10 public addresses separated by lines or
+commas. The wallet view includes only the supplied addresses; it does not discover
+other addresses belonging to the same wallet.
+
+The tracker shows total balance (confirmed plus pending), total received and spent,
+confirmation status, fees, summed transaction inputs/outputs, and paginated history.
+Lifetime received/spent totals come from complete provider address statistics,
+including change and transfers between tracked addresses. History uses the net
+change across all tracked addresses, counting each transaction once; outgoing
+amounts include fees. Incoming/input values are green and outgoing/output values
+are red, with signs and labels. Missing input values remain unknown.
+
+Balance estimates use current exchange rates. Confirmed transaction values use
+the BTC-USD daily closing candle for their **UTC confirmation date**, converted
+using historical USD-to-selected-currency reference rates for that date. These are
+daily estimates, not the exact market price at block time. The UI displays the FX
+observation date when the provider uses an earlier available observation, such as
+over a weekend. Pending transactions have no confirmation-date price; the current
+UTC day's close becomes available after that day ends. Missing prices are shown as
+unavailable rather than replaced with today's price or zero.
+
+Daily Bitcoin candles use the keyless
+[Coinbase Exchange API](https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-candles),
+and historical currency conversion uses [Frankfurter](https://frankfurter.dev/).
+Dates outside either provider's coverage remain unavailable, including early
+Bitcoin dates before Coinbase BTC-USD trading history. Supported currencies match
+the existing currency selector. No additional API key is required.
+
+From/to date controls filter loaded confirmed history, inclusively in UTC. Period
+totals describe those loaded transactions; load older pages to include more history.
+The lifetime wallet totals remain independent of the visible page or date filter.
+
+Received and spent cards also show independent amount-weighted historical average
+BTC prices: sum of priced confirmed gross satoshis times their daily BTC price,
+divided by the priced satoshis. These match each card's gross accounting, including
+change and transfers between tracked addresses. Pending transactions, missing
+amounts, incomplete daily candles, and missing prices are excluded. Coverage is
+displayed against the complete **confirmed** received/spent totals, so a fully
+priced first page is not mistaken for a complete wallet average. Load older history
+to extend the averages; date filters affect the table rather than these card
+averages. No automatic scan of an unlimited wallet history is performed.
+
+The search starts with one compact row and an aligned Track button. Multiple
+addresses can be pasted directly or entered using the expandable address field.
+Currency and auto-refresh controls are grouped below the search, and UTC period
+filters appear beside the transaction-history heading.
 
 Updates run every 30 seconds while the page is open. Loading older address history
 pauses automatic updates; Refresh returns to the latest page. Pending transactions
 can change or disappear before confirmation. Provider failures retain the last
-successful result and its check time.
+successful result and its check time. Wallet history snapshots expire after ten
+minutes or a new wallet snapshot; Refresh returns to current history. Opening a
+transaction from history preserves the tracked-address context and provides a
+Back to wallet action.
 
 The server uses the public Esplora-compatible API at `https://mempool.space/api/` by
 default. No additional API key or database migration is required. Searches are not
@@ -91,15 +136,28 @@ not a guarantee of the public provider's allowance):
   "CacheDuration": "00:00:30",
   "FailureCooldown": "00:00:05",
   "MaxCacheEntries": 256,
-  "MaxProviderRequestsPerMinute": 60,
+  "MaxProviderRequestsPerMinute": 120,
   "MaxConcurrentRequests": 4
+},
+"BitcoinHistoricalPrice": {
+  "CandleBaseUrl": "https://api.exchange.coinbase.com/",
+  "FxBaseUrl": "https://api.frankfurter.dev/",
+  "RequestTimeout": "00:00:30",
+  "CacheDuration": "1.00:00:00",
+  "FailureCooldown": "00:00:30",
+  "MaxCacheEntries": 512,
+  "MaxProviderRequestsPerMinute": 120,
+  "MaxConcurrentRequests": 2,
+  "MaxQueuedRequests": 64
 }
 ```
 
 Set `BitcoinTracking__BaseUrl` to a mainnet Esplora-compatible endpoint to change
 the provider. HTTPS is required. Shared requests, a bounded cache, and provider cooldowns reduce
-duplicate requests across Blazor circuits. Saved watchlists, background alerts,
-and Lightning payment lookup are separate future features.
+duplicate requests across Blazor circuits. Historical prices load independently of
+blockchain results, cache daily source quotes across currencies, and use a bounded
+queue with request pacing and provider cooldowns. Saved watchlists, background
+alerts, and Lightning payment lookup are separate future features.
 
 Run the tracker validation, client/service, and rendering tests with the existing
 `dotnet test tests/FreedomBlaze.Tests/FreedomBlaze.Tests.csproj` command.

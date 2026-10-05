@@ -15,21 +15,28 @@
     </header>
 
     <section class="search-card" aria-labelledby="tracker-search-heading">
-        <h2 id="tracker-search-heading">@Localizer["Tracker.SearchHeading"]</h2>
+        <div class="search-card-heading">
+            <h2 id="tracker-search-heading">@Localizer["Tracker.SearchHeading"]</h2>
+            <button type="button" class="wallet-input-toggle" aria-pressed="@(_walletInput ? "true" : "false")" aria-controls="tracker-query" @onclick="ToggleWalletInput">
+                <MudIcon Icon="@Icons.Material.Outlined.AccountBalanceWallet" Size="Size.Small" />
+                @Localizer[_walletInput ? "Tracker.CompactSearch" : "Tracker.MultipleAddresses"]
+            </button>
+        </div>
         <form class="search-form" @onsubmit="SearchAsync" @onsubmit:preventDefault>
             <div class="query-field">
                 <label for="tracker-query">@Localizer["Tracker.SearchLabel"]</label>
-                <input id="tracker-query" type="text" @bind="_query" @bind:event="oninput"
-                       placeholder="@Localizer["Tracker.SearchPlaceholder"]" maxlength="128"
+                <textarea id="tracker-query" rows="@(_walletInput ? 2 : 1)" class="@(_walletInput ? "wallet-query" : "compact-query")"
+                       @bind:get="_query" @bind:set="SetQuery" @bind:event="oninput" @onkeydown="OnQueryKeyDownAsync"
+                       placeholder="@Localizer[_walletInput ? "Tracker.WalletPlaceholder" : "Tracker.SearchPlaceholder"]" maxlength="1200"
                        autocomplete="off" autocapitalize="off" spellcheck="false"
-                       aria-describedby="tracker-search-hint" />
+                       aria-describedby="tracker-search-hint"></textarea>
             </div>
             <button class="search-button" type="submit" disabled="@(_loading || string.IsNullOrWhiteSpace(_query))">
                 <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" />
                 @Localizer[_loading ? "Tracker.Searching" : "Tracker.Search"]
             </button>
         </form>
-        <p id="tracker-search-hint" class="hint">@Localizer["Tracker.SearchHint"]</p>
+        <p id="tracker-search-hint" class="hint">@Localizer[_walletInput ? "Tracker.WalletInputHint" : "Tracker.CompactInputHint"]</p>
         <div class="search-options">
             <div class="currency-select">
                 <MudSelect T="string" Value="_selectedCurrency.Value" ValueChanged="SelectCurrency"
@@ -46,7 +53,11 @@
                 <span>@Localizer["Tracker.AutoRefresh"]</span>
             </label>
         </div>
-        <p class="privacy-note">@Localizer["Tracker.PrivacyNote"]</p>
+        <details class="search-info">
+            <summary>@Localizer["Tracker.SearchInfo"]</summary>
+            <p class="hint">@Localizer["Tracker.SearchHint"]</p>
+            <p class="hint">@Localizer["Tracker.PrivacyNote"]</p>
+        </details>
     </section>
 
     @if (_loading)
@@ -73,8 +84,19 @@
     {
         <div class="results-heading">
             <div>
-                <h2>@Localizer[_result.Kind == BitcoinTrackingKind.Address ? "Tracker.AddressResult" : "Tracker.TransactionResult"]</h2>
-                <p class="identifier">@_result.Query</p>
+                <h2>@Localizer[_result.Kind switch { BitcoinTrackingKind.Wallet => "Tracker.WalletResult", BitcoinTrackingKind.Address => "Tracker.AddressResult", _ => "Tracker.TransactionResult" }]</h2>
+                @if (_result.Kind == BitcoinTrackingKind.Wallet)
+                {
+                    <details class="wallet-addresses"><summary>@Localizer["Tracker.AddressCount", _result.TrackedAddresses.Count]</summary><p class="identifier">@_result.Query</p></details>
+                }
+                else
+                {
+                    <p class="identifier">@_result.Query</p>
+                }
+                @if (_result.Kind == BitcoinTrackingKind.Transaction && _transactionContext.Count > 0)
+                {
+                    <button type="button" class="text-button" disabled="@_loading" @onclick="BackToWalletAsync">@Localizer["Tracker.BackToWallet"]</button>
+                }
             </div>
             <button type="button" class="refresh-button" disabled="@(_loading || _loadingMore)" @onclick="RefreshAsync"
                     aria-label="@Localizer["Tracker.Refresh"]" title="@Localizer["Tracker.Refresh"]">
@@ -93,7 +115,12 @@
         {
             <p class="hint">@Localizer["Tracker.OlderHistoryNote"]</p>
         }
+        @if (_loadingPrices)
+        {
+            <p class="hint" role="status">@Localizer["Tracker.HistoricalLoading"]</p>
+        }
         <BitcoinTrackingDetails Result="_result" SelectedCurrency="_selectedCurrency" FiatPricePerBitcoin="FiatPricePerBitcoin"
+                                HistoricalPrices="_historicalPrices" LoadingPrices="_loadingPrices"
                                 LoadingMore="_loadingMore" OnLoadMore="LoadMoreAsync" OnSelectTransaction="SelectTransactionAsync" />
     }
     else if (!_loading)

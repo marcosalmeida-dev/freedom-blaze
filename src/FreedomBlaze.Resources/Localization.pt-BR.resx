@@ -410,22 +410,22 @@
     <value>BITCOIN ON-CHAIN</value>
   </data>
   <data name="Tracker.Title" xml:space="preserve">
-    <value>Rastreador de transações</value>
+    <value>Rastreador de carteiras e transações</value>
   </data>
   <data name="Tracker.Description" xml:space="preserve">
-    <value>Acompanhe uma transação Bitcoin ou consulte a atividade de um endereço público.</value>
+    <value>Acompanhe uma transação Bitcoin ou agrupe endereços públicos em uma carteira.</value>
   </data>
   <data name="Tracker.SearchHeading" xml:space="preserve">
-    <value>Buscar uma transação ou endereço</value>
+    <value>Acompanhar Bitcoin</value>
   </data>
   <data name="Tracker.SearchLabel" xml:space="preserve">
     <value>Endereço Bitcoin ou ID da transação</value>
   </data>
   <data name="Tracker.SearchPlaceholder" xml:space="preserve">
-    <value>Cole um endereço Bitcoin ou ID da transação</value>
+    <value>Cole um endereço ou ID de transação</value>
   </data>
   <data name="Tracker.SearchHint" xml:space="preserve">
-    <value>Use endereços e IDs de transações da rede principal do Bitcoin. Faturas Lightning usam outra rede de pagamentos.</value>
+    <value>Somente a rede principal Bitcoin. Para uma carteira, informe até 10 endereços públicos, separados por linhas ou vírgulas. Faturas Lightning usam uma rede de pagamentos diferente.</value>
   </data>
   <data name="Tracker.Search" xml:space="preserve">
     <value>Rastrear</value>
@@ -458,7 +458,7 @@
     <value>Consultado em</value>
   </data>
   <data name="Tracker.CurrentFiat" xml:space="preserve">
-    <value>Os valores em moedas locais são estimativas pela cotação atual.</value>
+    <value>Os saldos usam a cotação atual. O histórico usa preços diários históricos.</value>
   </data>
   <data name="Tracker.FiatUnavailable" xml:space="preserve">
     <value>As estimativas em moedas locais estão indisponíveis no momento. Os valores em Bitcoin continuam disponíveis.</value>
@@ -488,7 +488,7 @@
     <value>{0} transações pendentes</value>
   </data>
   <data name="Tracker.AddressNote" xml:space="preserve">
-    <value>Este saldo pertence a este endereço. Uma carteira pode usar vários endereços. Os valores pendentes podem mudar antes da confirmação.</value>
+    <value>Esta consulta inclui um endereço público. Uma carteira pode usar vários endereços; agrupe-os para acompanhar o saldo combinado. Valores pendentes podem mudar antes da confirmação.</value>
   </data>
   <data name="Tracker.History" xml:space="preserve">
     <value>Histórico de transações</value>
@@ -497,7 +497,7 @@
     <value>Nenhuma transação foi encontrada para este endereço.</value>
   </data>
   <data name="Tracker.HistoryCaption" xml:space="preserve">
-    <value>Transações e variações de saldo do endereço consultado</value>
+    <value>Transações dos endereços públicos acompanhados</value>
   </data>
   <data name="Tracker.TransactionId" xml:space="preserve">
     <value>ID da transação</value>
@@ -506,7 +506,7 @@
     <value>Status</value>
   </data>
   <data name="Tracker.NetChange" xml:space="preserve">
-    <value>Variação do saldo do endereço</value>
+    <value>Variação líquida no saldo</value>
   </data>
   <data name="Tracker.OpenTransaction" xml:space="preserve">
     <value>Ver transação {0}</value>
@@ -566,7 +566,7 @@
     <value>Mostrar mais saídas</value>
   </data>
   <data name="Tracker.Error.InvalidInput" xml:space="preserve">
-    <value>Digite um endereço válido da rede principal do Bitcoin ou um ID de transação com 64 caracteres.</value>
+    <value>Informe um endereço válido da rede principal Bitcoin, um ID de transação ou até 10 endereços públicos. Não informe chaves privadas nem frases de recuperação.</value>
   </data>
   <data name="Tracker.Error.NotFound" xml:space="preserve">
     <value>Esta transação não foi encontrada pelo provedor de dados. Confira o ID ou tente novamente após sua transmissão à rede.</value>
@@ -576,5 +576,155 @@
   </data>
   <data name="Tracker.Error.Unavailable" xml:space="preserve">
     <value>Os dados da rede Bitcoin estão indisponíveis no momento. Tente novamente em breve.</value>
+  </data>
+  <data name="Tracker.WalletResult" xml:space="preserve">
+    <value>Atividade da carteira</value>
+  </data>
+  <data name="Tracker.TotalBalance" xml:space="preserve">
+    <value>Saldo total</value>
+  </data>
+  <data name="Tracker.TotalReceived" xml:space="preserve">
+    <value>Total recebido</value>
+  </data>
+  <data name="Tracker.TotalSpent" xml:space="preserve">
+    <value>Total gasto</value>
+  </data>
+  <data name="Tracker.TrackedAddresses" xml:space="preserve">
+    <value>Endereços acompanhados</value>
+  </data>
+  <data name="Tracker.WalletNote" xml:space="preserve">
+    <value>Esta carteira inclui os endereços públicos informados. Adicione todos os endereços relevantes para incluir suas movimentações.</value>
+  </data>
+  <data name="Tracker.GrossTotalsNote" xml:space="preserve">
+    <value>Os totais incluem todas as movimentações confirmadas e os valores pendentes atuais. Recebidos e gastos são totais brutos por endereço, incluindo troco e transferências entre os endereços acompanhados; esses valores se anulam no saldo.</value>
+  </data>
+  <data name="Tracker.Incoming" xml:space="preserve">
+    <value>Entradas</value>
+  </data>
+  <data name="Tracker.Outgoing" xml:space="preserve">
+    <value>Saídas</value>
+  </data>
+  <data name="Tracker.FlowNote" xml:space="preserve">
+    <value>O histórico mostra a variação líquida entre os endereços acompanhados. Troco e transferências internas se anulam; as saídas incluem taxas.</value>
+  </data>
+  <data name="Tracker.TotalInputs" xml:space="preserve">
+    <value>Total de entradas da transação</value>
+  </data>
+  <data name="Tracker.TotalOutputs" xml:space="preserve">
+    <value>Total de saídas da transação</value>
+  </data>
+  <data name="Tracker.WalletNetChange" xml:space="preserve">
+    <value>Variação no saldo da carteira acompanhada</value>
+  </data>
+  <data name="Tracker.HistoricalBitcoinPrice" xml:space="preserve">
+    <value>Preço do Bitcoin na data da transação</value>
+  </data>
+  <data name="Tracker.HistoricalNote" xml:space="preserve">
+    <value>Os valores históricos usam o preço diário de fechamento do Bitcoin e a taxa de câmbio histórica da data de confirmação em UTC, e não o preço exato no momento do pagamento.</value>
+  </data>
+  <data name="Tracker.HistoricalSources" xml:space="preserve">
+    <value>Fechamento diário do Bitcoin: Coinbase Exchange. Câmbio histórico: Frankfurter. Datas iniciais do Bitcoin podem não ter preços disponíveis.</value>
+  </data>
+  <data name="Tracker.HistoricalLoading" xml:space="preserve">
+    <value>Carregando preços históricos…</value>
+  </data>
+  <data name="Tracker.HistoricalUnavailable" xml:space="preserve">
+    <value>Preço histórico indisponível</value>
+  </data>
+  <data name="Tracker.HistoricalRateLimited" xml:space="preserve">
+    <value>Limite temporário de consultas ao preço histórico</value>
+  </data>
+  <data name="Tracker.DailyClosePending" xml:space="preserve">
+    <value>O preço de fechamento estará disponível após o fim deste dia em UTC</value>
+  </data>
+  <data name="Tracker.AwaitingConfirmation" xml:space="preserve">
+    <value>A data do preço estará disponível após a confirmação</value>
+  </data>
+  <data name="Tracker.AtTransactionDate" xml:space="preserve">
+    <value>Na data da transação</value>
+  </data>
+  <data name="Tracker.FxDate" xml:space="preserve">
+    <value>Data da cotação de câmbio: {0}</value>
+  </data>
+  <data name="Tracker.FromDate" xml:space="preserve">
+    <value>Data inicial (UTC)</value>
+  </data>
+  <data name="Tracker.ToDate" xml:space="preserve">
+    <value>Data final (UTC)</value>
+  </data>
+  <data name="Tracker.ClearPeriod" xml:space="preserve">
+    <value>Limpar datas</value>
+  </data>
+  <data name="Tracker.InvalidPeriod" xml:space="preserve">
+    <value>A data final deve ser igual ou posterior à data inicial.</value>
+  </data>
+  <data name="Tracker.PeriodLoadedCount" xml:space="preserve">
+    <value>{0} transações carregadas neste período</value>
+  </data>
+  <data name="Tracker.PeriodScope" xml:space="preserve">
+    <value>Estes totais do período incluem apenas as transações confirmadas carregadas. Carregue transações mais antigas para incluir mais histórico. Os totais da carteira acima incluem todas as movimentações.</value>
+  </data>
+  <data name="Tracker.NoPeriodTransactions" xml:space="preserve">
+    <value>Nenhuma transação confirmada carregada corresponde a estas datas.</value>
+  </data>
+  <data name="Tracker.HistoryExpired" xml:space="preserve">
+    <value>Este histórico expirou. Atualize para voltar às movimentações mais recentes da carteira.</value>
+  </data>
+  <data name="Tracker.BackToWallet" xml:space="preserve">
+    <value>Voltar à carteira</value>
+  </data>
+  <data name="Tracker.MultipleAddresses" xml:space="preserve">
+    <value>Vários endereços</value>
+  </data>
+  <data name="Tracker.CompactSearch" xml:space="preserve">
+    <value>Recolher endereços</value>
+  </data>
+  <data name="Tracker.WalletPlaceholder" xml:space="preserve">
+    <value>Um endereço público por linha</value>
+  </data>
+  <data name="Tracker.WalletInputHint" xml:space="preserve">
+    <value>Agrupe até 10 endereços públicos, separados por linhas ou vírgulas.</value>
+  </data>
+  <data name="Tracker.CompactInputHint" xml:space="preserve">
+    <value>Rede principal Bitcoin. Pressione Enter ou Rastrear para consultar.</value>
+  </data>
+  <data name="Tracker.SearchInfo" xml:space="preserve">
+    <value>Entradas aceitas e privacidade</value>
+  </data>
+  <data name="Tracker.AddressCount" xml:space="preserve">
+    <value>{0} endereços acompanhados</value>
+  </data>
+  <data name="Tracker.CalculationDetails" xml:space="preserve">
+    <value>Como os totais e preços são calculados</value>
+  </data>
+  <data name="Tracker.AverageBitcoinPrice" xml:space="preserve">
+    <value>Preço médio do BTC</value>
+  </data>
+  <data name="Tracker.AverageComplete" xml:space="preserve">
+    <value>Histórico confirmado</value>
+  </data>
+  <data name="Tracker.AveragePartial" xml:space="preserve">
+    <value>Histórico parcial</value>
+  </data>
+  <data name="Tracker.AverageEmpty" xml:space="preserve">
+    <value>Sem preços disponíveis</value>
+  </data>
+  <data name="Tracker.AverageLoading" xml:space="preserve">
+    <value>Carregando preços</value>
+  </data>
+  <data name="Tracker.AverageCoverage" xml:space="preserve">
+    <value>Preços de {0} de {1} BTC confirmados</value>
+  </data>
+  <data name="Tracker.AverageWeighted" xml:space="preserve">
+    <value>Ponderado pela quantidade de Bitcoin</value>
+  </data>
+  <data name="Tracker.AverageInconsistent" xml:space="preserve">
+    <value>O histórico e os totais diferem. Atualize para recalcular esta média.</value>
+  </data>
+  <data name="Tracker.AverageScopeNote" xml:space="preserve">
+    <value>As médias usam preços diários de fechamento ponderados pelos BTC recebidos ou gastos no histórico confirmado carregado com preços disponíveis. Valores pendentes são excluídos.</value>
+  </data>
+  <data name="Tracker.ExtendAverages" xml:space="preserve">
+    <value>Incluir histórico antigo nas médias</value>
   </data>
 </root>
