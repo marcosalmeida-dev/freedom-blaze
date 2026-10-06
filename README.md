@@ -33,6 +33,31 @@ the server requests structured articles from OpenAI's Responses API and requires
 search. The configured model must support both features; see the
 [OpenAI web-search guide](https://developers.openai.com/api/docs/guides/tools-web-search).
 
+New editions contain exactly **nine distinct stories**, covering all six inhabited
+continents (North America, South America, Europe, Africa, Asia and Oceania), with
+at least one story about Bitcoin in **Brazil** and no more than two North American
+stories. Brazil counts toward South America. Coverage follows the reported event's
+location, not the publisher's headquarters. The card's region label names the event's country.
+`OpenAI:NewsArticleCount` must remain `9`.
+
+Search is limited to established specialist news portals: CoinDesk, Cointelegraph,
+Bitcoin Magazine, Decrypt, Bitcoin.com News, Blockworks, Portal do Bitcoin, Livecoins,
+CriptoFácil, BitcoinKE, Crypto News Australia and CoinPost. Brazilian reporting is
+searched in Portuguese; other local languages are used where useful. These are
+preferred editorial sources, not a measured traffic ranking. Sponsored content,
+press releases, duplicate stories and altcoin-only news are excluded by the prompt.
+
+The server validates the article count, continent/country metadata, Brazil coverage,
+publication dates and publication links. Tracking parameters and fragments do not
+make a duplicate article count as a new story. A deficient response gets **one targeted repair search** under
+the same generation timeout. If a complete edition still cannot be assembled, it is
+reported unavailable and is not cached or saved as a partial edition. The response
+schema allows `articles: null` so the model can honestly report insufficient verified
+news instead of inventing stories to fill the nine slots.
+
+Previously saved days keep their existing stories. To replace today's already-saved
+edition with this coverage policy, use the protected refresh endpoint described below.
+
 Configure `OpenAI:ApiKey` on the **server**, using .NET user secrets for local development,
 Key Vault, or the `OpenAI__ApiKey` environment variable. `ChatGptApiKey` remains a legacy
 fallback. Keep API keys out of client configuration and source control. `OpenAI:Model`

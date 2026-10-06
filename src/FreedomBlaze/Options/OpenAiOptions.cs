@@ -27,7 +27,7 @@ public class OpenAiOptions
     /// </summary>
     public string ReasoningEffort { get; set; } = "low";
 
-    /// <summary>How many news articles to retrieve per day. Defaults to 9.</summary>
+    /// <summary>Daily edition size. Must be 9 to preserve the global coverage requirements.</summary>
     public int NewsArticleCount { get; set; } = 9;
 
     /// <summary>

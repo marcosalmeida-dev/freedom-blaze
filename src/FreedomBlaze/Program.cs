@@ -169,6 +169,8 @@ builder.Services.AddResponseCompression(opts =>
 var openAiSection = builder.Configuration.GetSection(OpenAiOptions.Section);
 builder.Services.AddOptions<OpenAiOptions>()
     .Bind(openAiSection)
+    .Validate(options => options.NewsArticleCount == BitcoinNewsCoveragePolicy.ArticleCount,
+        "OpenAI:NewsArticleCount must be 9 for the daily global news edition.")
     .Validate(options => options.GenerationTimeout > TimeSpan.Zero, "OpenAI:GenerationTimeout must be positive.")
     .Validate(options => options.CacheDuration > TimeSpan.Zero, "OpenAI:CacheDuration must be positive.")
     .Validate(options => options.FailureCooldown > TimeSpan.Zero, "OpenAI:FailureCooldown must be positive.")
