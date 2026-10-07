@@ -16,16 +16,19 @@ public class CurrencyExchangeRateService : ICurrencyExchangeRateClient
     private readonly ICurrencyExchangeRateClient _client;
     private readonly IMemoryCache _cache;
     private readonly TimeSpan _cacheDuration;
+    private readonly TimeProvider _timeProvider;
 
     public CurrencyExchangeRateService(
         IServiceProvider serviceProvider,
         IMemoryCache cache,
         IOptions<CurrencyExchangeOptions> options,
-        ILogger<CurrencyExchangeRateService> logger)
+        ILogger<CurrencyExchangeRateService> logger,
+        TimeProvider? timeProvider = null)
     {
         var settings = options.Value;
         _cache = cache;
         _cacheDuration = settings.CacheDuration;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _client = serviceProvider.GetRequiredKeyedService<ICurrencyExchangeRateClient>(settings.Provider);
 
         logger.LogInformation(
@@ -42,7 +45,8 @@ public class CurrencyExchangeRateService : ICurrencyExchangeRateClient
 
             if (result != null)
             {
-                _cache.Set(cacheKey, result, _cacheDuration);
+                result.CacheExpiresAt = _timeProvider.GetUtcNow() + _cacheDuration;
+                _cache.Set(cacheKey, result, result.CacheExpiresAt.Value);
             }
         }
 

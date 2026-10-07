@@ -5,6 +5,9 @@ public class CurrencyExchangeRateModel
     public DateTime? Date { get; set; }
     public List<CurrencyRate> Rates { get; set; } = [];
 
+    // Aggregated snapshots must not retain fiat rates past their own cache expiration.
+    internal DateTimeOffset? CacheExpiresAt { get; set; }
+
     public CurrencyRate this[string currency] => FindCurrencyIndex(currency);
 
     private CurrencyRate FindCurrencyIndex(string currencyValue)

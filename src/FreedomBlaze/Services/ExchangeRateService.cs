@@ -11,10 +11,12 @@ namespace FreedomBlaze.Services;
 public sealed class ExchangeRateService(
     IMemoryCache cache,
     ICurrencyExchangeRateClient currencyExchangeClient,
-    IEnumerable<IBitcoinExchangeRateClient> bitcoinExchangeClients) : IExchangeRateService
+    IEnumerable<IBitcoinExchangeRateClient> bitcoinExchangeClients,
+    TimeProvider? timeProvider = null) : IExchangeRateService
 {
     private const string CacheKey = "ExchangeRateService.Snapshot";
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
     public List<BitcoinExchangeStatusModel> BitcoinExchangeStatusList { get; private set; } = [];
 
@@ -58,7 +60,13 @@ public sealed class ExchangeRateService(
             }).ToList());
 
             // Briefly cache failures too, so a provider outage doesn't trigger a request storm.
-            cache.Set(CacheKey, snapshot, rate is null ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(55));
+            var expiresAt = _timeProvider.GetUtcNow() + (rate is null ? TimeSpan.FromSeconds(10) : TimeSpan.FromMinutes(1));
+
+            // A Bitcoin refresh must not extend the lifetime of the fiat rates it includes.
+            if (rate?.CurrencyExchangeRate?.CacheExpiresAt is { } currencyExpiresAt && currencyExpiresAt < expiresAt)
+                expiresAt = currencyExpiresAt;
+
+            cache.Set(CacheKey, snapshot, expiresAt);
             return ReadSnapshot(snapshot);
         }
         finally
