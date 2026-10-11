@@ -38,6 +38,9 @@ public sealed class BitcoinTrackingService : IBitcoinTrackingService, IDisposabl
         _walletCursors = new MemoryCache(new MemoryCacheOptions { SizeLimit = checked(_options.MaxCacheEntries * 100L) });
     }
 
+    public Task<BitcoinFeeRecommendations> GetFeeRecommendationsAsync(CancellationToken cancellationToken = default) =>
+        GetSharedAsync<BitcoinFeeRecommendations>("fees:recommended", FetchFeeRecommendationsAsync, cancellationToken);
+
     public Task<BitcoinTrackingResult> LookupAsync(string query, CancellationToken cancellationToken = default)
     {
         if (!BitcoinTrackingInput.TryParse(query, out var kind, out var normalized))
@@ -142,6 +145,26 @@ public sealed class BitcoinTrackingService : IBitcoinTrackingService, IDisposabl
         {
             _inFlight.TryRemove(key, out _);
         }
+    }
+
+    private async Task<BitcoinFeeRecommendations> FetchFeeRecommendationsAsync(CancellationToken cancellationToken)
+    {
+        var fees = await _client.GetFeeRecommendationsAsync(cancellationToken);
+        // Mempool enforces increasing rates with priority. Reject malformed recommendations
+        // instead of presenting free fees or swapping priorities to hide provider errors.
+        if (fees.MinimumFee <= 0 || fees.MinimumFee > fees.EconomyFee || fees.EconomyFee > fees.HourFee
+            || fees.HourFee > fees.HalfHourFee || fees.HalfHourFee > fees.FastestFee)
+            throw new BitcoinTrackingException(BitcoinTrackingError.Unavailable);
+
+        return new BitcoinFeeRecommendations
+        {
+            NoPrioritySatPerVByte = fees.EconomyFee,
+            LowPrioritySatPerVByte = fees.HourFee,
+            MediumPrioritySatPerVByte = fees.HalfHourFee,
+            HighPrioritySatPerVByte = fees.FastestFee,
+            MinimumSatPerVByte = fees.MinimumFee,
+            UpdatedAt = _time.GetUtcNow(),
+        };
     }
 
     private async Task<BitcoinTrackingResult> FetchLookupAsync(string query, BitcoinTrackingKind kind,

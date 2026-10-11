@@ -458,7 +458,7 @@
     <value>Consultado em</value>
   </data>
   <data name="Tracker.CurrentFiat" xml:space="preserve">
-    <value>Os saldos usam a cotação atual. O histórico usa preços diários históricos.</value>
+    <value>Os saldos e as taxas de transação usam a cotação atual. As entradas, saídas e variações líquidas do histórico usam preços diários históricos.</value>
   </data>
   <data name="Tracker.FiatUnavailable" xml:space="preserve">
     <value>As estimativas em moedas locais estão indisponíveis no momento. Os valores em Bitcoin continuam disponíveis.</value>
@@ -532,11 +532,8 @@
   <data name="Tracker.Fee" xml:space="preserve">
     <value>Taxa da transação</value>
   </data>
-  <data name="Tracker.FeeRate" xml:space="preserve">
-    <value>Taxa por byte virtual</value>
-  </data>
-  <data name="Tracker.VirtualSize" xml:space="preserve">
-    <value>{0} bytes virtuais</value>
+  <data name="Tracker.FeeNote" xml:space="preserve">
+    <value>As taxas são da transação inteira e podem ser pagas por outro participante. As estimativas em moeda local usam a cotação atual.</value>
   </data>
   <data name="Tracker.BlockHeight" xml:space="preserve">
     <value>Incluída no bloco {0}</value>
@@ -726,5 +723,53 @@
   </data>
   <data name="Tracker.ExtendAverages" xml:space="preserve">
     <value>Incluir histórico antigo nas médias</value>
+  </data>
+  <data name="Fees.Title" xml:space="preserve">
+    <value>Taxas atuais de transação</value>
+  </data>
+  <data name="Fees.NoPriority" xml:space="preserve">
+    <value>Sem prioridade</value>
+  </data>
+  <data name="Fees.LowPriority" xml:space="preserve">
+    <value>Prioridade baixa</value>
+  </data>
+  <data name="Fees.MediumPriority" xml:space="preserve">
+    <value>Prioridade média</value>
+  </data>
+  <data name="Fees.HighPriority" xml:space="preserve">
+    <value>Prioridade alta</value>
+  </data>
+  <data name="Fees.TransactionSize" xml:space="preserve">
+    <value>Tamanho da transação (vB)</value>
+  </data>
+  <data name="Fees.EstimateBasis" xml:space="preserve">
+    <value>Taxa estimada para uma transação de {0} vB</value>
+  </data>
+  <data name="Fees.SizeError" xml:space="preserve">
+    <value>Informe um tamanho de transação inteiro de 1 a 100.000 vB.</value>
+  </data>
+  <data name="Fees.Loading" xml:space="preserve">
+    <value>Carregando as taxas atuais…</value>
+  </data>
+  <data name="Fees.Unavailable" xml:space="preserve">
+    <value>As taxas atuais não estão disponíveis. Tente novamente.</value>
+  </data>
+  <data name="Fees.Stale" xml:space="preserve">
+    <value>As taxas podem estar desatualizadas. Exibindo as últimas taxas disponíveis.</value>
+  </data>
+  <data name="Fees.Refresh" xml:space="preserve">
+    <value>Atualizar taxas</value>
+  </data>
+  <data name="Fees.Updated" xml:space="preserve">
+    <value>Atualizado {0}</value>
+  </data>
+  <data name="Fees.FiatUnavailable" xml:space="preserve">
+    <value>Estimativa em moeda local indisponível</value>
+  </data>
+  <data name="Fees.EstimateNote" xml:space="preserve">
+    <value>As estimativas usam as cotações atuais. As taxas reais dependem do tamanho da transação.</value>
+  </data>
+  <data name="Fees.FiatStale" xml:space="preserve">
+    <value>As cotações estão atrasadas; as estimativas em moeda local usam a última cotação disponível.</value>
   </data>
 </root>

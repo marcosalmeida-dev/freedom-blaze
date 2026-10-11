@@ -28,6 +28,9 @@ button:disabled { opacity: .5; cursor: default; }
 .net-value { font-variant-numeric: tabular-nums; }
 .net-value strong, .net-value small { display: block; }
 .net-value small { margin-top: .3rem; color: var(--mud-palette-text-secondary); }
+.fee-value { font-variant-numeric: tabular-nums; }
+.fee-value strong, .fee-value small { display: block; }
+.fee-value small { margin-top: .3rem; color: var(--mud-palette-text-secondary); font-size: .75rem; }
 .empty-history { padding: 1.5rem 1.2rem; color: var(--mud-palette-text-secondary); }
 .pagination { padding: 1rem 1.2rem; text-align: center; }
 .outline-button { background: transparent; color: var(--mud-palette-primary); border: 1px solid var(--mud-palette-lines-default); border-radius: 8px; padding: .65rem 1rem; min-height: 44px; }
@@ -41,7 +44,7 @@ button:disabled { opacity: .5; cursor: default; }
 .io-list strong, .io-list small { display: block; font-variant-numeric: tabular-nums; }
 .io-list small { margin-top: .25rem; color: var(--mud-palette-text-secondary); }
 .history-limit { padding: 0 1.2rem; }
-.transaction-totals { margin-top: 1rem; }
+.transaction-totals { margin-top: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .balance-breakdown { display: grid; grid-template-columns: minmax(0, 1fr); gap: .7rem; margin: 1rem 0 0; padding-top: .85rem; border-top: 1px solid var(--mud-palette-lines-default); font-size: .78rem; }
 .balance-breakdown dt { color: var(--mud-palette-text-secondary); }
 .balance-breakdown dd { margin: .3rem 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -92,8 +95,8 @@ button:disabled { opacity: .5; cursor: default; }
     .history-table td { display: flex; justify-content: space-between; align-items: center; gap: .75rem; border: 0; padding: .35rem 1rem; text-align: right; }
     .history-table td:first-child { display: block; text-align: left; }
     .history-table td:not(:first-child)::before { content: attr(data-label); font-size: .75rem; color: var(--mud-palette-text-secondary); text-align: left; }
-    .history-table td.flow-value, .history-table td.net-value, .history-table td.historical-quote { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(0, 1fr); }
-    .history-table td.flow-value::before, .history-table td.net-value::before, .history-table td.historical-quote::before { grid-column: 1; grid-row: 1 / span 3; }
+    .history-table td.flow-value, .history-table td.net-value, .history-table td.fee-value, .history-table td.historical-quote { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(0, 1fr); }
+    .history-table td.flow-value::before, .history-table td.net-value::before, .history-table td.fee-value::before, .history-table td.historical-quote::before { grid-column: 1; grid-row: 1 / span 3; }
     .history-table td strong, .history-table td small, .history-table td.net-value > span { grid-column: 2; }
 }
 @media (max-width: 600px) {

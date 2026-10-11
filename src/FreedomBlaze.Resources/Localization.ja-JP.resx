@@ -355,4 +355,52 @@
   <data name="SatsConverter.RateExplanation" xml:space="preserve">
     <value>satsの数量は変わりませんが、通貨での価値はビットコインの価格に応じて変わります。</value>
   </data>
+  <data name="Fees.Title" xml:space="preserve">
+    <value>現在のトランザクション手数料</value>
+  </data>
+  <data name="Fees.NoPriority" xml:space="preserve">
+    <value>優先度なし</value>
+  </data>
+  <data name="Fees.LowPriority" xml:space="preserve">
+    <value>優先度：低</value>
+  </data>
+  <data name="Fees.MediumPriority" xml:space="preserve">
+    <value>優先度：中</value>
+  </data>
+  <data name="Fees.HighPriority" xml:space="preserve">
+    <value>優先度：高</value>
+  </data>
+  <data name="Fees.TransactionSize" xml:space="preserve">
+    <value>トランザクションサイズ（vB）</value>
+  </data>
+  <data name="Fees.EstimateBasis" xml:space="preserve">
+    <value>{0} vBのトランザクションの推定手数料</value>
+  </data>
+  <data name="Fees.SizeError" xml:space="preserve">
+    <value>トランザクションサイズを1〜100,000 vBの整数で入力してください。</value>
+  </data>
+  <data name="Fees.Loading" xml:space="preserve">
+    <value>現在の手数料レートを読み込んでいます…</value>
+  </data>
+  <data name="Fees.Unavailable" xml:space="preserve">
+    <value>現在の手数料レートを取得できません。もう一度お試しください。</value>
+  </data>
+  <data name="Fees.Stale" xml:space="preserve">
+    <value>手数料レートが古い可能性があります。最後に取得したレートを表示しています。</value>
+  </data>
+  <data name="Fees.Refresh" xml:space="preserve">
+    <value>手数料レートを更新</value>
+  </data>
+  <data name="Fees.Updated" xml:space="preserve">
+    <value>更新日時：{0}</value>
+  </data>
+  <data name="Fees.FiatUnavailable" xml:space="preserve">
+    <value>法定通貨での推定額を表示できません</value>
+  </data>
+  <data name="Fees.EstimateNote" xml:space="preserve">
+    <value>推定額は現在の換算レートに基づきます。実際の手数料はトランザクションサイズによって異なります。</value>
+  </data>
+  <data name="Fees.FiatStale" xml:space="preserve">
+    <value>換算レートの更新が遅れています。通貨での推定額には最後に取得したレートを使用します。</value>
+  </data>
 </root>

@@ -48,6 +48,10 @@
     <section aria-label="Bitcoin news headlines" aria-busy="@(_loading ? "true" : "false")">
         @if (_loading)
         {
+            @if (_retrying)
+            {
+                <p role="status">Searching for today's headlines. This can take a few minutes.</p>
+            }
             <div class="news-grid news-skeletons" aria-hidden="true">
                 @for (var i = 0; i < SkeletonCount; i++)
                 {

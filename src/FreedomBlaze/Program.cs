@@ -171,6 +171,10 @@ builder.Services.AddOptions<OpenAiOptions>()
     .Bind(openAiSection)
     .Validate(options => options.NewsArticleCount == BitcoinNewsCoveragePolicy.ArticleCount,
         "OpenAI:NewsArticleCount must be 9 for the daily global news edition.")
+    .Validate(options => options.NewsLookbackDays is >= 1 and <= 7,
+        "OpenAI:NewsLookbackDays must be between 1 and 7 calendar days.")
+    .Validate(options => options.MaxOutputTokenCount >= 2_000,
+        "OpenAI:MaxOutputTokenCount must be at least 2000, including reasoning and article output.")
     .Validate(options => options.GenerationTimeout > TimeSpan.Zero, "OpenAI:GenerationTimeout must be positive.")
     .Validate(options => options.CacheDuration > TimeSpan.Zero, "OpenAI:CacheDuration must be positive.")
     .Validate(options => options.FailureCooldown > TimeSpan.Zero, "OpenAI:FailureCooldown must be positive.")
@@ -189,7 +193,7 @@ if (!string.IsNullOrWhiteSpace(openAiApiKey))
 {
     // The service cancellation token bounds the full generation, including any SDK retries.
     // Do not subtract a fixed margin: a short configured timeout could become zero or negative.
-    var generationTimeout = openAiSection.GetValue("GenerationTimeout", TimeSpan.FromMinutes(4));
+    var generationTimeout = openAiSection.GetValue("GenerationTimeout", new OpenAiOptions().GenerationTimeout);
 
     builder.Services.AddSingleton(_ => new OpenAIClient(
         new ApiKeyCredential(openAiApiKey),
@@ -240,7 +244,9 @@ builder.Services.AddSingleton<ITelegramNotifier, TelegramNotifier>();
 builder.Services.AddSingleton<IDonationService, DonationService>();
 
 builder.Services.AddSingleton<OpenAiNewsClient>();
+builder.Services.AddSingleton<BitcoinNewsRetryQueue>();
 builder.Services.AddScoped<BitcoinNewsService>();
+builder.Services.AddHostedService<BitcoinNewsBackgroundService>();
 
 // Server-side rendering (prerender / InteractiveServer) resolves the news service directly, so it
 // runs in-process with no loopback HTTP request to the app's own API.

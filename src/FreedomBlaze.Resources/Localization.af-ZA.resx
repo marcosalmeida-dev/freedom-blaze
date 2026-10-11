@@ -404,4 +404,52 @@
   <data name="SatsConverter.RateExplanation" xml:space="preserve">
     <value>Die aantal sats bly dieselfde; hul waarde in geld verander met Bitcoin se prys.</value>
   </data>
+  <data name="Fees.Title" xml:space="preserve">
+    <value>Huidige transaksiefooie</value>
+  </data>
+  <data name="Fees.NoPriority" xml:space="preserve">
+    <value>Geen prioriteit</value>
+  </data>
+  <data name="Fees.LowPriority" xml:space="preserve">
+    <value>Lae prioriteit</value>
+  </data>
+  <data name="Fees.MediumPriority" xml:space="preserve">
+    <value>Medium prioriteit</value>
+  </data>
+  <data name="Fees.HighPriority" xml:space="preserve">
+    <value>Hoë prioriteit</value>
+  </data>
+  <data name="Fees.TransactionSize" xml:space="preserve">
+    <value>Transaksiegrootte (vB)</value>
+  </data>
+  <data name="Fees.EstimateBasis" xml:space="preserve">
+    <value>Geskatte fooi vir ’n transaksie van {0} vB</value>
+  </data>
+  <data name="Fees.SizeError" xml:space="preserve">
+    <value>Voer die transaksiegrootte as ’n heelgetal van 1 tot 100 000 vB in.</value>
+  </data>
+  <data name="Fees.Loading" xml:space="preserve">
+    <value>Huidige fooitariewe word gelaai…</value>
+  </data>
+  <data name="Fees.Unavailable" xml:space="preserve">
+    <value>Huidige fooitariewe is nie beskikbaar nie. Probeer weer.</value>
+  </data>
+  <data name="Fees.Stale" xml:space="preserve">
+    <value>Tariewe kan verouderd wees. Die jongste beskikbare tariewe word gewys.</value>
+  </data>
+  <data name="Fees.Refresh" xml:space="preserve">
+    <value>Verfris fooitariewe</value>
+  </data>
+  <data name="Fees.Updated" xml:space="preserve">
+    <value>Bygewerk {0}</value>
+  </data>
+  <data name="Fees.FiatUnavailable" xml:space="preserve">
+    <value>Geskatte bedrag in geld is nie beskikbaar nie</value>
+  </data>
+  <data name="Fees.EstimateNote" xml:space="preserve">
+    <value>Skattings gebruik huidige wisselkoerse. Werklike fooie hang van die transaksiegrootte af.</value>
+  </data>
+  <data name="Fees.FiatStale" xml:space="preserve">
+    <value>Wisselkoerse is vertraag; geldskattings gebruik die jongste beskikbare koers.</value>
+  </data>
 </root>

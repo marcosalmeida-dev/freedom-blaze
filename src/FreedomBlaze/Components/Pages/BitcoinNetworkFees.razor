@@ -1,0 +1,56 @@
+<section class="network-fees" aria-labelledby="tracker-fees-heading">
+    <div class="network-fees-heading">
+        <h3 id="tracker-fees-heading">@Localizer["Fees.Title"]</h3>
+        <div class="fee-source-controls">
+            <a href="https://mempool.space/" target="_blank" rel="noopener noreferrer">mempool.space</a>
+            <button type="button" class="fee-refresh" disabled="@(LoadingFees || RefreshDisabled)" @onclick="() => OnRefresh.InvokeAsync()">@Localizer["Fees.Refresh"]</button>
+        </div>
+    </div>
+    <div class="fee-estimate-controls">
+        <p id="tracker-fee-basis">@Localizer["Fees.EstimateBasis", VirtualSize?.ToString("N0", DisplayCulture) ?? "—"]</p>
+        <label for="tracker-fee-size">@Localizer["Fees.TransactionSize"]
+            <input id="tracker-fee-size" type="number" min="1" max="100000" step="1" @bind="_virtualSizeText" @bind:event="oninput"
+                   aria-invalid="@(VirtualSize is null ? "true" : "false")" aria-describedby="@SizeDescription" />
+        </label>
+    </div>
+    @if (VirtualSize is null)
+    {
+        <p id="tracker-fee-size-error" class="fee-size-error" role="alert">@Localizer["Fees.SizeError"]</p>
+    }
+    <div class="fee-priorities">
+        @foreach (var priority in Priorities)
+        {
+            var sats = EstimateSats(priority.Rate);
+            <article class="fee-priority-card" data-priority="@priority.Id">
+                <h4>@Localizer[priority.Label]</h4>
+                <p class="fee-estimate-fiat">@FormatFiat(sats)</p>
+                <p class="fee-estimate-sats">@(sats?.ToString("N0", DisplayCulture) ?? "—") <small>sats</small></p>
+                <p class="fee-rate">@(priority.Rate?.ToString("#,0.###", DisplayCulture) ?? "—") sat/vB</p>
+            </article>
+        }
+    </div>
+    <div class="fee-footer">
+        <p class="fee-state" role="status" aria-live="polite">
+            @if (LoadingFees) { @Localizer["Fees.Loading"] }
+            else if (Recommendations is null && FeesUnavailable) { @Localizer["Fees.Unavailable"] }
+            else if (FeesStale) { @Localizer["Fees.Stale"] }
+            else if (Recommendations is { } fees)
+            {
+                <time datetime="@fees.UpdatedAt.ToString("O")">@Localizer["Fees.Updated", fees.UpdatedAt.UtcDateTime.ToString("g", DisplayCulture) + " UTC"]</time>
+            }
+        </p>
+        @if (FeesStale && Recommendations is { } staleFees)
+        {
+            <small class="fee-last-update">@Localizer["Fees.Updated", staleFees.UpdatedAt.UtcDateTime.ToString("g", DisplayCulture) + " UTC"]</small>
+        }
+        @if (Recommendations is not null && FiatPricePerBitcoin is not > 0)
+        {
+            <p class="fee-fiat-unavailable">@Localizer["Fees.FiatUnavailable"]</p>
+        }
+        else if (Recommendations is not null && FiatPricePerBitcoin is > 0 && FiatRatesStale)
+        {
+            <p class="fee-fiat-stale">@Localizer["Fees.FiatStale"]</p>
+        }
+        <p class="fee-estimate-note">@Localizer["Fees.EstimateNote"]</p>
+    </div>
+</section>

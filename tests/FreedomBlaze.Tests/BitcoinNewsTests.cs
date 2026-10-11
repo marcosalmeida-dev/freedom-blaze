@@ -11,6 +11,7 @@ using FreedomBlaze.Interfaces;
 using FreedomBlaze.Options;
 using FreedomBlaze.Services;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenAI;
 
@@ -66,7 +67,7 @@ public sealed class BitcoinNewsTests
         var articles = await fixture.Client.GetBitcoinNewsAsync(date);
 
         Assert.Equal(9, articles.Count);
-        var article = articles[0];
+        var article = Assert.Single(articles, article => article.Title == "Bitcoin adoption expands");
         Assert.Equal("Bitcoin adoption expands", article.Title);
         Assert.Equal("A verified report about Bitcoin adoption.", article.Text);
         Assert.Equal("https://portaldobitcoin.uol.com.br/bitcoin-adoption", article.ArticleLinkUrl);
@@ -85,12 +86,30 @@ public sealed class BitcoinNewsTests
         Assert.True(root.GetProperty("text").GetProperty("format").GetProperty("strict").GetBoolean());
         var articlesSchema = root.GetProperty("text").GetProperty("format").GetProperty("schema")
             .GetProperty("properties").GetProperty("articles");
-        Assert.Equal(new[] { "array", "null" }, articlesSchema.GetProperty("type").EnumerateArray().Select(type => type.GetString()));
-        Assert.Equal(9, articlesSchema.GetProperty("minItems").GetInt32());
-        Assert.Equal(9, articlesSchema.GetProperty("maxItems").GetInt32());
+        Assert.Equal("array", articlesSchema.GetProperty("type").GetString());
+        Assert.Equal(0, articlesSchema.GetProperty("minItems").GetInt32());
+        Assert.Equal(18, articlesSchema.GetProperty("maxItems").GetInt32());
+        Assert.Equal("string", root.GetProperty("text").GetProperty("format").GetProperty("schema")
+            .GetProperty("properties").GetProperty("missingCoverage").GetProperty("type").GetString());
         var articleProperties = articlesSchema.GetProperty("items").GetProperty("properties");
         Assert.Equal(6, articleProperties.GetProperty("continent").GetProperty("enum").GetArrayLength());
         Assert.True(articleProperties.TryGetProperty("countryCode", out _));
+    }
+
+    [Fact]
+    public async Task DefaultModelUsesMediumReasoningAndTheConfiguredOutputBudget()
+    {
+        var date = new DateOnly(2027, 10, 10);
+        using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(date))),
+            settings: new OpenAiOptions());
+
+        var articles = await fixture.Client.GetBitcoinNewsAsync(date);
+
+        Assert.Equal(9, articles.Count);
+        using var request = JsonDocument.Parse(Assert.Single(fixture.Requests));
+        Assert.Equal("gpt-6.1-sol", request.RootElement.GetProperty("model").GetString());
+        Assert.Equal("medium", request.RootElement.GetProperty("reasoning").GetProperty("effort").GetString());
+        Assert.Equal(24_000, request.RootElement.GetProperty("max_output_tokens").GetInt32());
     }
 
     [Fact]
@@ -123,8 +142,8 @@ public sealed class BitcoinNewsTests
         var stored = new List<NewsArticleModel> { new() { Title = "Saved before the provider failed" } };
         fixture.Store.Days[date.AddDays(-2)] = stored;
 
-        var initial = await fixture.Service.GetNewsAsync(date);
-        var otherDate = await fixture.Service.GetNewsAsync(date.AddDays(-1));
+        var initial = await fixture.Service.EnsureNewsAsync(date);
+        var otherDate = await fixture.Service.EnsureNewsAsync(date.AddDays(-1));
         var savedDate = await fixture.Service.GetNewsAsync(date.AddDays(-2));
 
         Assert.Equal(NewsStatus.Unavailable, initial.Status);
@@ -142,10 +161,10 @@ public sealed class BitcoinNewsTests
         using var fixture = new NewsFixture(date,
             (_, _) => Task.FromResult(Error(429, "rate_limit_exceeded", "rate_limit_error")));
 
-        var first = await fixture.Service.GetNewsAsync(date);
-        var sameDate = await fixture.Service.GetNewsAsync(date);
+        var first = await fixture.Service.EnsureNewsAsync(date);
+        var sameDate = await fixture.Service.EnsureNewsAsync(date);
         Assert.Single(fixture.Requests);
-        var otherDate = await fixture.Service.GetNewsAsync(date.AddDays(-1));
+        var otherDate = await fixture.Service.EnsureNewsAsync(date.AddDays(-1));
 
         Assert.Equal(NewsStatus.Unavailable, first.Status);
         Assert.Equal(first.Message, sameDate.Message);
@@ -162,7 +181,7 @@ public sealed class BitcoinNewsTests
             throw new InvalidOperationException("The generation should have been canceled.");
         }, TimeSpan.FromMilliseconds(200));
 
-        var result = await fixture.Service.GetNewsAsync(fixture.Today);
+        var result = await fixture.Service.EnsureNewsAsync(fixture.Today);
 
         Assert.Equal(NewsStatus.Unavailable, result.Status);
         Assert.Contains("took too long", result.Message, StringComparison.OrdinalIgnoreCase);
@@ -180,7 +199,7 @@ public sealed class BitcoinNewsTests
         var articles = await fixture.Client.GetBitcoinNewsAsync(date);
 
         Assert.Equal(9, articles.Count);
-        var article = articles[0];
+        var article = Assert.Single(articles, article => article.Title == "Bitcoin adoption expands");
         Assert.Equal("Bitcoin adoption expands", article.Title);
         Assert.Equal("https://portaldobitcoin.uol.com.br/cited-bitcoin-report", article.ArticleLinkUrl);
         Assert.Single(fixture.Requests);
@@ -213,27 +232,30 @@ public sealed class BitcoinNewsTests
             return JsonResponse(SuccessResponse(date));
         });
 
-        var first = fixture.Service.GetNewsAsync(date);
+        var first = fixture.Service.EnsureNewsAsync(date);
         await requestStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        var second = fixture.Service.GetNewsAsync(date);
+        var second = fixture.Service.EnsureNewsAsync(date);
         var secondWasWaiting = !second.IsCompleted;
+        var reader = fixture.Service.GetNewsAsync(date);
+        var readerCompletedBeforeGeneration = reader.IsCompletedSuccessfully;
         releaseResponse.SetResult();
         var results = await Task.WhenAll(first, second);
 
         Assert.True(secondWasWaiting);
+        Assert.True(readerCompletedBeforeGeneration);
+        Assert.Equal(NewsStatus.Empty, (await reader).Status);
         Assert.All(results, result => Assert.Equal(NewsStatus.Ok, result.Status));
         Assert.Same(results[0].Articles, results[1].Articles);
         Assert.Single(fixture.Requests);
         Assert.Equal(1, fixture.Store.SaveCount);
         Assert.Equal(9, fixture.Store.Days[date].Count);
-        Assert.Equal("Bitcoin adoption expands", fixture.Store.Days[date][0].Title);
+        Assert.Contains(fixture.Store.Days[date], article => article.Title == "Bitcoin adoption expands");
     }
 
     [Theory]
     [InlineData("missing-continent")]
     [InlineData("missing-brazil")]
     [InlineData("too-few")]
-    [InlineData("too-many")]
     [InlineData("duplicate-link")]
     [InlineData("duplicate-link-tracking")]
     [InlineData("duplicate-link-www")]
@@ -259,7 +281,8 @@ public sealed class BitcoinNewsTests
         var articles = await fixture.Client.GetBitcoinNewsAsync(date);
 
         Assert.Equal(9, articles.Count);
-        Assert.Equal(BalancedStories(date).Select(story => story.ArticleUrl), articles.Select(article => article.ArticleLinkUrl));
+        Assert.Equal(BalancedStories(date).Select(story => story.ArticleUrl).Order(StringComparer.Ordinal),
+            articles.Select(article => article.ArticleLinkUrl).Order(StringComparer.Ordinal));
         Assert.Equal(2, fixture.Requests.Count);
         Assert.NotEqual(fixture.Requests[0], fixture.Requests[1]);
         using var repair = JsonDocument.Parse(fixture.Requests[1]);
@@ -291,7 +314,7 @@ public sealed class BitcoinNewsTests
         using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(
             StoriesResponse(InvalidStories(date, "missing-continent")))));
 
-        var result = await fixture.Service.GetNewsAsync(date);
+        var result = await fixture.Service.EnsureNewsAsync(date);
 
         Assert.Equal(NewsStatus.Unavailable, result.Status);
         Assert.Empty(result.Articles);
@@ -314,7 +337,7 @@ public sealed class BitcoinNewsTests
         var articles = await fixture.Client.GetBitcoinNewsAsync(date);
 
         Assert.Equal(9, articles.Count);
-        Assert.Equal(articleUrl, articles[storyIndex].ArticleLinkUrl);
+        Assert.Contains(articles, article => article.ArticleLinkUrl == articleUrl);
         Assert.Single(fixture.Requests);
     }
 
@@ -329,38 +352,247 @@ public sealed class BitcoinNewsTests
         var articles = await fixture.Client.GetBitcoinNewsAsync(date);
 
         Assert.Equal(9, articles.Count);
-        Assert.Equal("Brazil", articles[0].SourceRegion);
+        Assert.Equal("Brazil", Assert.Single(articles, article => article.Title == "Bitcoin adoption expands").SourceRegion);
         Assert.Single(fixture.Requests);
     }
 
-    [Fact]
-    public async Task TodaysEditionCanContainStoriesPublishedYesterday()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task TodaysEditionAcceptsAllThreeCalendarDatesInItsPublicationWindow(int daysAgo)
     {
         var today = new DateOnly(2027, 5, 10);
-        var yesterday = today.AddDays(-1);
-        using var fixture = new NewsFixture(today, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(yesterday))));
+        var publicationDate = today.AddDays(-daysAgo);
+        using var fixture = new NewsFixture(today, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(publicationDate))));
 
         var articles = await fixture.Client.GetBitcoinNewsAsync(today);
 
         Assert.Equal(9, articles.Count);
-        Assert.All(articles, article => Assert.Equal(yesterday.ToDateTime(TimeOnly.MinValue), article.Date));
+        Assert.All(articles, article => Assert.Equal(publicationDate.ToDateTime(TimeOnly.MinValue), article.Date));
         Assert.Single(fixture.Requests);
     }
 
     [Fact]
-    public async Task HistoricalEditionRepairsStoriesFromOutsideTheRequestedDate()
+    public async Task HistoricalEditionRepairsStoriesFromOutsideItsPublicationWindow()
     {
         var today = new DateOnly(2027, 6, 10);
         var requestedDate = today.AddDays(-5);
         var callCount = 0;
         using var fixture = new NewsFixture(today, (_, _) => Task.FromResult(JsonResponse(
-            SuccessResponse(++callCount == 1 ? requestedDate.AddDays(-1) : requestedDate))));
+            SuccessResponse(++callCount == 1 ? requestedDate.AddDays(-3) : requestedDate))));
 
         var articles = await fixture.Client.GetBitcoinNewsAsync(requestedDate);
 
         Assert.Equal(9, articles.Count);
         Assert.All(articles, article => Assert.Equal(requestedDate.ToDateTime(TimeOnly.MinValue), article.Date));
         Assert.Equal(2, fixture.Requests.Count);
+    }
+
+    [Fact]
+    public async Task HistoricalEditionUsesTheSameThreeCalendarDateWindow()
+    {
+        var today = new DateOnly(2027, 6, 15);
+        var requestedDate = today.AddDays(-5);
+        var publicationDate = requestedDate.AddDays(-2);
+        using var fixture = new NewsFixture(today, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(publicationDate))));
+
+        var articles = await fixture.Client.GetBitcoinNewsAsync(requestedDate);
+
+        Assert.Equal(9, articles.Count);
+        Assert.All(articles, article => Assert.Equal(publicationDate.ToDateTime(TimeOnly.MinValue), article.Date));
+        Assert.Single(fixture.Requests);
+    }
+
+    [Theory]
+    [InlineData(2, 59, 10)]
+    [InlineData(3, 0, 11)]
+    public void ServerEditionDateFollowsGmtMinusThreeRatherThanMachineTimeZone(int hour, int minute, int day)
+    {
+        using var fixture = new NewsFixture(new DateOnly(2027, 11, 10),
+            (_, _) => throw new InvalidOperationException("Reading the date must not request news."),
+            utcNow: new DateTimeOffset(2027, 11, 11, hour, minute, 0, TimeSpan.Zero));
+
+        Assert.Equal(new DateOnly(2027, 11, day), fixture.Service.Today);
+        Assert.Empty(fixture.Requests);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReadingAnUncachedDayNeverStartsGeneration(bool? allowGeneration)
+    {
+        var date = new DateOnly(2027, 7, 10);
+        using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(date))));
+
+        var result = allowGeneration.HasValue
+            ? await fixture.Service.GetNewsAsync(date, allowGeneration.Value)
+            : await fixture.Service.GetNewsAsync(date);
+
+        Assert.Equal(NewsStatus.Empty, result.Status);
+        Assert.Empty(result.Articles);
+        Assert.Empty(fixture.Requests);
+        Assert.Equal(0, fixture.Store.SaveCount);
+    }
+
+    [Fact]
+    public async Task ReadReportsTheLastBackgroundFailureWithoutStartingAnotherSearch()
+    {
+        var date = new DateOnly(2027, 8, 10);
+        using var fixture = new NewsFixture(date,
+            (_, _) => Task.FromResult(Error(429, "rate_limit_exceeded", "rate_limit_error")));
+
+        var generation = await fixture.Service.EnsureNewsAsync(date);
+        var read = await fixture.Service.GetNewsAsync(date);
+
+        Assert.Equal(NewsStatus.Unavailable, generation.Status);
+        Assert.Equal(NewsStatus.Unavailable, read.Status);
+        Assert.Equal(generation.Message, read.Message);
+        Assert.Single(fixture.Requests);
+    }
+
+    [Fact]
+    public async Task EnsurePropagatesHostCancellationWithoutRecordingATimeoutOrSavingNews()
+    {
+        var date = new DateOnly(2027, 9, 10);
+        var requestStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var hostStopping = new CancellationTokenSource();
+        using var fixture = new NewsFixture(date, async (_, cancellationToken) =>
+        {
+            requestStarted.SetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new InvalidOperationException("The host should have canceled generation.");
+        });
+
+        var generation = fixture.Service.EnsureNewsAsync(date, hostStopping.Token);
+        await requestStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        hostStopping.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => generation);
+        var read = await fixture.Service.GetNewsAsync(date);
+        Assert.Equal(NewsStatus.Empty, read.Status);
+        Assert.False(fixture.Cache.TryGetValue(CacheKeys.BitcoinNewsFailure(date), out _));
+        Assert.False(fixture.Cache.TryGetValue(CacheKeys.BitcoinNewsProviderFailure, out _));
+        Assert.Equal(0, fixture.Store.SaveCount);
+        Assert.Single(fixture.Requests);
+    }
+
+    [Fact]
+    public async Task ThumbnailTimeoutDoesNotCancelPersistenceOfSuccessfullyGeneratedNews()
+    {
+        var date = new DateOnly(2027, 12, 10);
+        using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(date))),
+            generationTimeout: TimeSpan.FromMilliseconds(500), thumbnailResolver: new TimeoutThumbnails());
+
+        var result = await fixture.Service.EnsureNewsAsync(date);
+
+        Assert.Equal(NewsStatus.Ok, result.Status);
+        Assert.Equal(9, result.Articles.Count);
+        Assert.Equal(1, fixture.Store.SaveCount);
+        Assert.False(fixture.Store.SaveTokenWasCanceled);
+        Assert.Equal(9, fixture.Store.Days[date].Count);
+        Assert.Single(fixture.Requests);
+    }
+
+    [Fact]
+    public async Task PartialDiscoveriesFromBothSearchesAreCombinedIntoOneCompleteEdition()
+    {
+        var date = new DateOnly(2028, 1, 10);
+        var stories = BalancedStories(date);
+        var callCount = 0;
+        using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(StoriesResponse(
+            ++callCount == 1 ? stories.Take(5).ToList() : stories.Skip(5).ToList()))));
+
+        var articles = await fixture.Client.GetBitcoinNewsAsync(date);
+
+        Assert.Equal(9, articles.Count);
+        Assert.Equal(stories.Select(story => story.ArticleUrl).Order(StringComparer.Ordinal),
+            articles.Select(article => article.ArticleLinkUrl).Order(StringComparer.Ordinal));
+        Assert.Equal(2, fixture.Requests.Count);
+        using var repair = JsonDocument.Parse(fixture.Requests[1]);
+        var repairText = repair.RootElement.GetProperty("input").GetRawText();
+        Assert.Contains("Africa", repairText);
+        Assert.Contains("Asia", repairText);
+        Assert.Contains("Oceania", repairText);
+        Assert.Contains("Bitcoin adoption expands", repairText);
+    }
+
+    [Fact]
+    public async Task InvalidDiscoveredCandidateDoesNotDiscardTheOtherVerifiedStories()
+    {
+        var date = new DateOnly(2028, 2, 10);
+        var stories = BalancedStories(date);
+        var initial = stories.Take(5).ToList();
+        initial.Add(Story(date, "Unapproved publisher story", "Unknown", "Australia", "unknown.example", "Oceania", "AU"));
+        var callCount = 0;
+        using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(StoriesResponse(
+            ++callCount == 1 ? initial : stories.Skip(5).ToList()))));
+
+        var articles = await fixture.Client.GetBitcoinNewsAsync(date);
+
+        Assert.Equal(9, articles.Count);
+        Assert.Equal(stories.Select(story => story.ArticleUrl).Order(StringComparer.Ordinal),
+            articles.Select(article => article.ArticleLinkUrl).Order(StringComparer.Ordinal));
+        Assert.DoesNotContain(articles, article => article.ArticleLinkUrl.Contains("unknown.example"));
+        Assert.Equal(2, fixture.Requests.Count);
+    }
+
+    [Fact]
+    public async Task OversuppliedPoolProducesNineBalancedStoriesWithoutAnotherSearch()
+    {
+        var date = new DateOnly(2028, 3, 10);
+        var stories = BalancedStories(date);
+        stories.InsertRange(0,
+        [
+            Story(date, "Mexican Bitcoin payments", "CoinDesk", "Mexico", "coindesk.com", "North America", "MX"),
+            Story(date, "Another American Bitcoin story", "Decrypt", "United States", "decrypt.co", "North America", "US"),
+            Story(date, "Another Canadian Bitcoin story", "Cointelegraph", "Canada", "cointelegraph.com", "North America", "CA")
+        ]);
+        using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(StoriesResponse(stories))));
+
+        var articles = await fixture.Client.GetBitcoinNewsAsync(date);
+
+        Assert.Equal(9, articles.Count);
+        var selected = articles.Select(article => stories.Single(story => story.ArticleUrl == article.ArticleLinkUrl)).ToList();
+        Assert.Equal(6, selected.Select(story => story.Continent).Distinct().Count());
+        Assert.Contains(selected, story => story.CountryCode == "BR");
+        Assert.InRange(selected.Count(story => story.Continent == "North America"), 1, 2);
+        Assert.Single(fixture.Requests);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"news\":[]}")]
+    [InlineData("{\"articles\":\"unexpected\"}")]
+    [InlineData("[{\"articles\":[] }]")]
+    public async Task MalformedCandidatePayloadIsNotTreatedAsAnEmptyDiscovery(string json)
+    {
+        var date = new DateOnly(2028, 4, 10);
+        using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(TextResponse(json))));
+
+        var exception = await Assert.ThrowsAsync<NewsUnavailableException>(
+            () => fixture.Client.GetBitcoinNewsAsync(date));
+
+        Assert.Equal(NewsFailureReason.Upstream, exception.Reason);
+        Assert.Contains("unreadable", exception.UserMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Single(fixture.Requests);
+    }
+
+    [Fact]
+    public async Task LegacyNullDiscoveryLogsItsCoverageExplanationBeforeRepair()
+    {
+        var date = new DateOnly(2028, 5, 10);
+        var logger = new CapturingNewsLogger();
+        var calls = 0;
+        using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(++calls == 1
+            ? TextResponse("{\"articles\":null,\"missingCoverage\":\"No verified Oceania story was found.\"}")
+            : SuccessResponse(date))), logger: logger);
+
+        var articles = await fixture.Client.GetBitcoinNewsAsync(date);
+
+        Assert.Equal(9, articles.Count);
+        Assert.Contains(logger.Lines, line => line.Contains("articles:null") && line.Contains("No verified Oceania story was found."));
     }
 
     private static HttpResponseMessage Error(int status, string code, string type) => JsonResponse(new
@@ -410,7 +642,10 @@ public sealed class BitcoinNewsTests
         return StoriesResponse(stories, annotations);
     }
 
-    private static object StoriesResponse(IReadOnlyList<NewsStory>? stories, object[]? annotations = null) => Response(
+    private static object StoriesResponse(IReadOnlyList<NewsStory>? stories, object[]? annotations = null) => TextResponse(
+        JsonSerializer.Serialize(new { articles = stories, missingCoverage = "" }, new JsonSerializerOptions(JsonSerializerDefaults.Web)), annotations);
+
+    private static object TextResponse(string text, object[]? annotations = null) => Response(
     [
         new
         {
@@ -422,7 +657,7 @@ public sealed class BitcoinNewsTests
         Message(new
         {
             type = "output_text",
-            text = JsonSerializer.Serialize(new { articles = stories }, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            text,
             annotations = annotations ?? []
         })
     ]);
@@ -495,7 +730,7 @@ public sealed class BitcoinNewsTests
                 stories[6] = stories[6] with { Continent = "Africa" };
                 break;
             case "old-date":
-                stories[4] = stories[4] with { PublishedDate = date.AddDays(-2).ToString("yyyy-MM-dd") };
+                stories[4] = stories[4] with { PublishedDate = date.AddDays(-3).ToString("yyyy-MM-dd") };
                 break;
             case "future-date":
                 stories[4] = stories[4] with { PublishedDate = date.AddDays(1).ToString("yyyy-MM-dd") };
@@ -522,16 +757,18 @@ public sealed class BitcoinNewsTests
 
         public NewsFixture(DateOnly today,
             Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond,
-            TimeSpan? generationTimeout = null)
+            TimeSpan? generationTimeout = null, OpenAiOptions? settings = null, DateTimeOffset? utcNow = null,
+            IArticleThumbnailHelper? thumbnailResolver = null,
+            Microsoft.Extensions.Logging.ILogger<OpenAiNewsClient>? logger = null)
         {
             Today = today;
-            var options = Microsoft.Extensions.Options.Options.Create(new OpenAiOptions
+            var options = Microsoft.Extensions.Options.Options.Create(settings ?? new OpenAiOptions
             {
                 Model = "gpt-5-mini",
                 GenerationTimeout = generationTimeout ?? TimeSpan.FromSeconds(10),
                 FailureCooldown = TimeSpan.FromMinutes(1)
             });
-            var clock = new FixedTimeProvider(today);
+            var clock = new FixedTimeProvider(today, utcNow);
             _httpClient = new HttpClient(new StubHandler(Requests, respond));
             var sdk = new OpenAIClient(new ApiKeyCredential("test-key-never-sent-to-a-network"), new OpenAIClientOptions
             {
@@ -539,8 +776,8 @@ public sealed class BitcoinNewsTests
                 Transport = new HttpClientPipelineTransport(_httpClient),
                 RetryPolicy = new ClientRetryPolicy(0)
             });
-            Client = new OpenAiNewsClient(options, clock, NullLogger<OpenAiNewsClient>.Instance, sdk);
-            Service = new BitcoinNewsService(Client, Store, new NoThumbnails(), Cache, clock,
+            Client = new OpenAiNewsClient(options, clock, logger ?? NullLogger<OpenAiNewsClient>.Instance, sdk);
+            Service = new BitcoinNewsService(Client, Store, thumbnailResolver ?? new NoThumbnails(), Cache, clock,
                 options, NullLogger<BitcoinNewsService>.Instance);
         }
 
@@ -568,10 +805,20 @@ public sealed class BitcoinNewsTests
         }
     }
 
-    private sealed class FixedTimeProvider(DateOnly today) : TimeProvider
+    private sealed class FixedTimeProvider(DateOnly today, DateTimeOffset? utcNow = null) : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => new(today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc));
+        public override DateTimeOffset GetUtcNow() => utcNow ?? new(today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc));
         public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
+    }
+
+    private sealed class CapturingNewsLogger : Microsoft.Extensions.Logging.ILogger<OpenAiNewsClient>
+    {
+        public List<string> Lines { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel,
+            Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
     }
 
     private sealed class NoThumbnails : IArticleThumbnailHelper
@@ -580,10 +827,17 @@ public sealed class BitcoinNewsTests
             => Task.CompletedTask;
     }
 
+    private sealed class TimeoutThumbnails : IArticleThumbnailHelper
+    {
+        public Task ResolveAsync(IReadOnlyList<NewsArticleModel> articles, CancellationToken cancellationToken = default)
+            => Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+    }
+
     private sealed class StubStore : INewsStore
     {
         public Dictionary<DateOnly, List<NewsArticleModel>> Days { get; } = [];
         public int SaveCount { get; private set; }
+        public bool SaveTokenWasCanceled { get; private set; }
 
         public Task<List<NewsArticleModel>?> LoadAsync(DateOnly date, CancellationToken cancellationToken = default)
             => Task.FromResult(Days.GetValueOrDefault(date));
@@ -591,6 +845,8 @@ public sealed class BitcoinNewsTests
         public Task SaveAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, string? model = null,
             CancellationToken cancellationToken = default)
         {
+            SaveTokenWasCanceled = cancellationToken.IsCancellationRequested;
+            cancellationToken.ThrowIfCancellationRequested();
             SaveCount++;
             Days[date] = [.. articles];
             return Task.CompletedTask;

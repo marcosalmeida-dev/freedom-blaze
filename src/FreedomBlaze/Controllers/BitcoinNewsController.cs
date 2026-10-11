@@ -12,11 +12,11 @@ namespace FreedomBlaze.Controllers;
 [Tags("Bitcoin News")]
 [Produces("application/json")]
 [EnableRateLimiting(RateLimitPolicies.PerIp)]
-public sealed class BitcoinNewsController(BitcoinNewsService newsService) : ControllerBase
+public sealed class BitcoinNewsController(BitcoinNewsService newsService, BitcoinNewsRetryQueue retryQueue) : ControllerBase
 {
     /// <summary>
-    /// Returns the Bitcoin news articles for the given date (defaults to today). Generates and
-    /// persists them via OpenAI on the first request for any recent day not yet stored.
+    /// Returns saved Bitcoin news articles for the given edition date (defaults to today in GMT-3).
+    /// Generation runs on startup and daily in the background; this endpoint never calls OpenAI.
     /// </summary>
     /// <remarks>
     /// A day with no news returns an empty array; a day whose news could not be produced returns
@@ -44,6 +44,21 @@ public sealed class BitcoinNewsController(BitcoinNewsService newsService) : Cont
         var result = await newsService.RefreshNewsAsync(date ?? newsService.Today, cancellationToken);
         return ToActionResult(result);
     }
+
+    /// <summary>Requests a coalesced background retry for today's missing edition.</summary>
+    [HttpPost("retry")]
+    [ProducesResponseType(typeof(NewsRetryOperation), StatusCodes.Status202Accepted)]
+    public async Task<ActionResult<NewsRetryOperation>> Retry([FromQuery] DateOnly? date, CancellationToken cancellationToken)
+    {
+        var operation = await newsService.StartRetryAsync(date ?? newsService.Today, cancellationToken);
+        return Accepted(operation);
+    }
+
+    [HttpGet("retry/{id:guid}")]
+    [ProducesResponseType(typeof(NewsRetryOperation), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult<NewsRetryOperation> RetryStatus(Guid id) =>
+        retryQueue.GetStatus(id) is { } operation ? Ok(operation) : NotFound();
 
     /// <summary>Returns all dates for which a saved news set exists (used by the date-picker UI).</summary>
     [HttpGet("dates")]

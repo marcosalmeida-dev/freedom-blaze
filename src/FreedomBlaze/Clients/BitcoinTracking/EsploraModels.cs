@@ -2,6 +2,15 @@ using System.Text.Json.Serialization;
 
 namespace FreedomBlaze.Clients.BitcoinTracking;
 
+public sealed record EsploraFeeRecommendations
+{
+    [JsonPropertyName("fastestFee")] public required decimal FastestFee { get; init; }
+    [JsonPropertyName("halfHourFee")] public required decimal HalfHourFee { get; init; }
+    [JsonPropertyName("hourFee")] public required decimal HourFee { get; init; }
+    [JsonPropertyName("economyFee")] public required decimal EconomyFee { get; init; }
+    [JsonPropertyName("minimumFee")] public required decimal MinimumFee { get; init; }
+}
+
 public sealed record EsploraTransaction
 {
     [JsonPropertyName("txid")] public required string TxId { get; init; }

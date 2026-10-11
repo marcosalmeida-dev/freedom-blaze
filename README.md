@@ -28,10 +28,30 @@ Navigate to https://localhost:7029. The application will automatically reload if
 
 ## Bitcoin news
 
-`BitcoinNews.razor` reads saved daily articles first. When a recent day has no saved news,
-the server requests structured articles from OpenAI's Responses API and requires a web
-search. The configured model must support both features; see the
+`BitcoinNewsBackgroundService` in the server project generates a fresh edition on startup.
+It then refreshes the edition daily at **08:00 GMT-3 (11:00 UTC)**,
+independent of the server's time zone and daylight saving rules. Startup work begins after
+the application has started and does not block HTTP startup. The application must be running
+for the daily schedule; restarting it generates the current day's edition. If startup generation
+crosses 08:00, that run also satisfies the morning refresh. Each application
+instance runs its own worker, so deployments with multiple replicas need a shared scheduler/lock
+to avoid duplicate paid generations.
+
+`BitcoinNews.razor` and public `GET /api/bitcoin-news` only read saved editions on normal loads.
+The Retry button explicitly requests background generation when today's edition is missing.
+`POST /api/bitcoin-news/retry` returns an attempt status immediately; the browser polls
+`GET /api/bitcoin-news/retry/{id}` every five seconds and shows search progress. Concurrent
+retries share one attempt, and failed attempts are limited to one per minute across the instance.
+Navigating away cancels polling while the worker continues. Saved editions and historical retries
+only reread storage. The worker uses OpenAI's Responses
+API with required web search and structured output. The configured model must support both; see the
 [OpenAI web-search guide](https://developers.openai.com/api/docs/guides/tools-web-search).
+
+The default model is **GPT-6.1 Sol** with **medium** reasoning: a practical quality/cost
+choice for targeted searches and validation across regions. Its
+[model documentation](https://developers.openai.com/api/docs/models/gpt-6.1-sol)
+lists support for Responses, web search and structured output. `OpenAI:MaxOutputTokenCount`
+defaults to `24000`, covering reasoning as well as the final article JSON.
 
 New editions contain exactly **nine distinct stories**, covering all six inhabited
 continents (North America, South America, Europe, Africa, Asia and Oceania), with
@@ -39,6 +59,11 @@ at least one story about Bitcoin in **Brazil** and no more than two North Americ
 stories. Brazil counts toward South America. Coverage follows the reported event's
 location, not the publisher's headquarters. The card's region label names the event's country.
 `OpenAI:NewsArticleCount` must remain `9`.
+
+Prefer same-day articles, but allow earlier reporting within the last **three calendar dates**
+ending on the edition date when needed for regional coverage. `OpenAI:NewsLookbackDays`
+controls that window (1–7; default 3), including historical refreshes. The original publication
+date is preserved and displayed on each card; future or older articles are rejected.
 
 Search is limited to established specialist news portals: CoinDesk, Cointelegraph,
 Bitcoin Magazine, Decrypt, Bitcoin.com News, Blockworks, Portal do Bitcoin, Livecoins,
@@ -49,14 +74,19 @@ press releases, duplicate stories and altcoin-only news are excluded by the prom
 
 The server validates the article count, continent/country metadata, Brazil coverage,
 publication dates and publication links. Tracking parameters and fragments do not
-make a duplicate article count as a new story. A deficient response gets **one targeted repair search** under
-the same generation timeout. If a complete edition still cannot be assembled, it is
-reported unavailable and is not cached or saved as a partial edition. The response
-schema allows `articles: null` so the model can honestly report insufficient verified
-news instead of inventing stories to fill the nine slots.
+make a duplicate article count as a new story. Discovery returns up to eighteen candidates,
+including useful partial findings, plus an explanation of any missing regions. The server
+rejects unusable candidates, retains verified findings between searches, reserves a story
+for each continent and Brazil, then fills the remaining slots with the freshest eligible
+stories. A deficient pool gets **one targeted follow-up search** under the same generation
+timeout, focused on its actual gaps. If a complete edition still cannot be assembled, it
+is reported unavailable and is not cached or saved as a partial edition. Search diagnostics
+record consulted domains, candidate counts, rejected-candidate reasons and the model's
+coverage explanation, making scarcity distinguishable from unreadable JSON or API failure.
 
-Previously saved days keep their existing stories. To replace today's already-saved
-edition with this coverage policy, use the protected refresh endpoint described below.
+Startup and the daily 08:00 refresh replace today's edition after successful generation.
+Saved news stays available when a refresh fails. Use the protected refresh endpoint described
+below to replace an edition manually.
 
 Configure `OpenAI:ApiKey` on the **server**, using .NET user secrets for local development,
 Key Vault, or the `OpenAI__ApiKey` environment variable. `ChatGptApiKey` remains a legacy
@@ -72,14 +102,17 @@ logs for the HTTP status and provider error code:
 | Other `429` errors | Wait for the provider's rate limit to reset. |
 | `401` / `403` | Check the server's key and project permissions. |
 | Model/tool rejection | Check that the configured model supports Responses, web search, and structured output. |
-| Timeout | Check provider latency and `OpenAI:GenerationTimeout` (four minutes by default). The browser news client waits five minutes; keep it longer than the configured generation timeout. |
+| Timeout | Check provider latency and `OpenAI:GenerationTimeout` (ten minutes by default, shared by the initial search and its repair). Browser reads do not wait for generation. |
 
 Failures return HTTP `503` with a reader-safe explanation instead of a successful empty
 news list. Billing/configuration failures pause generation for all dates for
 `OpenAI:FailureCooldown` (ten minutes by default); saved articles remain readable.
-After correcting the account/configuration, wait for that cooldown or use the existing
-master-key-protected `POST /api/bitcoin-news/refresh?date=yyyy-MM-dd` endpoint to retry
-immediately. The public page's Retry button respects the cooldown.
+After correcting the account/configuration, use the existing master-key-protected
+`POST /api/bitcoin-news/refresh?date=yyyy-MM-dd` endpoint to retry immediately, or wait
+for the next scheduled refresh. Retry can request a missing current edition again after the
+one-minute retry interval, including after account credit has been restored.
+Failed scheduled work is logged and does not terminate the worker; its next daily run remains
+scheduled. Host shutdown cancels waiting and active generation without recording a provider failure.
 
 Run the offline news integration tests with:
 
@@ -101,6 +134,14 @@ including change and transfers between tracked addresses. History uses the net
 change across all tracked addresses, counting each transaction once; outgoing
 amounts include fees. Incoming/input values are green and outgoing/output values
 are red, with signs and labels. Missing input values remain unknown.
+
+Transaction details and history show the actual whole-transaction fee reported by
+mempool.space, in sats and the selected currency at current exchange rates. This
+fee is not necessarily paid by the tracked wallet and is not subtracted again
+from outgoing/net amounts. The top transaction summary shows the Bitcoin price
+on its UTC confirmation date in place of sat/vB, using the historical daily
+closing quote in the selected currency. Fee estimates use current rates and
+remain independent of those historical prices.
 
 Balance estimates use current exchange rates. Confirmed transaction values use
 the BTC-USD daily closing candle for their **UTC confirmation date**, converted
@@ -136,6 +177,26 @@ The search starts with one compact row and an aligned Track button. Multiple
 addresses can be pasted directly or entered using the expandable address field.
 Currency and auto-refresh controls are grouped below the search, and UTC period
 filters appear beside the transaction-history heading.
+
+The Track Bitcoin area also shows current mempool.space network fee recommendations
+for No Priority (`economyFee`), Low (`hourFee`), Medium (`halfHourFee`) and High
+(`fastestFee`). It uses `/v1/fees/precise`, the same precise recommendations as the
+portal, preserving fractional sat/vB rates. The portal rounds its displayed rates;
+this app shows up to three decimals and calculates estimates from the full rate.
+Estimated costs use a clearly displayed, editable 140 vB transaction size by default,
+matching mempool.space's example size: round `rate × vB` up to whole sats, then
+convert with the current selected-currency Bitcoin rate. This is a size
+estimate, not a measured network average or a transaction's actual paid fee. Labels
+are translated into all eight supported app languages. Recommendations load before
+any search and update every 30 seconds when auto-refresh is enabled; manual refresh
+is independent of wallet history. Failed refreshes retain the last quote with a
+stale notice and its timestamp. The existing provider cache and request budgets
+also apply to the public fee requests. Older providers without the precise endpoint
+fall back to `/v1/fees/recommended` only on HTTP 404; those legacy recommendations
+can round Bitcoin rates up to whole sat/vB. An alternate Esplora provider must
+support one of these mempool endpoints to supply recommendations. Small fiat
+differences from the portal can remain due to whole-satoshi rounding, exchange-rate
+sources, and refresh timing.
 
 Updates run every 30 seconds while the page is open. Loading older address history
 pauses automatic updates; Refresh returns to the latest page. Pending transactions

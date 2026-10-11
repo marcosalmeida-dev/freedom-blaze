@@ -65,26 +65,40 @@ internal static class BitcoinNewsCoveragePolicy
             issues.Add("Include no more than two North American stories; replace excess stories with other regions.");
         }
 
-        if (candidates.Any(c => !CountriesByContinent.TryGetValue(c.Continent, out var countries)
-            || !countries.Contains(c.CountryCode)))
-        {
-            issues.Add("Every story needs a valid continent and country code for the event, not the publisher's headquarters.");
-        }
-
-        if (candidates.Any(c => !c.HasValidPublicationDate))
-        {
-            issues.Add("Every story needs a valid ISO publication date within the requested news window.");
-        }
-
-        if (candidates.Any(c => !IsApprovedArticleUrl(c.Article.ArticleLinkUrl)))
-        {
-            issues.Add("Use direct HTTPS article links from the preferred Bitcoin news publications only.");
-        }
+        issues.AddRange(candidates.SelectMany(FindCandidateIssues).Distinct(StringComparer.Ordinal));
 
         if (candidates.Select(c => c.Article.Title).Distinct(StringComparer.OrdinalIgnoreCase).Count() != candidates.Count
             || candidates.Select(c => ArticleIdentity(c.Article.ArticleLinkUrl)).Distinct(StringComparer.Ordinal).Count() != candidates.Count)
         {
             issues.Add("Replace repeated headlines or article links with distinct Bitcoin stories.");
+        }
+
+        return issues;
+    }
+
+    /// <summary>Validates one discovery result without requiring a complete regional edition.</summary>
+    public static List<string> FindCandidateIssues(BitcoinNewsCandidate candidate)
+    {
+        var issues = new List<string>();
+        if (string.IsNullOrWhiteSpace(candidate.Article.Title))
+        {
+            issues.Add("Every story needs a nonempty headline.");
+        }
+
+        if (!CountriesByContinent.TryGetValue(candidate.Continent, out var countries)
+            || !countries.Contains(candidate.CountryCode))
+        {
+            issues.Add("Every story needs a valid continent and country code for the event, not the publisher's headquarters.");
+        }
+
+        if (!candidate.HasValidPublicationDate)
+        {
+            issues.Add("Every story needs a valid ISO publication date within the requested news window.");
+        }
+
+        if (!IsApprovedArticleUrl(candidate.Article.ArticleLinkUrl))
+        {
+            issues.Add("Use direct HTTPS article links from the preferred Bitcoin news publications only.");
         }
 
         return issues;

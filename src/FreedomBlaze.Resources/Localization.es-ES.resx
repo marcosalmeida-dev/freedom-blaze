@@ -355,4 +355,52 @@
   <data name="SatsConverter.RateExplanation" xml:space="preserve">
     <value>La cantidad de sats permanece igual; su valor en moneda cambia con el precio de Bitcoin.</value>
   </data>
+  <data name="Fees.Title" xml:space="preserve">
+    <value>Comisiones actuales de transacción</value>
+  </data>
+  <data name="Fees.NoPriority" xml:space="preserve">
+    <value>Sin prioridad</value>
+  </data>
+  <data name="Fees.LowPriority" xml:space="preserve">
+    <value>Prioridad baja</value>
+  </data>
+  <data name="Fees.MediumPriority" xml:space="preserve">
+    <value>Prioridad media</value>
+  </data>
+  <data name="Fees.HighPriority" xml:space="preserve">
+    <value>Prioridad alta</value>
+  </data>
+  <data name="Fees.TransactionSize" xml:space="preserve">
+    <value>Tamaño de la transacción (vB)</value>
+  </data>
+  <data name="Fees.EstimateBasis" xml:space="preserve">
+    <value>Comisión estimada para una transacción de {0} vB</value>
+  </data>
+  <data name="Fees.SizeError" xml:space="preserve">
+    <value>Introduce un tamaño de transacción entero entre 1 y 100.000 vB.</value>
+  </data>
+  <data name="Fees.Loading" xml:space="preserve">
+    <value>Cargando las comisiones actuales…</value>
+  </data>
+  <data name="Fees.Unavailable" xml:space="preserve">
+    <value>Las comisiones actuales no están disponibles. Inténtalo de nuevo.</value>
+  </data>
+  <data name="Fees.Stale" xml:space="preserve">
+    <value>Las comisiones pueden estar desactualizadas. Se muestran las últimas comisiones disponibles.</value>
+  </data>
+  <data name="Fees.Refresh" xml:space="preserve">
+    <value>Actualizar comisiones</value>
+  </data>
+  <data name="Fees.Updated" xml:space="preserve">
+    <value>Actualizado {0}</value>
+  </data>
+  <data name="Fees.FiatUnavailable" xml:space="preserve">
+    <value>Estimación en moneda no disponible</value>
+  </data>
+  <data name="Fees.EstimateNote" xml:space="preserve">
+    <value>Las estimaciones usan los tipos de cambio actuales. Las comisiones reales dependen del tamaño de la transacción.</value>
+  </data>
+  <data name="Fees.FiatStale" xml:space="preserve">
+    <value>Las cotizaciones están retrasadas; las estimaciones en moneda usan la última cotización disponible.</value>
+  </data>
 </root>

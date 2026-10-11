@@ -15,7 +15,7 @@ namespace FreedomBlaze.Client.Services;
 /// exception, so the page can show the reason the server gave instead of a generic failure.
 /// </para>
 /// </summary>
-public class BitcoinNewsApiService(HttpClient httpClient) : IBitcoinNewsApiService
+public class BitcoinNewsApiService(HttpClient httpClient, TimeProvider? timeProvider = null) : IBitcoinNewsApiService
 {
     private const string BasePath = "api/bitcoin-news";
 
@@ -24,10 +24,41 @@ public class BitcoinNewsApiService(HttpClient httpClient) : IBitcoinNewsApiServi
 
     /// <inheritdoc />
     /// <remarks>
-    /// <paramref name="allowGeneration"/> is not sent: WebAssembly only ever runs after prerender,
-    /// so this path is always the interactive one that is allowed to generate.
+    /// <paramref name="allowGeneration"/> is retained for compatibility and ignored. The GET
+    /// endpoint only reads editions produced by the server's background worker.
     /// </remarks>
-    public async Task<NewsResult> GetNewsAsync(DateOnly date, bool allowGeneration = true, CancellationToken cancellationToken = default)
+    public Task<NewsResult> GetNewsAsync(DateOnly date, bool allowGeneration = false, CancellationToken cancellationToken = default)
+        => ReadNewsAsync(date, cancellationToken);
+
+    public async Task<NewsResult> RetryNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(12));
+        var retryToken = timeout.Token;
+        try
+        {
+            using var response = await httpClient.PostAsync($"{BasePath}/retry?date={date:yyyy-MM-dd}", null, retryToken);
+            if (!response.IsSuccessStatusCode)
+                return NewsResult.Unavailable(await ReadFailureMessageAsync(response, retryToken));
+            var operation = await response.Content.ReadFromJsonAsync<NewsRetryOperation>(retryToken);
+            while (operation is { IsCompleted: false })
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5), timeProvider ?? TimeProvider.System, retryToken);
+                using var status = await httpClient.GetAsync($"{BasePath}/retry/{operation.Id}", retryToken);
+                if (!status.IsSuccessStatusCode)
+                    return NewsResult.Unavailable(await ReadFailureMessageAsync(status, retryToken));
+                operation = await status.Content.ReadFromJsonAsync<NewsRetryOperation>(retryToken);
+            }
+            return operation?.Result ?? NewsResult.Unavailable(GenericFailure);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException or NotSupportedException)
+        {
+            return NewsResult.Unavailable(GenericFailure);
+        }
+    }
+
+    private async Task<NewsResult> ReadNewsAsync(DateOnly date, CancellationToken cancellationToken)
     {
         try
         {

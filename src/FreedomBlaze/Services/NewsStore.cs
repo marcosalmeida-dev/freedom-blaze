@@ -75,6 +75,10 @@ public class NewsStore(
 
             await db.SaveChangesAsync(cancellationToken);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to persist Bitcoin news to the database for {Date}.", date);

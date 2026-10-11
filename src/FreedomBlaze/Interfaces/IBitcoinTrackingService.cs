@@ -4,6 +4,7 @@ namespace FreedomBlaze.Interfaces;
 
 public interface IBitcoinTrackingService
 {
+    Task<BitcoinFeeRecommendations> GetFeeRecommendationsAsync(CancellationToken cancellationToken = default);
     Task<BitcoinTrackingResult> LookupAsync(string query, CancellationToken cancellationToken = default);
     Task<BitcoinTransactionPage> GetAddressTransactionsAsync(string address, string lastSeenTxId,
         CancellationToken cancellationToken = default);

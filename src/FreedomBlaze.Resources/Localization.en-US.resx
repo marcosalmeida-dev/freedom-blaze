@@ -460,7 +460,7 @@
     <value>Checked</value>
   </data>
   <data name="Tracker.CurrentFiat" xml:space="preserve">
-    <value>Balance totals use the current exchange rate. History uses historical daily prices.</value>
+    <value>Balance totals and transaction fees use current exchange rates. History's incoming, outgoing and net values use historical daily prices.</value>
   </data>
   <data name="Tracker.FiatUnavailable" xml:space="preserve">
     <value>Fiat estimates are temporarily unavailable. Bitcoin amounts remain available.</value>
@@ -534,11 +534,8 @@
   <data name="Tracker.Fee" xml:space="preserve">
     <value>Transaction fee</value>
   </data>
-  <data name="Tracker.FeeRate" xml:space="preserve">
-    <value>Fee rate</value>
-  </data>
-  <data name="Tracker.VirtualSize" xml:space="preserve">
-    <value>{0} virtual bytes</value>
+  <data name="Tracker.FeeNote" xml:space="preserve">
+    <value>Fees apply to the whole transaction and may be paid by another participant. Fiat fee estimates use current exchange rates.</value>
   </data>
   <data name="Tracker.BlockHeight" xml:space="preserve">
     <value>Included in block {0}</value>
@@ -728,5 +725,53 @@
   </data>
   <data name="Tracker.ExtendAverages" xml:space="preserve">
     <value>Include older history in averages</value>
+  </data>
+  <data name="Fees.Title" xml:space="preserve">
+    <value>Current transaction fees</value>
+  </data>
+  <data name="Fees.NoPriority" xml:space="preserve">
+    <value>No Priority</value>
+  </data>
+  <data name="Fees.LowPriority" xml:space="preserve">
+    <value>Low Priority</value>
+  </data>
+  <data name="Fees.MediumPriority" xml:space="preserve">
+    <value>Medium Priority</value>
+  </data>
+  <data name="Fees.HighPriority" xml:space="preserve">
+    <value>High Priority</value>
+  </data>
+  <data name="Fees.TransactionSize" xml:space="preserve">
+    <value>Transaction size (vB)</value>
+  </data>
+  <data name="Fees.EstimateBasis" xml:space="preserve">
+    <value>Estimated fee for a {0} vB transaction</value>
+  </data>
+  <data name="Fees.SizeError" xml:space="preserve">
+    <value>Enter a whole transaction size from 1 to 100,000 vB.</value>
+  </data>
+  <data name="Fees.Loading" xml:space="preserve">
+    <value>Loading current fee rates…</value>
+  </data>
+  <data name="Fees.Unavailable" xml:space="preserve">
+    <value>Current fee rates are unavailable. Try again.</value>
+  </data>
+  <data name="Fees.Stale" xml:space="preserve">
+    <value>Rates may be outdated. Showing the last available rates.</value>
+  </data>
+  <data name="Fees.Refresh" xml:space="preserve">
+    <value>Refresh fee rates</value>
+  </data>
+  <data name="Fees.Updated" xml:space="preserve">
+    <value>Updated {0}</value>
+  </data>
+  <data name="Fees.FiatUnavailable" xml:space="preserve">
+    <value>Currency estimate unavailable</value>
+  </data>
+  <data name="Fees.EstimateNote" xml:space="preserve">
+    <value>Estimates use current exchange rates. Actual fees depend on transaction size.</value>
+  </data>
+  <data name="Fees.FiatStale" xml:space="preserve">
+    <value>Exchange rates are delayed; currency estimates use the last available rate.</value>
   </data>
 </root>

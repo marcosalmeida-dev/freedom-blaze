@@ -19,18 +19,19 @@ public partial class BitcoinNews : IDisposable
     private readonly Dictionary<DateOnly, IReadOnlyList<NewsArticleModel>> _loadedDays = [];
     private CancellationTokenSource? _loadCts;
     private PersistingComponentStateSubscription? _persistingSubscription;
-    private DateTime? _selectedDate = DateTime.Today;
+    private DateTime? _selectedDate = TodayDate.ToDateTime(TimeOnly.MinValue);
     private IReadOnlyList<NewsArticleModel> _articles = [];
     private HashSet<DateOnly> _availableDates = [];
     private string? _errorMessage;
     private bool _loading = true;
+    private bool _retrying;
     private bool _disposed;
 
-    private static DateOnly TodayDate => DateOnly.FromDateTime(DateTime.Today);
-    private DateOnly SelectedDate => DateOnly.FromDateTime(_selectedDate ?? DateTime.Today);
+    private static DateOnly TodayDate => DateOnly.FromDateTime(DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)).DateTime);
+    private DateOnly SelectedDate => _selectedDate is { } selected ? DateOnly.FromDateTime(selected) : TodayDate;
     private bool IsToday => SelectedDate == TodayDate;
-    private static DateTime MaxSelectableDate => DateTime.Today;
-    private static DateTime MinSelectableDate => DateTime.Today.AddDays(-MaxHistoryDays);
+    private static DateTime MaxSelectableDate => TodayDate.ToDateTime(TimeOnly.MinValue);
+    private static DateTime MinSelectableDate => MaxSelectableDate.AddDays(-MaxHistoryDays);
 
     private string DayLabel
     {
@@ -46,7 +47,7 @@ public partial class BitcoinNews : IDisposable
         }
     }
 
-    private string ResultsLabel => _loading ? "Loading headlines…"
+    private string ResultsLabel => _loading ? (_retrying ? "Searching for headlines…" : "Loading headlines…")
         : _errorMessage is not null ? "Unable to load"
         : _articles.Count == 1 ? "1 story" : $"{_articles.Count} stories";
 
@@ -69,14 +70,14 @@ public partial class BitcoinNews : IDisposable
             }
             else if (_errorMessage is null && RendererInfo.IsInteractive)
             {
-                // An empty prerender only checked storage. Generation is allowed once interactive.
+                // The startup worker may have saved today's edition since prerender finished.
                 await LoadAsync();
             }
         }
         else
         {
             // Date metadata and headlines are independent; do not delay first content on metadata.
-            await Task.WhenAll(LoadAvailableDatesAsync(), LoadAsync(allowGeneration: RendererInfo.IsInteractive));
+            await Task.WhenAll(LoadAvailableDatesAsync(), LoadAsync());
         }
 
         if (!_disposed)
@@ -108,10 +109,14 @@ public partial class BitcoinNews : IDisposable
         await LoadAsync();
     }
 
-    private Task RetryAsync() => Task.WhenAll(LoadAvailableDatesAsync(), LoadAsync(forceReload: true));
+    private async Task RetryAsync()
+    {
+        await LoadAsync(forceReload: true, retryGeneration: true);
+        await LoadAvailableDatesAsync();
+    }
     private Task OnEmptyStateActionAsync() => IsToday ? RetryAsync() : GoToAsync(TodayDate);
 
-    private async Task LoadAsync(bool allowGeneration = true, bool forceReload = false)
+    private async Task LoadAsync(bool forceReload = false, bool retryGeneration = false)
     {
         if (_disposed)
         {
@@ -123,18 +128,21 @@ public partial class BitcoinNews : IDisposable
         _loadCts = request;
         var date = SelectedDate;
         _loading = true;
+        _retrying = retryGeneration;
         _errorMessage = null;
         _articles = [];
 
         try
         {
-            if (!forceReload && _loadedDays.TryGetValue(date, out var cached))
+            if (!forceReload && date != TodayDate && _loadedDays.TryGetValue(date, out var cached))
             {
                 _articles = cached;
                 return;
             }
 
-            var result = await NewsApi.GetNewsAsync(date, allowGeneration, request.Token);
+            var result = retryGeneration
+                ? await NewsApi.RetryNewsAsync(date, request.Token)
+                : await NewsApi.GetNewsAsync(date, cancellationToken: request.Token);
             if (request.IsCancellationRequested || _disposed || !ReferenceEquals(_loadCts, request))
             {
                 return;
@@ -149,7 +157,8 @@ public partial class BitcoinNews : IDisposable
             _articles = result.Articles;
             if (result.HasArticles)
             {
-                // Successful days are immutable during a visit. Empty/error results remain retryable.
+                // Historical days can be reused during a visit. Today is reread because the
+                // background refresh may have replaced it since the last selection.
                 _loadedDays[date] = result.Articles;
                 _availableDates.Add(date);
                 var oldestDate = DateOnly.FromDateTime(MinSelectableDate);
@@ -176,6 +185,7 @@ public partial class BitcoinNews : IDisposable
             if (!_disposed && ReferenceEquals(_loadCts, request))
             {
                 _loading = false;
+                _retrying = false;
                 _loadCts = null;
             }
         }
@@ -193,7 +203,7 @@ public partial class BitcoinNews : IDisposable
             var dates = await NewsApi.GetAvailableDatesAsync(_lifetimeCts.Token);
             if (!_disposed)
             {
-                // Union preserves a freshly generated day if its request beat this metadata read.
+                // Union preserves a newly saved day if its read beat this metadata request.
                 _availableDates.UnionWith(dates);
             }
         }

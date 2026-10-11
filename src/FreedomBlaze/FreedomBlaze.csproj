@@ -37,6 +37,7 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\img\country-flag\" />
+    <InternalsVisibleTo Include="FreedomBlaze.Tests" />
   </ItemGroup>
 
 </Project>

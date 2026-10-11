@@ -118,9 +118,6 @@ public partial class BitcoinTrackingDetails
     private string StatusLabel(BitcoinTransaction transaction) => transaction.Confirmed
         ? Localizer["Tracker.ConfirmationsValue", transaction.Confirmations.ToString("N0", DisplayCulture)].Value
         : Localizer["Tracker.Pending"].Value;
-    private static long VirtualSize(BitcoinTransaction transaction) => (transaction.Weight + 3L) / 4;
-    private static string FormatFeeRate(BitcoinTransaction transaction) => VirtualSize(transaction) > 0
-        ? (transaction.FeeSats / (decimal)VirtualSize(transaction)).ToString("N2", DisplayCulture) : "—";
     private static string ShortId(string txId) => txId.Length > 24 ? txId[..12] + "…" + txId[^8..] : txId;
     private static string FormatTime(DateTimeOffset time) => time.UtcDateTime.ToString("g", DisplayCulture) + " UTC";
     private static string FormatDate(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

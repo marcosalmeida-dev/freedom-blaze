@@ -19,7 +19,7 @@ public sealed class TransactionTrackerRenderingTests
     private static readonly string TransactionId = new('a', 64);
 
     [Fact]
-    public async Task PendingTransactionShowsZeroConfirmationsAndUsesWeightForItsFeeRate()
+    public async Task PendingTransactionShowsZeroConfirmationsAndFeeWithoutInventingAHistoricalBitcoinPrice()
     {
         var transaction = Transaction() with { FeeSats = 502, Weight = 1_001, SizeBytes = 900 };
 
@@ -29,8 +29,9 @@ public sealed class TransactionTrackerRenderingTests
         var summaries = RequiredNodes(document.DocumentNode, "//section[contains(@class, 'summary-card')]");
         Assert.Contains("0 confirmations", Text(summaries[0]));
         Assert.Contains("502 sats", Text(summaries[1]));
-        Assert.Contains("2.00 sat/vB", Text(summaries[2]));
-        Assert.Contains("251 virtual bytes", Text(summaries[2]));
+        Assert.Contains("confirmation", Text(summaries[2]));
+        Assert.DoesNotContain("$100,000.00", Text(summaries[2]));
+        Assert.DoesNotContain("sat/vB", Text(document.DocumentNode));
         Assert.Contains("Waiting for a block", Text(document.DocumentNode));
         Assert.DoesNotContain("Block height", Text(document.DocumentNode));
     }
@@ -105,7 +106,10 @@ public sealed class TransactionTrackerRenderingTests
         Assert.Contains("0 sats", Text(lists[1]));
         Assert.Contains("0.00000000 BTC", Text(lists[1]));
         Assert.Contains("$0.00", Text(lists[1]));
-        Assert.Contains("0.00 sat/vB", Text(document.DocumentNode));
+        var summaries = RequiredNodes(document.DocumentNode, "//section[contains(@class, 'summary-card')]");
+        Assert.Contains("0 sats", Text(summaries[1]));
+        Assert.Contains("$0.00", Text(summaries[1]));
+        Assert.DoesNotContain("sat/vB", Text(document.DocumentNode));
     }
 
     [Fact]
@@ -221,6 +225,205 @@ public sealed class TransactionTrackerRenderingTests
         Assert.DoesNotContain("$0.00", Text(unknownOutput));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DetailFeePreservesTheProviderAmountAndUsesCurrentPriceWithUnknownInputValues(bool confirmed)
+    {
+        var transaction = (confirmed ? ConfirmedTransaction() : Transaction()) with
+        {
+            FeeSats = 123_456, Inputs = [new() { Address = "missing-prevout" }],
+        };
+        var date = new DateOnly(2026, 10, 2);
+
+        var document = await RenderAsync(TransactionResult(transaction), price: 100_000m,
+            historicalPrices: new Dictionary<DateOnly, BitcoinHistoricalPriceResult>
+            {
+                [date] = HistoricalPrice(date, "USD", 80_000m),
+            });
+
+        var feeCard = RequiredNode(document.DocumentNode, "//div[contains(@class, 'summary-grid')][1]/section[2]");
+        Assert.Contains("123,456 sats", Text(feeCard));
+        Assert.Contains("$123.46", Text(feeCard));
+        Assert.DoesNotContain("$98.76", Text(feeCard));
+    }
+
+    [Theory]
+    [InlineData("en-US", "USD", "Transaction fee", "123,456 sats", "$123.46", "$98.76")]
+    [InlineData("pt-BR", "BRL", "Taxa da transação", "123.456 sats", "617,28", "308,64")]
+    public async Task DetailFeeUsesSelectedCurrencyAndActualLocalizedLabels(string culture, string currencyCode,
+        string heading, string sats, string expectedFiat, string historicalFiat)
+    {
+        var currency = CurrencyModel.CurrencyListStatic.Single(value => value.Value == currencyCode);
+        var date = new DateOnly(2026, 10, 2);
+        var price = currencyCode == "USD" ? 100_000m : 500_000m;
+        var historicalPrice = currencyCode == "USD" ? 80_000m : 250_000m;
+
+        var document = await RenderAsync(TransactionResult(ConfirmedTransaction() with { FeeSats = 123_456 }),
+            price: price, currency: currency, culture: culture, localizedLabels: true,
+            historicalPrices: new Dictionary<DateOnly, BitcoinHistoricalPriceResult>
+            {
+                [date] = HistoricalPrice(date, currencyCode, historicalPrice),
+            });
+
+        var feeCard = RequiredNode(document.DocumentNode, "//div[contains(@class, 'summary-grid')][1]/section[2]");
+        Assert.Equal(heading, Text(RequiredNode(feeCard, "./h3")));
+        Assert.Contains(sats, Text(feeCard));
+        Assert.Contains(expectedFiat, Text(feeCard));
+        Assert.DoesNotContain(historicalFiat, Text(feeCard));
+        var historicalCard = RequiredNode(document.DocumentNode, "//section[contains(@class, 'historical-quote')]");
+        Assert.Equal(culture == "pt-BR" ? "Preço do Bitcoin na data da transação" : "Bitcoin price on transaction date",
+            Text(RequiredNode(historicalCard, "./h3")));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DetailFeeKeepsSatsKnownWhenCurrentFxIsMissingOrNonpositive(bool zeroRate)
+    {
+        var document = await RenderAsync(TransactionResult(Transaction() with { FeeSats = 25_000 }),
+            price: zeroRate ? 0m : null);
+
+        var feeCard = RequiredNode(document.DocumentNode, "//div[contains(@class, 'summary-grid')][1]/section[2]");
+        Assert.Contains("25,000 sats", Text(feeCard));
+        Assert.Contains("—", Text(RequiredNode(feeCard, "./p[contains(@class, 'secondary-value')]")));
+        Assert.DoesNotContain("$0.00", Text(feeCard));
+    }
+
+    [Fact]
+    public async Task CoinbaseZeroFeeRemainsKnownZeroWithoutCurrentFx()
+    {
+        var transaction = ConfirmedTransaction() with
+        {
+            FeeSats = 0, Inputs = [new() { IsCoinbase = true }], Outputs = [new() { ValueSats = 3_125_000_000 }],
+        };
+
+        var document = await RenderAsync(TransactionResult(transaction));
+
+        var feeCard = RequiredNode(document.DocumentNode, "//div[contains(@class, 'summary-grid')][1]/section[2]");
+        Assert.Contains("0 sats", Text(feeCard));
+        Assert.Contains("$0.00", Text(feeCard));
+    }
+
+    [Fact]
+    public async Task TopTransactionPriceUsesItsConfirmedUtcDailyQuoteAndDoesNotDuplicateTheLowerTotals()
+    {
+        var date = new DateOnly(2026, 10, 2);
+
+        var document = await RenderAsync(TransactionResult(ConfirmedTransaction()), price: 100_000m,
+            historicalPrices: new Dictionary<DateOnly, BitcoinHistoricalPriceResult>
+            {
+                [date] = HistoricalPrice(date, "USD", 80_000m),
+            });
+
+        var topPrice = RequiredNode(document.DocumentNode, "//div[contains(@class, 'summary-grid')][1]/section[3]");
+        Assert.Contains("historical-quote", topPrice.GetAttributeValue("class", ""));
+        Assert.Contains("$80,000.00", Text(topPrice));
+        Assert.Contains("1 BTC", Text(topPrice));
+        Assert.Contains("2026-10-02", Text(topPrice));
+        Assert.DoesNotContain("$100,000.00", Text(topPrice));
+        Assert.DoesNotContain("sat/vB", Text(document.DocumentNode));
+        Assert.Single(RequiredNodes(document.DocumentNode, "//section[contains(@class, 'historical-quote')]"));
+        Assert.Equal(2, RequiredNodes(document.DocumentNode, "//div[contains(@class, 'transaction-totals')]/section").Count);
+    }
+
+    [Theory]
+    [InlineData(BitcoinHistoricalPriceStatus.NoData)]
+    [InlineData(BitcoinHistoricalPriceStatus.DayNotComplete)]
+    public async Task UnavailableTransactionDatePricesDoNotReuseTodaysBitcoinPrice(BitcoinHistoricalPriceStatus status)
+    {
+        var date = new DateOnly(2026, 10, 2);
+
+        var document = await RenderAsync(TransactionResult(ConfirmedTransaction()), price: 100_000m,
+            historicalPrices: new Dictionary<DateOnly, BitcoinHistoricalPriceResult>
+            {
+                [date] = HistoricalPrice(date, "USD", 80_000m) with { Status = status, PricePerBitcoin = null },
+            });
+
+        var topPrice = RequiredNode(document.DocumentNode, "//div[contains(@class, 'summary-grid')][1]/section[3]");
+        Assert.NotEmpty(Text(topPrice));
+        Assert.DoesNotContain("$100,000.00", Text(topPrice));
+        Assert.DoesNotContain("$0.00", Text(topPrice));
+    }
+
+    [Fact]
+    public async Task HistoryFeesUseCurrentFxAcrossPendingConfirmedAndCoinbaseTransactionsWithoutChangingWalletNet()
+    {
+        var result = WalletResult() with
+        {
+            Wallet = new() { AddressCount = 2, ConfirmedReceivedSats = 40_000, ConfirmedBalanceSats = 40_000,
+                PendingSpentSats = 25_000, PendingBalanceChangeSats = -25_000 },
+            Transactions =
+            [
+                Transaction('a') with { FeeSats = 123_456, TrackedReceivedSats = 0, TrackedSpentSats = 25_000, TrackedNetSats = -25_000 },
+                ConfirmedTransaction() with { TxId = new string('b', 64), FeeSats = 50_000,
+                    TrackedReceivedSats = 10_000, TrackedSpentSats = 0, TrackedNetSats = 10_000 },
+                ConfirmedTransaction() with { TxId = new string('c', 64), FeeSats = 0,
+                    Inputs = [new() { IsCoinbase = true }], TrackedReceivedSats = 0, TrackedSpentSats = 0, TrackedNetSats = 0 },
+            ],
+        };
+        var date = new DateOnly(2026, 10, 2);
+
+        var document = await RenderAsync(result, price: 100_000m,
+            historicalPrices: new Dictionary<DateOnly, BitcoinHistoricalPriceResult>
+            {
+                [date] = HistoricalPrice(date, "USD", 80_000m),
+            });
+
+        var rows = RequiredNodes(document.DocumentNode, "//table/tbody/tr");
+        Assert.Equal(3, rows.Count);
+        var pendingFee = RequiredNode(rows[0], "./td[contains(@class, 'fee-value')]");
+        var confirmedFee = RequiredNode(rows[1], "./td[contains(@class, 'fee-value')]");
+        var coinbaseFee = RequiredNode(rows[2], "./td[contains(@class, 'fee-value')]");
+        Assert.Contains("123,456 sats", Text(pendingFee));
+        Assert.Contains("$123.46", Text(pendingFee));
+        Assert.Contains("50,000 sats", Text(confirmedFee));
+        Assert.Contains("$50.00", Text(confirmedFee));
+        Assert.DoesNotContain("$40.00", Text(confirmedFee));
+        Assert.Contains("0 sats", Text(coinbaseFee));
+        Assert.Contains("$0.00", Text(coinbaseFee));
+        Assert.Equal("-25,000 sats", Text(rows[0].SelectSingleNode("./td[5]//strong")));
+        Assert.Equal("+10,000 sats", Text(rows[1].SelectSingleNode("./td[5]//strong")));
+        Assert.Equal("0 sats", Text(rows[2].SelectSingleNode("./td[5]//strong")));
+        var feeNote = Text(RequiredNode(document.DocumentNode, "//p[contains(@class, 'fee-note')]"));
+        Assert.Contains("whole transaction", feeNote);
+        Assert.Contains("another participant", feeNote);
+    }
+
+    [Theory]
+    [InlineData("en-US", "USD", "Transaction fee", "123,456 sats", "$123.46")]
+    [InlineData("pt-BR", "BRL", "Taxa da transação", "123.456 sats", "617,28")]
+    public async Task HistoryFeeHeadersAndAmountsUseTheSelectedLanguageAndCurrency(string culture, string currencyCode,
+        string heading, string sats, string fiat)
+    {
+        var currency = CurrencyModel.CurrencyListStatic.Single(value => value.Value == currencyCode);
+        var result = WalletResult() with { Transactions = [Transaction() with { FeeSats = 123_456 }] };
+
+        var document = await RenderAsync(result, price: currencyCode == "USD" ? 100_000m : 500_000m,
+            currency: currency, culture: culture, localizedLabels: true);
+
+        var feeCell = RequiredNode(document.DocumentNode, "//table/tbody/tr/td[contains(@class, 'fee-value')]");
+        Assert.Equal(heading, Text(RequiredNode(document.DocumentNode, "//table/thead/tr/th[6]")));
+        Assert.Equal(heading, HtmlEntity.DeEntitize(feeCell.GetAttributeValue("data-label", "")));
+        Assert.Contains(sats, Text(feeCell));
+        Assert.Contains(fiat, Text(feeCell));
+    }
+
+    [Fact]
+    public async Task HistoryFeeKeepsNonzeroFxUnavailableButZeroFeeKnownWhenRatesAreMissing()
+    {
+        var result = WalletResult() with { Transactions = [Transaction() with { FeeSats = 25_000 }, Transaction('b') with { FeeSats = 0 }] };
+
+        var document = await RenderAsync(result);
+
+        var fees = RequiredNodes(document.DocumentNode, "//table/tbody/tr/td[contains(@class, 'fee-value')]");
+        Assert.Contains("25,000 sats", Text(fees[0]));
+        Assert.Equal("—", Text(RequiredNode(fees[0], "./small")));
+        Assert.DoesNotContain("$0.00", Text(fees[0]));
+        Assert.Contains("0 sats", Text(fees[1]));
+        Assert.Contains("$0.00", Text(fees[1]));
+    }
+
     [Fact]
     public async Task WalletTotalsUseCompleteSummaryRatherThanOnlyTheVisibleHistory()
     {
@@ -301,9 +504,9 @@ public sealed class TransactionTrackerRenderingTests
         Assert.Contains("R$", Text(row.SelectSingleNode("./td[3]")));
         Assert.Contains("250,00", Text(row.SelectSingleNode("./td[3]")));
         Assert.DoesNotContain("500,00", Text(row.SelectSingleNode("./td[3]")));
-        Assert.Contains("250.000,00", Text(row.SelectSingleNode("./td[6]")));
-        Assert.Contains("2026-10-02", Text(row.SelectSingleNode("./td[6]")));
-        Assert.Contains("2026-10-01", Text(row.SelectSingleNode("./td[6]")));
+        Assert.Contains("250.000,00", Text(row.SelectSingleNode("./td[7]")));
+        Assert.Contains("2026-10-02", Text(row.SelectSingleNode("./td[7]")));
+        Assert.Contains("2026-10-01", Text(row.SelectSingleNode("./td[7]")));
     }
 
     [Fact]
@@ -319,7 +522,7 @@ public sealed class TransactionTrackerRenderingTests
         var document = await RenderAsync(WalletResult() with { Transactions = [transaction] }, price: 100_000m,
             historicalPrices: new Dictionary<DateOnly, BitcoinHistoricalPriceResult> { [utcDate] = HistoricalPrice(utcDate, "USD", 80_000m) });
 
-        var priceCell = RequiredNode(document.DocumentNode, "//table/tbody/tr/td[6]");
+        var priceCell = RequiredNode(document.DocumentNode, "//table/tbody/tr/td[7]");
         Assert.Contains("$80,000.00", Text(priceCell));
         Assert.Contains("2026-10-03", Text(priceCell));
         Assert.DoesNotContain("$100,000.00", Text(priceCell));
@@ -348,9 +551,9 @@ public sealed class TransactionTrackerRenderingTests
         var row = RequiredNode(document.DocumentNode, "//table/tbody/tr");
         Assert.DoesNotContain("$100.00", Text(row.SelectSingleNode("./td[3]")));
         Assert.DoesNotContain("$0.00", Text(row.SelectSingleNode("./td[3]")));
-        Assert.DoesNotContain("$100,000.00", Text(row.SelectSingleNode("./td[6]")));
-        Assert.DoesNotContain("$80,000.00", Text(row.SelectSingleNode("./td[6]")));
-        Assert.DoesNotContain("$0.00", Text(row.SelectSingleNode("./td[6]")));
+        Assert.DoesNotContain("$100,000.00", Text(row.SelectSingleNode("./td[7]")));
+        Assert.DoesNotContain("$80,000.00", Text(row.SelectSingleNode("./td[7]")));
+        Assert.DoesNotContain("$0.00", Text(row.SelectSingleNode("./td[7]")));
     }
 
     [Fact]
@@ -369,7 +572,7 @@ public sealed class TransactionTrackerRenderingTests
                 [date] = HistoricalPrice(date, "USD", 80_000m),
             });
 
-        var priceCell = RequiredNode(document.DocumentNode, "//table/tbody/tr/td[6]");
+        var priceCell = RequiredNode(document.DocumentNode, "//table/tbody/tr/td[7]");
         Assert.DoesNotContain("80.000,00", Text(priceCell));
         Assert.DoesNotContain("500.000,00", Text(priceCell));
     }
@@ -387,7 +590,7 @@ public sealed class TransactionTrackerRenderingTests
         var document = await RenderAsync(WalletResult() with { Transactions = [pending] }, price: 100_000m,
             historicalPrices: new Dictionary<DateOnly, BitcoinHistoricalPriceResult> { [date] = HistoricalPrice(date, "USD", 80_000m) });
 
-        var priceCell = RequiredNode(document.DocumentNode, "//table/tbody/tr/td[6]");
+        var priceCell = RequiredNode(document.DocumentNode, "//table/tbody/tr/td[7]");
         Assert.DoesNotContain("$80,000.00", Text(priceCell));
         Assert.DoesNotContain("$100,000.00", Text(priceCell));
     }
@@ -450,7 +653,7 @@ public sealed class TransactionTrackerRenderingTests
         Assert.Contains("$80.40", Text(RequiredNode(lists[0], ".//*[contains(@class, 'historical-value')]")));
         Assert.Contains("$100.00", Text(lists[1]));
         Assert.Contains("$80.00", Text(RequiredNode(lists[1], ".//*[contains(@class, 'historical-value')]")));
-        var quoteCard = RequiredNode(document.DocumentNode, "//div[contains(@class, 'transaction-totals')]/section[3]");
+        var quoteCard = RequiredNode(document.DocumentNode, "//section[contains(@class, 'historical-quote')]");
         Assert.Contains("$80,000.00", Text(quoteCard));
         Assert.Contains("2026-10-02", Text(quoteCard));
     }
@@ -677,7 +880,8 @@ public sealed class TransactionTrackerRenderingTests
 
     private static async Task<HtmlDocument> RenderAsync(BitcoinTrackingResult result, decimal? price = null,
         bool loadingMore = false, Currency? currency = null, string culture = "en-US",
-        IReadOnlyDictionary<DateOnly, BitcoinHistoricalPriceResult>? historicalPrices = null, bool loadingPrices = false)
+        IReadOnlyDictionary<DateOnly, BitcoinHistoricalPriceResult>? historicalPrices = null, bool loadingPrices = false,
+        bool localizedLabels = false)
     {
         var previousCulture = CultureInfo.CurrentCulture;
         var previousUiCulture = CultureInfo.CurrentUICulture;
@@ -687,7 +891,10 @@ public sealed class TransactionTrackerRenderingTests
         {
             var services = new ServiceCollection();
             services.AddLogging();
-            services.AddSingleton<IStringLocalizer<Localization>>(new TestLocalizer());
+            if (localizedLabels)
+                services.AddLocalization();
+            else
+                services.AddSingleton<IStringLocalizer<Localization>>(new TestLocalizer());
             await using var provider = services.BuildServiceProvider();
             await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
             var html = await renderer.Dispatcher.InvokeAsync(async () =>

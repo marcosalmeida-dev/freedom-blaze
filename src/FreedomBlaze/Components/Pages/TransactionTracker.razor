@@ -53,6 +53,10 @@
                 <span>@Localizer["Tracker.AutoRefresh"]</span>
             </label>
         </div>
+        <BitcoinNetworkFees Recommendations="_feeRecommendations" SelectedCurrency="_selectedCurrency" FiatPricePerBitcoin="FiatPricePerBitcoin"
+                            LoadingFees="@(_loadingFees || _feeRecommendations is null && !_feesUnavailable)"
+                            RefreshDisabled="@(_loading || _loadingMore)"
+                            FeesUnavailable="_feesUnavailable" FeesStale="FeesStale" FiatRatesStale="@AppState.HasRateError" OnRefresh="RefreshFeesAsync" />
         <details class="search-info">
             <summary>@Localizer["Tracker.SearchInfo"]</summary>
             <p class="hint">@Localizer["Tracker.SearchHint"]</p>

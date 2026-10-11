@@ -22,7 +22,9 @@ public partial class TransactionTracker : IAsyncDisposable
     private CancellationTokenSource? _operation;
     private CancellationTokenSource? _priceOperation;
     private Task? _refreshLoop;
+    private Task<BitcoinFeeRecommendations>? _feeRequest;
     private BitcoinTrackingResult? _result;
+    private BitcoinFeeRecommendations? _feeRecommendations;
     private IReadOnlyDictionary<DateOnly, BitcoinHistoricalPriceResult> _historicalPrices = new Dictionary<DateOnly, BitcoinHistoricalPriceResult>();
     private IReadOnlyList<string> _transactionContext = [];
     private Currency _selectedCurrency = CurrencyModel.CurrencyListStatic[0];
@@ -31,12 +33,16 @@ public partial class TransactionTracker : IAsyncDisposable
     private bool _loading;
     private bool _loadingMore;
     private bool _loadingPrices;
+    private bool _loadingFees;
+    private bool _feesUnavailable;
     private bool _autoRefresh = true;
     private bool _walletInput;
     private bool _browsingHistory;
     private bool _disposed;
     private int _operationVersion;
     private int _priceVersion;
+    private bool FeesStale => _feeRecommendations is { } fees
+        && (_feesUnavailable || DateTimeOffset.UtcNow - fees.UpdatedAt > TimeSpan.FromSeconds(60));
 
     private decimal? FiatPricePerBitcoin
     {
@@ -63,6 +69,11 @@ public partial class TransactionTracker : IAsyncDisposable
         if (!firstRender)
             return;
         _refreshLoop = RefreshLoopAsync();
+        await Task.WhenAll(RefreshFeesAsync(), EnsureInitialRatesAsync());
+    }
+
+    private async Task EnsureInitialRatesAsync()
+    {
         try
         {
             await AppState.EnsureRatesAsync(_lifetime.Token);
@@ -70,6 +81,48 @@ public partial class TransactionTracker : IAsyncDisposable
                 StateHasChanged();
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+    }
+
+    private async Task RefreshFeesAsync()
+    {
+        if (_disposed || _loadingFees || _loading || _loadingMore)
+            return;
+        _loadingFees = true;
+        StateHasChanged();
+        try
+        {
+            _feeRequest = TrackingService.GetFeeRecommendationsAsync(_lifetime.Token);
+            var recommendations = await _feeRequest;
+            if (!_disposed)
+            {
+                _feeRecommendations = recommendations;
+                _feesUnavailable = false;
+            }
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            Logger.LogWarning("Bitcoin network fee lookup failed ({ExceptionType}).", ex.GetType().Name);
+            if (!_disposed)
+                _feesUnavailable = true;
+        }
+        finally
+        {
+            _loadingFees = false;
+            if (!_disposed)
+                StateHasChanged();
+        }
+    }
+
+    private async Task WaitForFeeRequestAsync(CancellationToken cancellationToken)
+    {
+        if (_feeRequest is not { IsCompleted: false } request)
+            return;
+        // Wallet snapshots use the provider's available request slots. Let an in-flight network
+        // fee request finish before starting tracking work, without making a fee failure fatal.
+        try { await request.WaitAsync(cancellationToken); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception) { /* RefreshFeesAsync reports the fee error independently. */ }
     }
 
     private async Task OnRatesChangedAsync()
@@ -150,6 +203,7 @@ public partial class TransactionTracker : IAsyncDisposable
 
         try
         {
+            await WaitForFeeRequestAsync(token);
             var identifiers = query.Split([' ', '\t', '\r', '\n', ',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var result = identifiers.Length > 1
                 ? await TrackingService.LookupWalletAsync(identifiers, token)
@@ -200,6 +254,7 @@ public partial class TransactionTracker : IAsyncDisposable
         var current = _result;
         try
         {
+            await WaitForFeeRequestAsync(_lifetime.Token);
             var page = current.Kind == BitcoinTrackingKind.Wallet
                 ? await TrackingService.GetWalletTransactionsAsync(current.TrackedAddresses, current.NextCursor, _lifetime.Token)
                 : await TrackingService.GetAddressTransactionsAsync(current.Query, current.NextCursor, _lifetime.Token);
@@ -315,12 +370,14 @@ public partial class TransactionTracker : IAsyncDisposable
             {
                 await InvokeAsync(async () =>
                 {
+                    if (!_disposed && _autoRefresh && !_loading && !_loadingMore)
+                        await RefreshFeesAsync();
                     if (!_disposed && _autoRefresh && _result is not null && !_loading && !_loadingMore)
                     {
                         await RefreshAsync();
-                        if (!_disposed)
-                            StateHasChanged();
                     }
+                    if (!_disposed)
+                        StateHasChanged();
                 });
             }
         }

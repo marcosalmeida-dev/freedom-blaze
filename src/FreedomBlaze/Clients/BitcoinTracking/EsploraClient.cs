@@ -36,6 +36,33 @@ public sealed class EsploraClient : IDisposable
         _windowStarted = _time.GetUtcNow();
     }
 
+    // This is a mempool extension to Esplora. Alternate providers that do not expose it
+    // are unavailable for recommendations, rather than an unknown transaction/address.
+    public async Task<EsploraFeeRecommendations> GetFeeRecommendationsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // The portal uses precise recommendations. The legacy endpoint rounds rates to
+            // whole sat/vB on Bitcoin, which erases lower fractional priority estimates.
+            return await GetJsonAsync<EsploraFeeRecommendations>("v1/fees/precise", cancellationToken);
+        }
+        catch (BitcoinTrackingException exception) when (exception.Error == BitcoinTrackingError.NotFound)
+        {
+            try
+            {
+                // Older mempool providers may expose only the legacy recommendations. A 404
+                // is a capability check, not a reason to retry transport or rate-limit failures.
+                return await GetJsonAsync<EsploraFeeRecommendations>("v1/fees/recommended", cancellationToken);
+            }
+            catch (BitcoinTrackingException legacyException) when (legacyException.Error == BitcoinTrackingError.NotFound)
+            {
+                // Missing fee extensions do not mean ordinary Esplora endpoints are unhealthy.
+                // Keep this feature unavailable without a global cooldown.
+                throw new BitcoinTrackingException(BitcoinTrackingError.Unavailable);
+            }
+        }
+    }
+
     public Task<EsploraTransaction> GetTransactionAsync(string txId, CancellationToken cancellationToken) =>
         GetJsonAsync<EsploraTransaction>($"tx/{Uri.EscapeDataString(txId)}", cancellationToken);
 
