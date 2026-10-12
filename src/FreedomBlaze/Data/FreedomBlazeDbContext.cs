@@ -18,6 +18,8 @@ public class FreedomBlazeDbContext : DbContext
 
     public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
 
+    public DbSet<NewsGenerationAttempt> NewsGenerationAttempts => Set<NewsGenerationAttempt>();
+
     public DbSet<Donation> Donations => Set<Donation>();
 
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();

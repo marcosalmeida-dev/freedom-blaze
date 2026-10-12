@@ -65,7 +65,7 @@ public sealed class BitcoinNewsBackgroundServiceTests
         Assert.Equal(1, scopes.Created);
         Assert.Equal(1, scopes.Disposed);
         Assert.Equal(TimeSpan.FromHours(1), timer.DueTime);
-        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Error && entry.Message.Contains("startup refresh"));
+        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Error && entry.Message.Contains("startup load"));
         await worker.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
     }
 
@@ -100,11 +100,20 @@ public sealed class BitcoinNewsBackgroundServiceTests
     }
 
     [Fact]
-    public async Task StartupAndDailyRefreshForceGenerationEvenWhenNewsIsAlreadyStored()
+    public async Task StartupReusesSavedNewsAndOnlyTheDailyRunRequestsARefresh()
     {
         var clock = new ManualClock(Instant("2026-10-07T10:00:00Z"));
         var store = new TestStore();
-        using var provider = Services(clock, store);
+        var calls = 0;
+        using var http = new HttpClient(new ControlledHandler(_ =>
+        {
+            Interlocked.Increment(ref calls);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+            {
+                Content = new StringContent("""{"error":{"code":"credit_balance_exhausted","type":"insufficient_quota","message":"test-only quota error"}}""")
+            });
+        }));
+        using var provider = Services(clock, store, Sdk(http));
         using var lifetime = new TestLifetime();
         lifetime.SignalStarted();
         var logger = new RecordingLogger();
@@ -113,17 +122,20 @@ public sealed class BitcoinNewsBackgroundServiceTests
 
         await worker.StartAsync(CancellationToken.None);
         var timer = await clock.NextTimerAsync();
-        Assert.Empty(store.ReadDates);
-        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning && entry.Message.Contains("startup refresh"));
+        Assert.Single(store.ReadDates);
+        Assert.Equal(0, calls);
+        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Information && entry.Message.Contains("startup load"));
+        Assert.DoesNotContain(logger.Entries, entry => entry.Level == LogLevel.Warning);
 
         clock.SetUtcNow(Instant("2026-10-07T11:00:00Z"));
         timer.Fire();
         await clock.NextTimerAsync();
 
-        // The store already contains news, but the test client has no configured provider. Both
-        // refreshes must attempt generation and report unavailable instead of returning saved news.
+        // Startup serves the saved edition without OpenAI. Its metadata is absent in this stub,
+        // so the scheduled refresh makes exactly one attempt through the fake HTTP transport.
+        Assert.Equal(1, calls);
         Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning && entry.Message.Contains("daily refresh"));
-        Assert.Equal(2, logger.Entries.Count(entry => entry.Level == LogLevel.Warning));
+        Assert.Single(logger.Entries, entry => entry.Level == LogLevel.Warning);
         await worker.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
     }
 
@@ -132,7 +144,7 @@ public sealed class BitcoinNewsBackgroundServiceTests
     {
         var clock = new ManualClock(Instant("2026-10-07T10:00:00Z"));
         var queue = new BitcoinNewsRetryQueue(clock);
-        using var provider = Services(clock, new TestStore(), retryQueue: queue);
+        using var provider = Services(clock, new TestStore(hasSavedEdition: false), retryQueue: queue);
         using var lifetime = new TestLifetime();
         lifetime.SignalStarted();
         var logger = new RecordingLogger();
@@ -145,9 +157,9 @@ public sealed class BitcoinNewsBackgroundServiceTests
         // Its cancellation must not be mistaken for the replacement timer after the retry.
         var initialTimer = await clock.NextTimerAsync();
         Assert.Equal(TimeSpan.FromHours(1), initialTimer.DueTime);
-        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning && entry.Message.Contains("startup refresh"));
+        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning && entry.Message.Contains("startup load"));
 
-        clock.SetUtcNow(Instant("2026-10-07T10:02:00Z"));
+        clock.SetUtcNow(Instant("2026-10-07T10:11:00Z"));
         var operation = queue.Start();
         Assert.False(operation.IsCompleted);
         var nextTimer = await clock.NextTimerAsync();
@@ -156,7 +168,7 @@ public sealed class BitcoinNewsBackgroundServiceTests
         Assert.True(completed.IsCompleted);
         Assert.Equal(NewsStatus.Unavailable, completed.Result!.Status);
         Assert.False(queue.HasPending);
-        Assert.Equal(TimeSpan.FromMinutes(58), nextTimer.DueTime);
+        Assert.Equal(TimeSpan.FromMinutes(49), nextTimer.DueTime);
         Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning && entry.Message.Contains("reader retry"));
         Assert.Equal(2, logger.Entries.Count(entry => entry.Level == LogLevel.Warning));
         Assert.DoesNotContain(logger.Entries, entry => entry.Message.Contains("daily refresh"));
@@ -171,14 +183,84 @@ public sealed class BitcoinNewsBackgroundServiceTests
         await worker.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StartupAfterEightReusesFreshNewsAndCatchesUpOnlyAnOlderEdition(bool alreadyRefreshed)
+    {
+        var clock = new ManualClock(Instant("2026-10-07T12:00:00Z"));
+        var store = new TestStore(updatedAtUtc: Instant(alreadyRefreshed
+            ? "2026-10-07T11:00:00Z" : "2026-10-07T10:00:00Z"));
+        var calls = 0;
+        using var http = new HttpClient(new ControlledHandler(_ =>
+        {
+            Interlocked.Increment(ref calls);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+            {
+                Content = new StringContent("""{"error":{"code":"credit_balance_exhausted","type":"insufficient_quota","message":"test-only quota error"}}""")
+            });
+        }));
+        using var provider = Services(clock, store, Sdk(http));
+        using var lifetime = new TestLifetime();
+        lifetime.SignalStarted();
+        var logger = new RecordingLogger();
+        using var worker = new BitcoinNewsBackgroundService(
+            provider.GetRequiredService<IServiceScopeFactory>(), clock, lifetime, logger);
+
+        await worker.StartAsync(CancellationToken.None);
+        var next = await clock.NextTimerAsync();
+
+        Assert.Equal(alreadyRefreshed ? 0 : 1, calls);
+        Assert.Equal(TimeSpan.FromHours(23), next.DueTime);
+        Assert.Contains(logger.Entries, entry => entry.Message.Contains("startup load") &&
+            entry.Level == (alreadyRefreshed ? LogLevel.Information : LogLevel.Warning));
+        await worker.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+    }
+
     [Fact]
-    public async Task StartupSearchCrossingEightAmAlsoServesThatScheduledRun()
+    public async Task ReaderRetryReusesAnEditionSavedBeforeItsWorkerWakes()
+    {
+        var clock = new ManualClock(Instant("2026-10-07T10:00:00Z"));
+        var queue = new BitcoinNewsRetryQueue(clock);
+        var calls = 0;
+        using var http = new HttpClient(new ControlledHandler(_ =>
+        {
+            Interlocked.Increment(ref calls);
+            throw new InvalidOperationException("A saved edition must never trigger OpenAI.");
+        }));
+        using var provider = Services(clock, new TestStore(), Sdk(http), queue);
+        using var lifetime = new TestLifetime();
+        lifetime.SignalStarted();
+        using var worker = new BitcoinNewsBackgroundService(
+            provider.GetRequiredService<IServiceScopeFactory>(), clock, lifetime,
+            new RecordingLogger(), queue);
+        await worker.StartAsync(CancellationToken.None);
+        await clock.NextTimerAsync();
+
+        clock.SetUtcNow(Instant("2026-10-07T10:02:00Z"));
+        var operation = queue.Start();
+        var next = await clock.NextTimerAsync();
+
+        Assert.False(operation.IsCompleted);
+        var completed = Assert.IsType<NewsRetryOperation>(queue.GetStatus(operation.Id));
+        Assert.True(completed.IsCompleted);
+        Assert.Equal(NewsStatus.Ok, completed.Result!.Status);
+        Assert.Equal(9, completed.Result.Articles.Count);
+        Assert.Equal(0, calls);
+        Assert.Equal(TimeSpan.FromMinutes(58), next.DueTime);
+        await worker.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+    }
+
+    [Fact]
+    public async Task StartupFailureCrossingEightAmDoesNotTriggerAnotherPaidCall()
     {
         var clock = new ManualClock(Instant("2026-10-07T10:59:00Z"));
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var finish = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
         using var http = new HttpClient(new ControlledHandler(async cancellationToken =>
         {
+            Interlocked.Increment(ref calls);
             started.TrySetResult();
             await finish.Task.WaitAsync(cancellationToken);
             return new HttpResponseMessage(HttpStatusCode.TooManyRequests)
@@ -186,7 +268,7 @@ public sealed class BitcoinNewsBackgroundServiceTests
                 Content = new StringContent("""{"error":{"code":"credit_balance_exhausted","type":"insufficient_quota","message":"test-only quota error"}}"""),
             };
         }));
-        using var provider = Services(clock, new TestStore(), Sdk(http));
+        using var provider = Services(clock, new TestStore(hasSavedEdition: false), Sdk(http));
         using var lifetime = new TestLifetime();
         lifetime.SignalStarted();
         var logger = new RecordingLogger();
@@ -200,8 +282,9 @@ public sealed class BitcoinNewsBackgroundServiceTests
         var timer = await clock.NextTimerAsync();
 
         Assert.Equal(TimeSpan.FromHours(24) - TimeSpan.FromMinutes(2), timer.DueTime);
-        Assert.Single(logger.Entries);
-        Assert.DoesNotContain(logger.Entries, entry => entry.Message.Contains("daily refresh"));
+        Assert.Equal(1, calls);
+        Assert.Equal(2, logger.Entries.Count(entry => entry.Level == LogLevel.Warning));
+        Assert.Contains(logger.Entries, entry => entry.Message.Contains("daily refresh"));
         await worker.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
     }
 
@@ -263,7 +346,7 @@ public sealed class BitcoinNewsBackgroundServiceTests
 
             throw new InvalidOperationException("The infinite wait should only complete through cancellation.");
         }));
-        using var provider = Services(clock, new TestStore(), Sdk(http));
+        using var provider = Services(clock, new TestStore(hasSavedEdition: false), Sdk(http));
         using var lifetime = new TestLifetime();
         lifetime.SignalStarted();
         using var worker = new BitcoinNewsBackgroundService(
@@ -308,18 +391,25 @@ public sealed class BitcoinNewsBackgroundServiceTests
             => respond(cancellationToken);
     }
 
-    private sealed class TestStore : INewsStore
+    private sealed class TestStore(bool hasSavedEdition = true, DateTimeOffset? updatedAtUtc = null) : INewsStore
     {
         public ConcurrentQueue<DateOnly> ReadDates { get; } = new();
         public Task<List<NewsArticleModel>?> LoadAsync(DateOnly date, CancellationToken cancellationToken = default)
         {
             ReadDates.Enqueue(date);
-            return Task.FromResult<List<NewsArticleModel>?>(
-                [new NewsArticleModel { Title = "Saved news", Date = date.ToDateTime(TimeOnly.MinValue) }]);
+            return Task.FromResult<List<NewsArticleModel>?>(hasSavedEdition
+                ? Enumerable.Range(1, 9).Select(index => new NewsArticleModel
+                {
+                    Title = $"Saved news {index}", Date = date.ToDateTime(TimeOnly.MinValue)
+                }).ToList()
+                : null);
         }
 
         public Task SaveAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, string? model = null,
             CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<DateTimeOffset?> GetUpdatedAtUtcAsync(DateOnly date, CancellationToken cancellationToken = default) =>
+            Task.FromResult(updatedAtUtc);
 
         public Task<IReadOnlyList<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<DateOnly>>([]);

@@ -95,6 +95,55 @@ public partial class BitcoinNews : IDisposable
         return Task.CompletedTask;
     }
 
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        // AfterRender is interactive-only: prerender and crawlers never start polling.
+        if (firstRender) _ = ObserveTodayAsync(_lifetimeCts.Token);
+        return Task.CompletedTask;
+    }
+
+    private async Task ObserveTodayAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                if (_disposed || _loading || !IsToday) continue;
+                var date = SelectedDate;
+                // This is always a read. It must not invoke Retry or cancel an explicit search.
+                var result = await NewsApi.GetNewsAsync(date, cancellationToken: cancellationToken);
+                if (!result.HasArticles && result.Status != NewsStatus.Unavailable) continue;
+                await InvokeAsync(() =>
+                {
+                    if (_disposed || _loading || date != SelectedDate) return;
+                    if (!result.HasArticles)
+                    {
+                        if (_articles.Count == 0 && _errorMessage != result.Message)
+                        {
+                            _errorMessage = result.Message ?? LoadFailedMessage;
+                            StateHasChanged();
+                        }
+                        return;
+                    }
+                    var changed = !_articles.Select(article => (article.ArticleLinkUrl, article.Title, article.Text))
+                        .SequenceEqual(result.Articles.Select(article => (article.ArticleLinkUrl, article.Title, article.Text)));
+                    if (!changed && _errorMessage is null) return;
+                    _articles = result.Articles;
+                    _errorMessage = null;
+                    _loadedDays[date] = result.Articles;
+                    _availableDates.Add(date);
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception)
+        {
+            // A disposed renderer or failed optional read must not interrupt navigation or Retry.
+        }
+    }
+
     private Task OnDateChangedAsync(DateTime? date) =>
         GoToAsync(date is null ? null : DateOnly.FromDateTime(date.Value));
 

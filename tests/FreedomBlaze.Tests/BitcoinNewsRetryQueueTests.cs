@@ -1,5 +1,6 @@
 using FreedomBlaze.Client.Models;
 using FreedomBlaze.Services;
+using FreedomBlaze.Options;
 
 namespace FreedomBlaze.Tests;
 
@@ -98,7 +99,7 @@ public sealed class BitcoinNewsRetryQueueTests
     }
 
     [Fact]
-    public async Task RetryBecomesEligibleWhenOneMinuteHasElapsed()
+    public async Task FailedRetryBecomesEligibleOnlyWhenTheFailureCooldownHasElapsed()
     {
         var clock = new ManualClock();
         var queue = new BitcoinNewsRetryQueue(clock);
@@ -106,7 +107,7 @@ public sealed class BitcoinNewsRetryQueueTests
         await WaitForWorkerSignalAsync(queue);
         queue.Complete(NewsResult.Unavailable("Previous attempt failed."));
 
-        clock.Advance(TimeSpan.FromSeconds(59));
+        clock.Advance(TimeSpan.FromMinutes(9) + TimeSpan.FromSeconds(59));
         Assert.True(queue.Start().IsCompleted);
         Assert.False(queue.HasPending);
         clock.Advance(TimeSpan.FromSeconds(1));
@@ -165,7 +166,7 @@ public sealed class BitcoinNewsRetryQueueTests
             ids.Add(operation.Id);
             await WaitForWorkerSignalAsync(queue);
             queue.Complete(NewsResult.Unavailable($"Attempt {attempt} failed."));
-            clock.Advance(TimeSpan.FromMinutes(1));
+            clock.Advance(TimeSpan.FromMinutes(10));
         }
 
         Assert.Null(queue.GetStatus(ids[0]));
@@ -176,6 +177,34 @@ public sealed class BitcoinNewsRetryQueueTests
             Assert.True(status.IsCompleted);
             Assert.Equal($"Attempt {attempt} failed.", status.Result!.Message);
         }
+    }
+
+    [Fact]
+    public async Task FailureCooldownUsesTheConfiguredIntervalWhileSuccessUsesOneMinute()
+    {
+        var clock = new ManualClock();
+        var queue = new BitcoinNewsRetryQueue(clock, Microsoft.Extensions.Options.Options.Create(new OpenAiOptions
+        {
+            FailureCooldown = TimeSpan.FromMinutes(20)
+        }));
+        queue.Start();
+        await WaitForWorkerSignalAsync(queue);
+        queue.Complete(NewsResult.Unavailable("Previous attempt failed."));
+
+        clock.Advance(TimeSpan.FromMinutes(19));
+        Assert.True(queue.Start().IsCompleted);
+        await AssertNoWorkerSignalAsync(queue);
+        clock.Advance(TimeSpan.FromMinutes(1));
+        Assert.False(queue.Start().IsCompleted);
+        await WaitForWorkerSignalAsync(queue);
+        queue.Complete(NewsResult.Ok([new NewsArticleModel { Title = "Saved edition" }]));
+
+        clock.Advance(TimeSpan.FromSeconds(59));
+        Assert.True(queue.Start().IsCompleted);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.False(queue.Start().IsCompleted);
+        await WaitForWorkerSignalAsync(queue);
+        queue.Complete(NewsResult.NoNews);
     }
 
     private static async Task AssertNoWorkerSignalAsync(BitcoinNewsRetryQueue queue)

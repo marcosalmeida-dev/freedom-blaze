@@ -82,7 +82,16 @@ public class NewsStore(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to persist Bitcoin news to the database for {Date}.", date);
+            throw;
         }
+    }
+
+    public async Task<DateTimeOffset?> GetUpdatedAtUtcAsync(DateOnly date, CancellationToken cancellationToken = default)
+    {
+        await using var db = await contextFactory.CreateDbContextAsync(cancellationToken);
+        return await db.NewsDays.AsNoTracking()
+            .Where(day => day.Date == date && day.ArticleCount > 0)
+            .Select(day => (DateTimeOffset?)day.UpdatedAtUtc).SingleOrDefaultAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default)

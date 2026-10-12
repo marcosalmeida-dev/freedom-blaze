@@ -175,6 +175,10 @@ builder.Services.AddOptions<OpenAiOptions>()
         "OpenAI:NewsLookbackDays must be between 1 and 7 calendar days.")
     .Validate(options => options.MaxOutputTokenCount >= 2_000,
         "OpenAI:MaxOutputTokenCount must be at least 2000, including reasoning and article output.")
+    .Validate(options => options.MaxWebSearchToolCalls is >= 1 and <= 16,
+        "OpenAI:MaxWebSearchToolCalls must be between 1 and 16.")
+    .Validate(options => options.MaxDailyGenerationAttempts is >= 1 and <= 10,
+        "OpenAI:MaxDailyGenerationAttempts must be between 1 and 10.")
     .Validate(options => options.GenerationTimeout > TimeSpan.Zero, "OpenAI:GenerationTimeout must be positive.")
     .Validate(options => options.CacheDuration > TimeSpan.Zero, "OpenAI:CacheDuration must be positive.")
     .Validate(options => options.FailureCooldown > TimeSpan.Zero, "OpenAI:FailureCooldown must be positive.")
@@ -236,6 +240,7 @@ builder.Services.AddDbContextFactory<FreedomBlazeDbContext>(options =>
 builder.Services.AddSingleton(typeof(IRepository<>), typeof(EfRepository<>));
 
 builder.Services.AddSingleton<INewsStore, NewsStore>();
+builder.Services.AddSingleton<INewsGenerationStore, SqlNewsGenerationStore>();
 builder.Services.AddSingleton<IArticleThumbnailHelper, ArticleThumbnailHelper>();
 
 // Donations: persist every tip and announce success/failure on Telegram. Independent of phoenixd so

@@ -4,13 +4,17 @@ namespace FreedomBlaze.Interfaces;
 
 /// <summary>
 /// Persists the generated daily Bitcoin news set in the database so it survives application
-/// restarts. Implementations are best-effort: <see cref="LoadAsync"/> returns <c>null</c> when
-/// nothing is stored or on error, and <see cref="SaveAsync"/> never throws.
+/// restarts. Storage failures must propagate so callers can distinguish a saved edition
+/// from a result available only in memory, and retry persistence without paying for research again.
 /// </summary>
 public interface INewsStore
 {
     /// <summary>The stored news set for <paramref name="date"/>, or <c>null</c> if none exists.</summary>
     Task<List<NewsArticleModel>?> LoadAsync(DateOnly date, CancellationToken cancellationToken = default);
+
+    /// <summary>Last successful save time, used to coalesce the scheduled refresh across replicas.</summary>
+    Task<DateTimeOffset?> GetUpdatedAtUtcAsync(DateOnly date, CancellationToken cancellationToken = default)
+        => Task.FromResult<DateTimeOffset?>(null);
 
     /// <summary>
     /// Inserts or replaces the news set for <paramref name="date"/> — an existing day's articles are

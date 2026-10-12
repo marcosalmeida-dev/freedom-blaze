@@ -67,7 +67,7 @@ public sealed class OpenAiNewsRetryPolicyTests
     [InlineData(429, """{"error":{"code":429,"type":[]}}""")]
     [InlineData(503, """{"error":{"code":"server_is_overloaded"}}""")]
     [InlineData(500, """{"error":{"code":"insufficient_quota"}}""")]
-    public async Task TransientAndUnrecognizedErrorsKeepSdkRetries(int status, string body)
+    public async Task TransientAndUnrecognizedErrorsKeepExplicitlyConfiguredRetries(int status, string body)
     {
         using var fixture = new PipelineFixture(status, body);
         using var message = fixture.CreateMessage();
@@ -76,6 +76,18 @@ public sealed class OpenAiNewsRetryPolicyTests
 
         Assert.Equal(2, fixture.Handler.RequestCount);
         Assert.Equal(200, message.Response!.Status);
+    }
+
+    [Fact]
+    public async Task DefaultPolicyDoesNotRepeatAPossiblyBilledServerFailure()
+    {
+        using var fixture = new PipelineFixture(503, "{}", defaultPolicy: true);
+        using var message = fixture.CreateMessage();
+
+        await fixture.Pipeline.SendAsync(message);
+
+        Assert.Equal(1, fixture.Handler.RequestCount);
+        Assert.Equal(503, message.Response!.Status);
     }
 
     [Fact]
@@ -94,13 +106,13 @@ public sealed class OpenAiNewsRetryPolicyTests
     {
         private readonly HttpClient _httpClient;
 
-        public PipelineFixture(int status, string body)
+        public PipelineFixture(int status, string body, bool defaultPolicy = false)
         {
             Handler = new StubHandler(status, body);
             _httpClient = new HttpClient(Handler);
             Pipeline = ClientPipeline.Create(new ClientPipelineOptions
             {
-                RetryPolicy = new OpenAiNewsRetryPolicy(maxRetries: 1),
+                RetryPolicy = defaultPolicy ? new OpenAiNewsRetryPolicy() : new OpenAiNewsRetryPolicy(maxRetries: 1),
                 Transport = new HttpClientPipelineTransport(_httpClient),
             });
         }

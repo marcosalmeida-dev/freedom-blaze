@@ -39,6 +39,12 @@ public class OpenAiOptions
     /// <summary>Per-response budget including reasoning and JSON output. Defaults to 24,000 tokens.</summary>
     public int MaxOutputTokenCount { get; set; } = 24_000;
 
+    /// <summary>Maximum built-in web tool calls per response, including page opens. Defaults to 8.</summary>
+    public int MaxWebSearchToolCalls { get; set; } = 8;
+
+    /// <summary>Maximum automatic generation jobs per edition across replicas/restarts. Each job may search twice.</summary>
+    public int MaxDailyGenerationAttempts { get; set; } = 3;
+
     /// <summary>
     /// How long a generated news set is served from the in-memory cache before falling back to
     /// the persistent store. Defaults to 24 hours (news is keyed per day).

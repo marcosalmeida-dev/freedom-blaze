@@ -17,7 +17,7 @@ namespace FreedomBlaze.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.9")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -221,6 +221,32 @@ namespace FreedomBlaze.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("NewsDays", (string)null);
+                });
+
+            modelBuilder.Entity("FreedomBlaze.Data.Entities.NewsGenerationAttempt", b =>
+                {
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsRunning")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("LastAttemptUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("LastCompletedUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastFailure")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.HasKey("Date");
+
+                    b.ToTable("NewsGenerationAttempts", (string)null);
                 });
 
             modelBuilder.Entity("FreedomBlaze.Data.Entities.NewsArticle", b =>

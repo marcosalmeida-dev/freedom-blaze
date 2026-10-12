@@ -1,10 +1,12 @@
 using System.Threading.Channels;
 using FreedomBlaze.Client.Models;
+using FreedomBlaze.Options;
+using Microsoft.Extensions.Options;
 
 namespace FreedomBlaze.Services;
 
 /// <summary>Coalesces explicit reader retries for the background worker.</summary>
-public sealed class BitcoinNewsRetryQueue(TimeProvider timeProvider)
+public sealed class BitcoinNewsRetryQueue(TimeProvider timeProvider, IOptions<OpenAiOptions>? options = null)
 {
     private readonly object _sync = new();
     private readonly Channel<bool> _requests = Channel.CreateBounded<bool>(1);
@@ -14,7 +16,8 @@ public sealed class BitcoinNewsRetryQueue(TimeProvider timeProvider)
     private readonly Queue<Guid> _operationOrder = new();
     private DateTimeOffset? _lastCompleted;
     private NewsResult? _lastResult;
-    private static readonly TimeSpan RetryInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan SuccessRetryInterval = TimeSpan.FromMinutes(1);
+    private readonly TimeSpan _failureRetryInterval = options?.Value.FailureCooldown ?? new OpenAiOptions().FailureCooldown;
 
     public bool HasPending { get { lock (_sync) return _pending is not null; } }
 
@@ -34,15 +37,21 @@ public sealed class BitcoinNewsRetryQueue(TimeProvider timeProvider)
         lock (_sync)
         {
             if (_pending is not null) return _current!;
-            if (_lastCompleted is { } completed && timeProvider.GetUtcNow() - completed < RetryInterval)
+            var retryInterval = _lastResult?.Status == NewsStatus.Unavailable ? _failureRetryInterval : SuccessRetryInterval;
+            if (_lastCompleted is { } completed && timeProvider.GetUtcNow() - completed < retryInterval)
             {
                 var result = _lastResult!;
+                var remainingMinutes = Math.Max(1, (int)Math.Ceiling(
+                    (completed + retryInterval - timeProvider.GetUtcNow()).TotalMinutes));
+                var minuteLabel = remainingMinutes == 1 ? "minute" : "minutes";
                 return new(Guid.Empty, true, result.Status == NewsStatus.Unavailable
-                    ? NewsResult.Unavailable($"{result.Message} A refresh was just attempted; wait a minute before retrying.")
+                    ? NewsResult.Unavailable($"{result.Message} A refresh was recently attempted; please wait {remainingMinutes} {minuteLabel} before retrying.")
                     : result);
             }
             _pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            _current = new(Guid.NewGuid(), false, null);
+            // The timestamp lets other replicas recognize this queued request before its worker
+            // acquires the shared generation lease, without starting an additional paid search.
+            _current = new(Guid.CreateVersion7(timeProvider.GetUtcNow()), false, null);
             if (_operations.Count >= 16) _operations.Remove(_operationOrder.Dequeue());
             _operations[_current.Id] = _current;
             _operationOrder.Enqueue(_current.Id);

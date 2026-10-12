@@ -110,6 +110,13 @@ public sealed class BitcoinNewsTests
         Assert.Equal("gpt-6.1-sol", request.RootElement.GetProperty("model").GetString());
         Assert.Equal("medium", request.RootElement.GetProperty("reasoning").GetProperty("effort").GetString());
         Assert.Equal(24_000, request.RootElement.GetProperty("max_output_tokens").GetInt32());
+        Assert.Equal(8, request.RootElement.GetProperty("max_tool_calls").GetInt32());
+        Assert.Equal("medium", request.RootElement.GetProperty("tools")[0].GetProperty("search_context_size").GetString());
+        var metadata = request.RootElement.GetProperty("metadata");
+        Assert.Equal("freedomblaze_bitcoin_news", metadata.GetProperty("application").GetString());
+        Assert.Equal(date.ToString("yyyy-MM-dd"), metadata.GetProperty("edition_date").GetString());
+        Assert.Equal("1", metadata.GetProperty("news_attempt").GetString());
+        Assert.True(Guid.TryParse(metadata.GetProperty("news_job_id").GetString(), out _));
     }
 
     [Fact]
@@ -516,6 +523,11 @@ public sealed class BitcoinNewsTests
         Assert.Contains("Asia", repairText);
         Assert.Contains("Oceania", repairText);
         Assert.Contains("Bitcoin adoption expands", repairText);
+        using var initial = JsonDocument.Parse(fixture.Requests[0]);
+        Assert.Equal(initial.RootElement.GetProperty("metadata").GetProperty("news_job_id").GetString(),
+            repair.RootElement.GetProperty("metadata").GetProperty("news_job_id").GetString());
+        Assert.Equal("2", repair.RootElement.GetProperty("metadata").GetProperty("news_attempt").GetString());
+        Assert.Equal(8, repair.RootElement.GetProperty("max_tool_calls").GetInt32());
     }
 
     [Fact]
@@ -593,6 +605,231 @@ public sealed class BitcoinNewsTests
 
         Assert.Equal(9, articles.Count);
         Assert.Contains(logger.Lines, line => line.Contains("articles:null") && line.Contains("No verified Oceania story was found."));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DuplicateJobsWithSeparateCachesReuseTheEditionSavedByTheFirstJob(bool scheduled)
+    {
+        var date = new DateOnly(2029, scheduled ? 2 : 1, 10);
+        var clock = new MutableTimeProvider(date);
+        var guard = new StubGenerationStore();
+        var store = new StubStore();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var first = new NewsFixture(date, async (_, cancellationToken) =>
+        {
+            started.TrySetResult();
+            await release.Task.WaitAsync(cancellationToken);
+            return JsonResponse(SuccessResponse(date));
+        }, store: store, timeProvider: clock, generationStore: guard);
+        using var second = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(date))),
+            store: store, timeProvider: clock, generationStore: guard);
+
+        var firstJob = scheduled ? first.Service.RefreshScheduledNewsAsync(date) : first.Service.EnsureNewsAsync(date);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var secondJob = scheduled ? second.Service.RefreshScheduledNewsAsync(date) : second.Service.EnsureNewsAsync(date);
+        release.SetResult();
+        var results = await Task.WhenAll(firstJob, secondJob);
+
+        Assert.All(results, result =>
+        {
+            Assert.Equal(NewsStatus.Ok, result.Status);
+            Assert.Equal(9, result.Articles.Count);
+        });
+        Assert.Single(first.Requests);
+        Assert.Empty(second.Requests);
+        Assert.Equal(1, store.SaveCount);
+        Assert.Equal(1, guard.RecordedAttempts);
+        Assert.False(guard.LeaseHeld);
+    }
+
+    [Fact]
+    public async Task PersistentFailureCooldownSurvivesAServiceWithANewMemoryCache()
+    {
+        var date = new DateOnly(2029, 3, 10);
+        var clock = new MutableTimeProvider(date);
+        var guard = new StubGenerationStore();
+        using (var failed = new NewsFixture(date,
+            (_, _) => Task.FromResult(Error(429, "rate_limit_exceeded", "rate_limit_error")),
+            timeProvider: clock, generationStore: guard))
+        {
+            Assert.Equal(NewsStatus.Unavailable, (await failed.Service.EnsureNewsAsync(date)).Status);
+            Assert.Single(failed.Requests);
+        }
+        using var restarted = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(date))),
+            timeProvider: clock, generationStore: guard);
+
+        var result = await restarted.Service.EnsureNewsAsync(date);
+
+        Assert.Equal(NewsStatus.Unavailable, result.Status);
+        Assert.Empty(restarted.Requests);
+        Assert.Equal(1, guard.RecordedAttempts);
+    }
+
+    [Fact]
+    public async Task ThreeAutomaticAttemptsBlockAFourthEvenAfterCooldownAndCacheReset()
+    {
+        var date = new DateOnly(2029, 4, 10);
+        var clock = new MutableTimeProvider(date);
+        var guard = new StubGenerationStore();
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            using var fixture = new NewsFixture(date,
+                (_, _) => Task.FromResult(Error(429, "rate_limit_exceeded", "rate_limit_error")),
+                timeProvider: clock, generationStore: guard);
+            Assert.Equal(NewsStatus.Unavailable, (await fixture.Service.EnsureNewsAsync(date)).Status);
+            Assert.Single(fixture.Requests);
+            clock.Advance(TimeSpan.FromMinutes(2));
+        }
+        using var fourth = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(date))),
+            timeProvider: clock, generationStore: guard);
+
+        var blocked = await fourth.Service.EnsureNewsAsync(date);
+
+        Assert.Equal(NewsStatus.Unavailable, blocked.Status);
+        Assert.Empty(fourth.Requests);
+        Assert.Equal(3, guard.RecordedAttempts);
+    }
+
+    [Fact]
+    public async Task AnUnavailableDatabaseLeasePreventsAnOpenAiRequest()
+    {
+        var date = new DateOnly(2029, 5, 10);
+        var guard = new StubGenerationStore { LeaseAvailable = false };
+        using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(date))),
+            generationStore: guard);
+
+        var result = await fixture.Service.EnsureNewsAsync(date);
+
+        Assert.Equal(NewsStatus.Unavailable, result.Status);
+        Assert.Empty(fixture.Requests);
+        Assert.Equal(0, guard.RecordedAttempts);
+    }
+
+    [Theory]
+    [InlineData("lease")]
+    [InlineData("state")]
+    [InlineData("attempt")]
+    public async Task GenerationGuardDatabaseErrorsFailBeforeAnyPaidRequest(string failingOperation)
+    {
+        var date = new DateOnly(2029, 6, 10);
+        var guard = new StubGenerationStore { FailAt = failingOperation };
+        using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(date))),
+            generationStore: guard);
+
+        var result = await fixture.Service.EnsureNewsAsync(date);
+
+        Assert.Equal(NewsStatus.Unavailable, result.Status);
+        Assert.Empty(fixture.Requests);
+        Assert.Equal(0, guard.RecordedAttempts);
+        Assert.False(guard.LeaseHeld);
+    }
+
+    [Theory]
+    [InlineData(10, 59, 1)]
+    [InlineData(11, 0, 0)]
+    [InlineData(11, 1, 0)]
+    public async Task ScheduledRefreshUsesTheSavedEightAmGmtMinusThreeTimestamp(int hour, int minute, int expectedRequests)
+    {
+        var date = new DateOnly(2029, 7, 10);
+        var store = new StubStore();
+        store.Days[date] = Enumerable.Range(1, 9).Select(index => new NewsArticleModel { Title = $"Saved story {index}" }).ToList();
+        store.UpdatedAt[date] = new DateTimeOffset(2029, 7, 10, hour, minute, 0, TimeSpan.Zero);
+        var guard = new StubGenerationStore();
+        using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(date))),
+            store: store, generationStore: guard);
+
+        var result = await fixture.Service.RefreshScheduledNewsAsync(date);
+        var duplicate = await fixture.Service.RefreshScheduledNewsAsync(date);
+
+        Assert.Equal(NewsStatus.Ok, result.Status);
+        Assert.Equal(NewsStatus.Ok, duplicate.Status);
+        Assert.Equal(9, result.Articles.Count);
+        Assert.Equal(expectedRequests, fixture.Requests.Count);
+        Assert.Equal(expectedRequests, store.SaveCount);
+        Assert.Equal(expectedRequests, guard.RecordedAttempts);
+    }
+
+    [Fact]
+    public async Task FailedPersistenceRetriesTheCachedEditionWithoutAnotherOpenAiCall()
+    {
+        var date = new DateOnly(2029, 8, 10);
+        var store = new StubStore { SaveFailuresRemaining = 1 };
+        var guard = new StubGenerationStore();
+        using var fixture = new NewsFixture(date, (_, _) => Task.FromResult(JsonResponse(SuccessResponse(date))),
+            store: store, generationStore: guard);
+
+        var generated = await fixture.Service.EnsureNewsAsync(date);
+        Assert.Equal(NewsStatus.Ok, generated.Status);
+        Assert.Equal(9, generated.Articles.Count);
+        Assert.Empty(store.Days);
+        Assert.Equal(1, store.SaveAttemptCount);
+        var retried = await fixture.Service.EnsureNewsAsync(date);
+
+        Assert.Equal(NewsStatus.Ok, retried.Status);
+        Assert.Equal(9, retried.Articles.Count);
+        Assert.Single(fixture.Requests);
+        Assert.Equal(2, store.SaveAttemptCount);
+        Assert.Equal(1, store.SaveCount);
+        Assert.Equal(9, store.Days[date].Count);
+        Assert.Equal(1, guard.RecordedAttempts);
+    }
+
+    [Fact]
+    public async Task AnotherReplicasRetryStatusWaitsForQueuedWorkRatherThanReturningAnOldFailure()
+    {
+        var date = new DateOnly(2029, 9, 10);
+        var clock = new MutableTimeProvider(date);
+        var guard = new StubGenerationStore();
+        using (var prior = new NewsFixture(date, (_, _) => Task.FromResult(Error(429, "rate_limit_exceeded", "rate_limit_error")),
+            timeProvider: clock, generationStore: guard))
+            await prior.Service.EnsureNewsAsync(date);
+        clock.Advance(TimeSpan.FromMinutes(2));
+        var operationId = Guid.CreateVersion7(clock.GetUtcNow());
+        using var other = new NewsFixture(date, (_, _) => throw new InvalidOperationException("Polling must not search."),
+            timeProvider: clock, generationStore: guard);
+
+        var status = await other.Service.GetRetryStatusAsync(operationId);
+
+        Assert.NotNull(status);
+        Assert.False(status.IsCompleted);
+        Assert.Null(status.Result);
+        Assert.Null(await other.Service.GetRetryStatusAsync(Guid.NewGuid()));
+        Assert.Empty(other.Requests);
+    }
+
+    [Fact]
+    public async Task CrossReplicaPollingReportsAnOlderRunningJobThatFinishesAfterTheRetryWasRequested()
+    {
+        var date = new DateOnly(2029, 10, 10);
+        var clock = new MutableTimeProvider(date);
+        var guard = new StubGenerationStore();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var generating = new NewsFixture(date, async (_, cancellationToken) =>
+        {
+            started.TrySetResult();
+            await release.Task.WaitAsync(cancellationToken);
+            return Error(429, "rate_limit_exceeded", "rate_limit_error");
+        }, timeProvider: clock, generationStore: guard);
+        var job = generating.Service.EnsureNewsAsync(date);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        clock.Advance(TimeSpan.FromSeconds(2));
+        var operationId = Guid.CreateVersion7(clock.GetUtcNow());
+        using var polling = new NewsFixture(date, (_, _) => throw new InvalidOperationException("Polling must not search."),
+            timeProvider: clock, generationStore: guard);
+        Assert.False((await polling.Service.GetRetryStatusAsync(operationId))!.IsCompleted);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        release.TrySetResult();
+        await job;
+
+        var completed = await polling.Service.GetRetryStatusAsync(operationId);
+
+        Assert.True(completed!.IsCompleted);
+        Assert.Equal(NewsStatus.Unavailable, completed.Result!.Status);
+        Assert.Empty(polling.Requests);
     }
 
     private static HttpResponseMessage Error(int status, string code, string type) => JsonResponse(new
@@ -759,7 +996,8 @@ public sealed class BitcoinNewsTests
             Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond,
             TimeSpan? generationTimeout = null, OpenAiOptions? settings = null, DateTimeOffset? utcNow = null,
             IArticleThumbnailHelper? thumbnailResolver = null,
-            Microsoft.Extensions.Logging.ILogger<OpenAiNewsClient>? logger = null)
+            Microsoft.Extensions.Logging.ILogger<OpenAiNewsClient>? logger = null,
+            StubStore? store = null, TimeProvider? timeProvider = null, INewsGenerationStore? generationStore = null)
         {
             Today = today;
             var options = Microsoft.Extensions.Options.Options.Create(settings ?? new OpenAiOptions
@@ -768,7 +1006,10 @@ public sealed class BitcoinNewsTests
                 GenerationTimeout = generationTimeout ?? TimeSpan.FromSeconds(10),
                 FailureCooldown = TimeSpan.FromMinutes(1)
             });
-            var clock = new FixedTimeProvider(today, utcNow);
+            var clock = timeProvider ?? new FixedTimeProvider(today, utcNow);
+            Store = store ?? new StubStore();
+            Store.UtcNow = clock.GetUtcNow;
+            if (generationStore is StubGenerationStore guard) guard.UtcNow = clock.GetUtcNow;
             _httpClient = new HttpClient(new StubHandler(Requests, respond));
             var sdk = new OpenAIClient(new ApiKeyCredential("test-key-never-sent-to-a-network"), new OpenAIClientOptions
             {
@@ -778,13 +1019,13 @@ public sealed class BitcoinNewsTests
             });
             Client = new OpenAiNewsClient(options, clock, logger ?? NullLogger<OpenAiNewsClient>.Instance, sdk);
             Service = new BitcoinNewsService(Client, Store, thumbnailResolver ?? new NoThumbnails(), Cache, clock,
-                options, NullLogger<BitcoinNewsService>.Instance);
+                options, NullLogger<BitcoinNewsService>.Instance, generationStore: generationStore);
         }
 
         public DateOnly Today { get; }
         public List<string> Requests { get; } = [];
         public MemoryCache Cache { get; } = new(new MemoryCacheOptions());
-        public StubStore Store { get; } = new();
+        public StubStore Store { get; }
         public OpenAiNewsClient Client { get; }
         public BitcoinNewsService Service { get; }
 
@@ -811,6 +1052,13 @@ public sealed class BitcoinNewsTests
         public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
     }
 
+    private sealed class MutableTimeProvider(DateOnly date) : TimeProvider
+    {
+        private DateTimeOffset _now = new(date.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc));
+        public override DateTimeOffset GetUtcNow() => _now;
+        public void Advance(TimeSpan interval) => _now += interval;
+    }
+
     private sealed class CapturingNewsLogger : Microsoft.Extensions.Logging.ILogger<OpenAiNewsClient>
     {
         public List<string> Lines { get; } = [];
@@ -833,22 +1081,113 @@ public sealed class BitcoinNewsTests
             => Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
     }
 
+    private sealed class StubGenerationStore : INewsGenerationStore
+    {
+        private readonly object _sync = new();
+        private readonly Dictionary<DateOnly, NewsGenerationState> _states = [];
+        public Func<DateTimeOffset> UtcNow { get; set; } = () => DateTimeOffset.UtcNow;
+        public bool LeaseAvailable { get; set; } = true;
+        public bool LeaseHeld { get; private set; }
+        public string? FailAt { get; set; }
+        public int RecordedAttempts { get; private set; }
+
+        public Task<IAsyncDisposable?> TryAcquireLeaseAsync(DateOnly date, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            FailIfRequested("lease");
+            lock (_sync)
+            {
+                if (!LeaseAvailable || LeaseHeld) return Task.FromResult<IAsyncDisposable?>(null);
+                LeaseHeld = true;
+                return Task.FromResult<IAsyncDisposable?>(new Lease(this));
+            }
+        }
+
+        public Task<NewsGenerationState> GetStateAsync(DateOnly date, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            FailIfRequested("state");
+            lock (_sync) return Task.FromResult(State(date));
+        }
+
+        public Task RecordAttemptAsync(DateOnly date, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            FailIfRequested("attempt");
+            lock (_sync)
+            {
+                if (!LeaseHeld) throw new InvalidOperationException("An attempt must hold the generation lease.");
+                var state = State(date);
+                _states[date] = new NewsGenerationState(state.AttemptCount + 1, UtcNow(), true, null);
+                RecordedAttempts++;
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task RecordOutcomeAsync(DateOnly date, string? failure, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            lock (_sync)
+            {
+                if (!LeaseHeld) throw new InvalidOperationException("An outcome must hold the generation lease.");
+                _states[date] = State(date) with { IsRunning = false, LastFailure = failure, LastCompletedUtc = UtcNow() };
+            }
+            return Task.CompletedTask;
+        }
+
+        private NewsGenerationState State(DateOnly date) =>
+            _states.GetValueOrDefault(date) ?? new NewsGenerationState(0, null, false, null);
+
+        private void FailIfRequested(string operation)
+        {
+            if (FailAt == operation) throw new InvalidOperationException($"Simulated {operation} database error.");
+        }
+
+        private sealed class Lease(StubGenerationStore owner) : IAsyncDisposable
+        {
+            private StubGenerationStore? _owner = owner;
+            public ValueTask DisposeAsync()
+            {
+                var owner = Interlocked.Exchange(ref _owner, null);
+                if (owner is not null)
+                {
+                    lock (owner._sync) owner.LeaseHeld = false;
+                }
+                return ValueTask.CompletedTask;
+            }
+        }
+    }
+
     private sealed class StubStore : INewsStore
     {
         public Dictionary<DateOnly, List<NewsArticleModel>> Days { get; } = [];
+        public Dictionary<DateOnly, DateTimeOffset> UpdatedAt { get; } = [];
+        public Func<DateTimeOffset> UtcNow { get; set; } = () => DateTimeOffset.UtcNow;
         public int SaveCount { get; private set; }
+        public int SaveAttemptCount { get; private set; }
+        public int SaveFailuresRemaining { get; set; }
         public bool SaveTokenWasCanceled { get; private set; }
 
         public Task<List<NewsArticleModel>?> LoadAsync(DateOnly date, CancellationToken cancellationToken = default)
             => Task.FromResult(Days.GetValueOrDefault(date));
+
+        public Task<DateTimeOffset?> GetUpdatedAtUtcAsync(DateOnly date, CancellationToken cancellationToken = default)
+            => Task.FromResult(UpdatedAt.TryGetValue(date, out var updatedAt) ? (DateTimeOffset?)updatedAt : null);
 
         public Task SaveAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, string? model = null,
             CancellationToken cancellationToken = default)
         {
             SaveTokenWasCanceled = cancellationToken.IsCancellationRequested;
             cancellationToken.ThrowIfCancellationRequested();
+            SaveAttemptCount++;
+            if (SaveFailuresRemaining > 0)
+            {
+                SaveFailuresRemaining--;
+                throw new InvalidOperationException("Simulated database save failure.");
+            }
             SaveCount++;
             Days[date] = [.. articles];
+            UpdatedAt[date] = UtcNow();
             return Task.CompletedTask;
         }
 

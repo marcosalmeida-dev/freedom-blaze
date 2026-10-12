@@ -57,8 +57,13 @@ public sealed class BitcoinNewsController(BitcoinNewsService newsService, Bitcoi
     [HttpGet("retry/{id:guid}")]
     [ProducesResponseType(typeof(NewsRetryOperation), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public ActionResult<NewsRetryOperation> RetryStatus(Guid id) =>
-        retryQueue.GetStatus(id) is { } operation ? Ok(operation) : NotFound();
+    public async Task<ActionResult<NewsRetryOperation>> RetryStatus(Guid id, CancellationToken cancellationToken)
+    {
+        // Polling can reach a different replica from the one that accepted the retry. Its shared
+        // generation state is authoritative when this process has no local operation record.
+        var operation = retryQueue.GetStatus(id) ?? await newsService.GetRetryStatusAsync(id, cancellationToken);
+        return operation is not null ? Ok(operation) : NotFound();
+    }
 
     /// <summary>Returns all dates for which a saved news set exists (used by the date-picker UI).</summary>
     [HttpGet("dates")]

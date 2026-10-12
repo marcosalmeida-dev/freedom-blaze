@@ -2,7 +2,7 @@ using FreedomBlaze.Client.Models;
 
 namespace FreedomBlaze.Services;
 
-/// <summary>Refreshes today's news after startup and every day at 08:00 UTC-03:00.</summary>
+/// <summary>Loads a missing edition after startup and refreshes it daily at 08:00 UTC-03:00.</summary>
 public sealed class BitcoinNewsBackgroundService(
     IServiceScopeFactory scopeFactory,
     TimeProvider timeProvider,
@@ -18,15 +18,13 @@ public sealed class BitcoinNewsBackgroundService(
 
             var now = timeProvider.GetUtcNow();
             var nextRun = BitcoinNewsSchedule.GetNextRunUtc(now);
-            await GenerateAsync(BitcoinNewsSchedule.Today(now), "startup refresh", stoppingToken);
+            logger.LogInformation("Bitcoin news worker started; next refresh {NextRunUtc} (08:00 GMT-3).", nextRun);
+            var startupAfterDailyRun = TimeZoneInfo.ConvertTime(now, BitcoinNewsSchedule.TimeZone).TimeOfDay >= TimeSpan.FromHours(8);
+            await GenerateAsync(BitcoinNewsSchedule.Today(now), "startup load", startupAfterDailyRun, stoppingToken);
 
-            // A startup search that spans 08:00 also serves that scheduled run. Do not immediately
-            // pay for another search just because startup completed after its captured deadline.
-            now = timeProvider.GetUtcNow();
-            if (now >= nextRun)
-            {
-                nextRun = BitcoinNewsSchedule.GetNextRunUtc(now);
-            }
+            // Keep the captured deadline if startup spans 08:00. The service checks the saved
+            // edition's update time before a scheduled refresh, so a newly generated startup
+            // edition is reused while an older saved edition can still receive today's refresh.
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -38,7 +36,7 @@ public sealed class BitcoinNewsBackgroundService(
                 // Re-read the clock after waking: a suspended process or a clock correction must
                 // generate the current edition, not an obsolete date captured before the delay.
                 await GenerateAsync(BitcoinNewsSchedule.Today(timeProvider.GetUtcNow()),
-                    scheduled ? "daily refresh" : "reader retry", stoppingToken);
+                    scheduled ? "daily refresh" : "reader retry", scheduled, stoppingToken);
                 if (timeProvider.GetUtcNow() >= nextRun)
                     nextRun = BitcoinNewsSchedule.GetNextRunUtc(timeProvider.GetUtcNow());
             }
@@ -93,14 +91,16 @@ public sealed class BitcoinNewsBackgroundService(
         }
     }
 
-    private async Task GenerateAsync(DateOnly date, string operation, CancellationToken cancellationToken)
+    private async Task GenerateAsync(DateOnly date, string operation, bool scheduled, CancellationToken cancellationToken)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
             await using var scope = scopeFactory.CreateAsyncScope();
             var service = scope.ServiceProvider.GetRequiredService<BitcoinNewsService>();
-            var result = await service.RefreshNewsAsync(date, cancellationToken);
+            var result = scheduled
+                ? await service.RefreshScheduledNewsAsync(date, cancellationToken)
+                : await service.EnsureNewsAsync(date, cancellationToken);
             retryQueue?.Complete(result);
 
             if (result.Status == NewsStatus.Unavailable)

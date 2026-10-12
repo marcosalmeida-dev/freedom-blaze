@@ -36,7 +36,8 @@ public class BitcoinNewsService(
     TimeProvider timeProvider,
     IOptions<OpenAiOptions> options,
     ILogger<BitcoinNewsService> logger,
-    BitcoinNewsRetryQueue? retryQueue = null) : IBitcoinNewsApiService
+    BitcoinNewsRetryQueue? retryQueue = null,
+    INewsGenerationStore? generationStore = null) : IBitcoinNewsApiService
 {
     private readonly OpenAiOptions _options = options.Value;
 
@@ -50,7 +51,12 @@ public class BitcoinNewsService(
 
     /// <summary>The dates that already have a saved news set (most recent first).</summary>
     public async Task<List<DateOnly>> GetAvailableDatesAsync(CancellationToken cancellationToken = default)
-        => [.. await newsStore.GetAvailableDatesAsync(cancellationToken)];
+    {
+        var dates = (await newsStore.GetAvailableDatesAsync(cancellationToken)).ToHashSet();
+        if (cache.TryGetValue(CacheKeys.BitcoinNews(Today), out List<NewsArticleModel>? cached) && cached is { Count: > 0 })
+            dates.Add(Today);
+        return dates.OrderDescending().ToList();
+    }
 
     /// <summary>
     /// Returns the Bitcoin news set for <paramref name="date"/>. It is served from the in-memory
@@ -75,6 +81,9 @@ public class BitcoinNewsService(
             return NewsResult.Unavailable(cooling);
         }
 
+        if (generationStore is not null && await generationStore.GetStateAsync(date, cancellationToken) is { LastFailure: { } failure })
+            return NewsResult.Unavailable(failure);
+
         return NewsResult.NoNews;
     }
 
@@ -85,44 +94,19 @@ public class BitcoinNewsService(
     public async Task<NewsResult> EnsureNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
         date = ClampToToday(date);
-        var cacheKey = CacheKeys.BitcoinNews(date);
-        var result = await GetNewsAsync(date, cancellationToken: cancellationToken);
-        if (result.Status != NewsStatus.Empty)
-        {
-            return result;
-        }
+        var existing = await TryGetExistingAsync(date, CacheKeys.BitcoinNews(date), cancellationToken);
+        if (existing is not null && !cache.TryGetValue(CacheKeys.BitcoinNewsPendingPersistence(date), out _))
+            return NewsResult.Ok(existing);
+        if (!IsGenerationAllowed(date)) return NewsResult.NoNews;
+        return await RunGenerationAsync(date, minimumSavedTime: null, force: false, cancellationToken);
+    }
 
-        if (!IsGenerationAllowed(date))
-        {
-            return NewsResult.NoNews;
-        }
-
-        var gate = GenerationGates.GetOrAdd(date, _ => new SemaphoreSlim(1, 1));
-
-        // The worker's host token cancels both queued and active work on shutdown.
-        await gate.WaitAsync(cancellationToken);
-        try
-        {
-            // Re-check every layer under the gate: another caller may have produced and persisted
-            // this day (or discovered it is failing) while we waited, so we never make a redundant
-            // paid call.
-            var existing = await TryGetExistingAsync(date, cacheKey, cancellationToken);
-            if (existing is not null)
-            {
-                return NewsResult.Ok(existing);
-            }
-
-            if (TryGetRecentFailure(date) is { } justFailed)
-            {
-                return NewsResult.Unavailable(justFailed);
-            }
-
-            return await GenerateAndStoreAsync(date, cacheKey, cancellationToken);
-        }
-        finally
-        {
-            gate.Release();
-        }
+    /// <summary>Runs the morning refresh at most once across replicas and restarts.</summary>
+    public Task<NewsResult> RefreshScheduledNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
+    {
+        date = ClampToToday(date);
+        var morning = new DateTimeOffset(date.ToDateTime(new TimeOnly(8, 0)), TimeSpan.FromHours(-3)).ToUniversalTime();
+        return RunGenerationAsync(date, morning, force: false, cancellationToken);
     }
 
     /// <summary>Requests background generation for a missing current edition after an explicit retry.</summary>
@@ -137,12 +121,47 @@ public class BitcoinNewsService(
         date = ClampToToday(date);
         var existing = await TryGetExistingAsync(date, CacheKeys.BitcoinNews(date), cancellationToken);
         if (existing is not null)
-            return new(Guid.Empty, true, NewsResult.Ok(existing));
+            return new(Guid.Empty, true, cache.TryGetValue(CacheKeys.BitcoinNewsPendingPersistence(date), out _)
+                ? await EnsureNewsAsync(date, cancellationToken) : NewsResult.Ok(existing));
         if (date != Today)
             return new(Guid.Empty, true, await GetNewsAsync(date, cancellationToken: cancellationToken));
+        if (TryGetRecentFailure(date) is { } cooling)
+            return new(Guid.Empty, true, NewsResult.Unavailable(cooling));
+        if (generationStore is not null && GenerationBlock(await generationStore.GetStateAsync(date, cancellationToken)) is { } blocked)
+            return new(Guid.Empty, true, NewsResult.Unavailable(blocked));
         return retryQueue is null
             ? new(Guid.Empty, true, NewsResult.Unavailable("The background news service is unavailable. Please try again later."))
             : retryQueue.Start();
+    }
+
+    /// <summary>Shared status fallback when polling reaches another web replica.</summary>
+    public async Task<NewsRetryOperation?> GetRetryStatusAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var requestedAt = RetryRequestedAt(id);
+        if (requestedAt is null) return null;
+        var date = requestedAt is { } instant ? BitcoinNewsSchedule.Today(instant) : Today;
+        var result = await GetNewsAsync(date, cancellationToken: cancellationToken);
+        if (result.HasArticles) return new(id, true, result);
+        if (generationStore is null) return null;
+        var state = await generationStore.GetStateAsync(date, cancellationToken);
+        if ((state.LastCompletedUtc ?? state.LastAttemptUtc) is { } completed && completed >= requestedAt
+            && !state.IsRunning && state.LastFailure is { } failure)
+            return new(id, true, NewsResult.Unavailable(failure));
+        if (state.IsRunning && state.LastAttemptUtc is { } began
+            && timeProvider.GetUtcNow() - began > _options.GenerationTimeout + TimeSpan.FromMinutes(2))
+            return new(id, true, NewsResult.Unavailable("The news search was interrupted. Please retry in a moment."));
+        return new(id, false, null);
+    }
+
+    private static DateTimeOffset? RetryRequestedAt(Guid id)
+    {
+        Span<byte> bytes = stackalloc byte[16];
+        id.TryWriteBytes(bytes, bigEndian: true, out _);
+        if (bytes[6] >> 4 != 7) return null;
+        long milliseconds = 0;
+        for (var index = 0; index < 6; index++) milliseconds = (milliseconds << 8) | bytes[index];
+        try { return DateTimeOffset.FromUnixTimeMilliseconds(milliseconds); }
+        catch (ArgumentOutOfRangeException) { return null; }
     }
 
     /// <summary>
@@ -151,23 +170,79 @@ public class BitcoinNewsService(
     /// reserved for the scheduled worker and master-key admin endpoint.
     /// </summary>
     public async Task<NewsResult> RefreshNewsAsync(DateOnly date, CancellationToken cancellationToken = default)
+        => await RunGenerationAsync(ClampToToday(date), minimumSavedTime: null, force: true, cancellationToken);
+
+    private async Task<NewsResult> RunGenerationAsync(DateOnly date, DateTimeOffset? minimumSavedTime, bool force,
+        CancellationToken cancellationToken)
     {
-        date = ClampToToday(date);
-
         var gate = GenerationGates.GetOrAdd(date, _ => new SemaphoreSlim(1, 1));
-
         await gate.WaitAsync(cancellationToken);
         try
         {
-            // An operator can retry immediately after fixing credentials or adding credit.
-            cache.Remove(CacheKeys.BitcoinNewsFailure(date));
-            cache.Remove(CacheKeys.BitcoinNewsProviderFailure);
-            return await GenerateAndStoreAsync(date, CacheKeys.BitcoinNews(date), cancellationToken);
+            // Acquire a SQL session lease before reading shared state or spending any API credit.
+            // A database/lease failure stops the job; paying for an uncoordinated result is unsafe.
+            await using var lease = generationStore is null ? null
+                : await generationStore.TryAcquireLeaseAsync(date, cancellationToken);
+            if (generationStore is not null && lease is null)
+                return NewsResult.Unavailable("Today's news is already being prepared. Please check again shortly.");
+
+            var key = CacheKeys.BitcoinNews(date);
+            var existing = await TryGetExistingAsync(date, key, cancellationToken);
+            if (existing is not null && cache.TryGetValue(CacheKeys.BitcoinNewsPendingPersistence(date), out bool needsPersistence) && needsPersistence)
+            {
+                await PersistAsync(date, existing, cancellationToken);
+                return NewsResult.Ok(existing);
+            }
+            if (!force && existing is not null)
+            {
+                if (minimumSavedTime is null) return NewsResult.Ok(existing);
+                var savedAt = await newsStore.GetUpdatedAtUtcAsync(date, cancellationToken);
+                if (savedAt >= minimumSavedTime)
+                {
+                    // Read shared storage again, since this process may still cache the pre-08:00 edition.
+                    var saved = await newsStore.LoadAsync(date, cancellationToken);
+                    if (saved is { Count: > 0 }) cache.Set(key, saved, _options.CacheDuration);
+                    return NewsResult.Ok(saved ?? existing.ToList());
+                }
+                logger.LogInformation("Bitcoin news for {Date} needs its morning refresh: saved at {SavedAt}, required at {RequiredAt}.",
+                    date, savedAt, minimumSavedTime);
+            }
+            if (!force && TryGetRecentFailure(date) is { } cooling) return NewsResult.Unavailable(cooling);
+            var state = generationStore is null ? new NewsGenerationState(0, null, false, null)
+                : await generationStore.GetStateAsync(date, cancellationToken);
+            if (!force && GenerationBlock(state) is { } blocked) return NewsResult.Unavailable(blocked);
+            if (force)
+            {
+                cache.Remove(CacheKeys.BitcoinNewsFailure(date));
+                cache.Remove(CacheKeys.BitcoinNewsProviderFailure);
+            }
+            if (generationStore is not null) await generationStore.RecordAttemptAsync(date, cancellationToken);
+            logger.LogInformation("Starting Bitcoin news job for {Date}; automatic budget {Attempt}/{Maximum}, model {Model}.",
+                date, state.AttemptCount + 1, _options.MaxDailyGenerationAttempts, _options.Model);
+            return await GenerateAndStoreAsync(date, key, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Bitcoin news storage or shared coordination failed for {Date}; no uncoordinated API retry will be made.", date);
+            return NewsResult.Unavailable("Bitcoin news could not access shared storage. Please try again later.");
         }
         finally
         {
             gate.Release();
         }
+    }
+
+    private string? GenerationBlock(NewsGenerationState state)
+    {
+        if (state.AttemptCount >= _options.MaxDailyGenerationAttempts)
+            return "Today's news search limit has been reached. Please check back after the next daily refresh.";
+        var cooldownStarted = state.LastFailure is not null
+            ? state.LastCompletedUtc ?? state.LastAttemptUtc : state.LastAttemptUtc;
+        if ((state.LastFailure is not null || state.IsRunning) && cooldownStarted is { } attempt
+            && timeProvider.GetUtcNow() - attempt < _options.FailureCooldown)
+            return state.LastFailure ?? "A news search was recently attempted. Please wait before retrying.";
+        return null;
     }
 
     private DateOnly ClampToToday(DateOnly date)
@@ -209,7 +284,7 @@ public class BitcoinNewsService(
         var stored = await newsStore.LoadAsync(date, cancellationToken);
         if (stored is { Count: > 0 })
         {
-            cache.Set(cacheKey, stored, _options.CacheDuration);
+            cache.Set(cacheKey, stored, PersistedCacheDuration(date));
             return stored;
         }
 
@@ -246,7 +321,7 @@ public class BitcoinNewsService(
         }
         catch (NewsUnavailableException ex)
         {
-            return RecordFailure(date, ex.Reason, ex.UserMessage, ex);
+            return await RecordFailureAsync(date, ex.Reason, ex.UserMessage, ex, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -255,19 +330,19 @@ public class BitcoinNewsService(
         }
         catch (OperationCanceledException ex) when (cts.IsCancellationRequested)
         {
-            return RecordFailure(
+            return await RecordFailureAsync(
                 date,
                 NewsFailureReason.Timeout,
                 "The news search took too long. Please try again shortly.",
-                ex);
+                ex, cancellationToken);
         }
         catch (Exception ex)
         {
-            return RecordFailure(
+            return await RecordFailureAsync(
                 date,
                 NewsFailureReason.Upstream,
                 "Bitcoin news is temporarily unavailable. Please try again shortly.",
-                ex);
+                ex, cancellationToken);
         }
 
         try
@@ -288,12 +363,22 @@ public class BitcoinNewsService(
         cache.Remove(CacheKeys.BitcoinNewsFailure(date));
         cache.Remove(CacheKeys.BitcoinNewsProviderFailure);
 
+        await PersistAsync(date, articles, cancellationToken);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return NewsResult.Ok(articles);
+    }
+
+    private async Task PersistAsync(DateOnly date, IReadOnlyList<NewsArticleModel> articles, CancellationToken cancellationToken)
+    {
         try
         {
-            // A paid search may finish just before its deadline and thumbnails may consume the
-            // remaining budget. Preserve valid news using the host token, not an expired search
-            // token; database command timeouts still bound persistence independently.
+            // Persistence has its own database timeout; an expired web-search budget cannot erase
+            // a paid, valid edition. Cached news is retained until a later persistence-only retry.
             await newsStore.SaveAsync(date, articles, _options.Model, cancellationToken);
+            cache.Remove(CacheKeys.BitcoinNewsPendingPersistence(date));
+            cache.Set(CacheKeys.BitcoinNews(date), articles as List<NewsArticleModel> ?? articles.ToList(), PersistedCacheDuration(date));
+            await RecordOutcomeAsync(date, null, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -301,14 +386,14 @@ public class BitcoinNewsService(
         }
         catch (Exception ex)
         {
+            cache.Set(CacheKeys.BitcoinNewsPendingPersistence(date), true, _options.CacheDuration);
             logger.LogWarning(ex, "Bitcoin news for {Date} remains cached but could not be persisted.", date);
+            await RecordOutcomeAsync(date, "News was generated but could not be saved. Please retry to save it.", cancellationToken);
         }
-
-        cancellationToken.ThrowIfCancellationRequested();
-        return NewsResult.Ok(articles);
     }
 
-    private NewsResult RecordFailure(DateOnly date, NewsFailureReason reason, string userMessage, Exception exception)
+    private async Task<NewsResult> RecordFailureAsync(DateOnly date, NewsFailureReason reason, string userMessage,
+        Exception exception, CancellationToken cancellationToken)
     {
         logger.LogError(exception,
             "Bitcoin news generation for {Date} failed ({Reason}); pausing attempts for {Cooldown}.",
@@ -321,6 +406,23 @@ public class BitcoinNewsService(
             ? CacheKeys.BitcoinNewsProviderFailure
             : CacheKeys.BitcoinNewsFailure(date);
         cache.Set(failureKey, userMessage, _options.FailureCooldown);
+        await RecordOutcomeAsync(date, userMessage, cancellationToken);
         return NewsResult.Unavailable(userMessage);
     }
+
+    private async Task RecordOutcomeAsync(DateOnly date, string? failure, CancellationToken cancellationToken)
+    {
+        if (generationStore is null) return;
+        try { await generationStore.RecordOutcomeAsync(date, failure, cancellationToken); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not record the Bitcoin news job outcome for {Date}; its paid attempt was already recorded.", date);
+        }
+    }
+
+    // Other replicas can replace today's edition at 08:00. Brief caching refreshes their readers
+    // through SQL; historical editions and results awaiting persistence keep the configured TTL.
+    private TimeSpan PersistedCacheDuration(DateOnly date) => date == Today
+        && _options.CacheDuration > TimeSpan.FromMinutes(1) ? TimeSpan.FromMinutes(1) : _options.CacheDuration;
 }

@@ -28,30 +28,41 @@ Navigate to https://localhost:7029. The application will automatically reload if
 
 ## Bitcoin news
 
-`BitcoinNewsBackgroundService` in the server project generates a fresh edition on startup.
-It then refreshes the edition daily at **08:00 GMT-3 (11:00 UTC)**,
+`BitcoinNewsBackgroundService` loads today's saved edition on startup and generates it only
+when missing. It refreshes the edition daily at **08:00 GMT-3 (11:00 UTC)**,
 independent of the server's time zone and daylight saving rules. Startup work begins after
 the application has started and does not block HTTP startup. The application must be running
-for the daily schedule; restarting it generates the current day's edition. If startup generation
-crosses 08:00, that run also satisfies the morning refresh. Each application
-instance runs its own worker, so deployments with multiple replicas need a shared scheduler/lock
-to avoid duplicate paid generations.
+for the daily schedule. Startup after 08:00 catches up only when the edition was saved before
+that morning's deadline. A SQL session lease prevents replicas from researching the same day
+simultaneously; the saved update time prevents queued replicas/restarts from paying for another
+morning refresh. The existing two-replica deployment can keep both workers enabled.
 
 `BitcoinNews.razor` and public `GET /api/bitcoin-news` only read saved editions on normal loads.
 The Retry button explicitly requests background generation when today's edition is missing.
 `POST /api/bitcoin-news/retry` returns an attempt status immediately; the browser polls
 `GET /api/bitcoin-news/retry/{id}` every five seconds and shows search progress. Concurrent
-retries share one attempt, and failed attempts are limited to one per minute across the instance.
+retries share one attempt and respect `OpenAI:FailureCooldown` (ten minutes by default).
+Attempt counts and failure state survive restarts in SQL. `OpenAI:MaxDailyGenerationAttempts`
+limits automatic jobs to three per edition across replicas; each job makes at most two research
+responses. Only the protected operator refresh explicitly bypasses cooldown and automatic-job limits.
 Navigating away cancels polling while the worker continues. Saved editions and historical retries
 only reread storage. The worker uses OpenAI's Responses
 API with required web search and structured output. The configured model must support both; see the
 [OpenAI web-search guide](https://developers.openai.com/api/docs/guides/tools-web-search).
+Interactive pages also reread today's saved edition every thirty seconds, so startup and morning
+results appear without requiring another paid retry. Today's persisted cache expires after at most
+one minute so another replica's saved refresh becomes visible; unsaved results retain the long cache TTL.
 
 The default model is **GPT-6.1 Sol** with **medium** reasoning: a practical quality/cost
 choice for targeted searches and validation across regions. Its
 [model documentation](https://developers.openai.com/api/docs/models/gpt-6.1-sol)
 lists support for Responses, web search and structured output. `OpenAI:MaxOutputTokenCount`
 defaults to `24000`, covering reasoning as well as the final article JSON.
+`OpenAI:MaxWebSearchToolCalls` caps each response at eight built-in tool calls and search uses
+medium context. Output limits do not cap retrieved input; web-search calls and search-content
+tokens both incur charges ([OpenAI pricing](https://developers.openai.com/api/docs/pricing)).
+SDK transport retries are disabled by default to avoid repeating an upstream search after a lost
+response. Responses are tagged with application, edition, job and attempt metadata for billing audits.
 
 New editions contain exactly **nine distinct stories**, covering all six inhabited
 continents (North America, South America, Europe, Africa, Asia and Oceania), with
@@ -84,7 +95,7 @@ is reported unavailable and is not cached or saved as a partial edition. Search 
 record consulted domains, candidate counts, rejected-candidate reasons and the model's
 coverage explanation, making scarcity distinguishable from unreadable JSON or API failure.
 
-Startup and the daily 08:00 refresh replace today's edition after successful generation.
+Startup reuses saved news; the daily 08:00 refresh replaces an edition saved before that deadline.
 Saved news stays available when a refresh fails. Use the protected refresh endpoint described
 below to replace an edition manually.
 
@@ -110,9 +121,18 @@ news list. Billing/configuration failures pause generation for all dates for
 After correcting the account/configuration, use the existing master-key-protected
 `POST /api/bitcoin-news/refresh?date=yyyy-MM-dd` endpoint to retry immediately, or wait
 for the next scheduled refresh. Retry can request a missing current edition again after the
-one-minute retry interval, including after account credit has been restored.
+configured failure cooldown, including after account credit has been restored.
 Failed scheduled work is logged and does not terminate the worker; its next daily run remains
 scheduled. Host shutdown cancels waiting and active generation without recording a provider failure.
+
+Migration `20261012000000_AddNewsGenerationAttempts` adds shared attempt/cooldown state and
+is applied by the existing startup migration step. If shared storage or lease acquisition fails,
+generation stops before calling OpenAI. A failed article save is reported and the valid cached
+edition is marked for persistence-only retry; retrying that save does not research the same news again.
+Historical days when the application was stopped are not automatically backfilled.
+
+Repository tests use fake API keys and injected HTTP handlers at `openai.invalid` (or no SDK client).
+Neither `dotnet build` nor `dotnet test` launches the real news worker or spends OpenAI credits.
 
 Run the offline news integration tests with:
 

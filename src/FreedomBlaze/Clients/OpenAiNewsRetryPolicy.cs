@@ -4,10 +4,10 @@ using System.Text.Json;
 namespace FreedomBlaze.Clients;
 
 /// <summary>
-/// Keeps the SDK's transient-error retries, but reports exhausted credits and billing limits
-/// immediately: retrying the same request cannot restore access to the API.
+/// Disables automatic transport retries by default: a timed-out paid search may already have
+/// executed upstream. Explicitly configured retries still exclude exhausted credits/billing limits.
 /// </summary>
-public sealed class OpenAiNewsRetryPolicy(int maxRetries = 3) : ClientRetryPolicy(maxRetries)
+public sealed class OpenAiNewsRetryPolicy(int maxRetries = 0) : ClientRetryPolicy(maxRetries)
 {
     protected override bool ShouldRetry(PipelineMessage message, Exception? exception)
     {
