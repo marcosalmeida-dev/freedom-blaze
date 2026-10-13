@@ -27,7 +27,9 @@ public class ExchangeRatesApiIoClient(
                 throw new InvalidOperationException("CurrencyExchangeRateApi key is required in production. Configure it in appsettings.");
 
             logger.LogWarning("CurrencyExchangeRateApi key is not configured. Using stub data for development.");
-            return MapToModel(DateTime.Today, BuildStubRates());
+            var stub = MapToModel(DateTime.Today, BuildStubRates());
+            stub.IsSimulated = true;
+            return stub;
         }
 
         var httpClient = httpClientFactory.CreateClient("ExchangeRateApi");

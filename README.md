@@ -57,6 +57,56 @@ Build or pull the updated image before restarting a deployed daemon with its exi
 persistent volume. This source update does not restart a running node. The library's
 request tests and the application API tests use simulated responses, without moving funds.
 
+### Fiat-priced invoices for integrations
+
+`/api/v1/lightning` lets another application (for example a store checkout) charge in its own
+currency without holding any phoenixd credential or a master key. These endpoints can only
+**receive** funds, so any active API key may call them:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/v1/lightning/status` | `{ enabled, reachable }` — hide the payment option when the node is down. |
+| `POST /api/v1/lightning/invoices` | Quote the amount in sats and create the BOLT11 invoice in one step. |
+| `GET /api/v1/lightning/invoices/{paymentHash}` | Live status: `pending`, `paid` or `expired`. |
+
+```json
+POST /api/v1/lightning/invoices
+{ "amount": 38.50, "currency": "BRL", "externalId": "order-123",
+  "description": "Pedido 123", "expirySeconds": 600,
+  "webhookUrl": "https://shop.example/api/payments/lightning/webhook" }
+```
+
+The response carries `paymentHash`, `bolt11`, `amountSat` and the quote that priced it
+(`bitcoinPrice` in the requested currency, `bitcoinPriceUsd`, `rateSources`,
+`fiatRateTimestamp`, `quotedAt`, `expiresAt`), so the caller can store an auditable record.
+
+- **Pricing.** The sats amount is rounded **up**, so the payee never receives less than the fiat
+  amount. BTC/USD is the median of the exchange clients (one wild exchange cannot move it), and a
+  quote is refused (HTTP 503) when fewer than `MinimumRateSources` exchanges answered or the fiat
+  rate is older than `MaxFiatRateAge`. On exchangerate-api.com's free plan the USD→BRL rate is
+  published once a day; a paid plan publishes hourly and allows a tighter `MaxFiatRateAge`.
+- **Lifetime.** `expirySeconds` is 60–3600 (default 600) and is also how long the price holds.
+  An expired Lightning invoice cannot be paid, so issue a new one to re-quote.
+- **Ownership.** Each invoice's phoenixd `externalId` is prefixed with the issuing key
+  (`key{id}:`). A status read for an invoice another key issued returns 404, exactly like an
+  unknown hash.
+- **Webhooks.** `webhookUrl` must be HTTPS, and `AllowedWebhookHosts` can restrict it further.
+  phoenixd posts the `payment_received` event once, signed with the node's `webhook-secret` in
+  `X-Phoenix-Signature`, and **never retries**; the websocket does not replay events either.
+  Integrations must therefore also poll the status endpoint until the invoice is paid or expired.
+- **Keys.** Issue each integration its own key through `POST /api/admin/api-keys` (master key),
+  with a `rateLimitPerMinute` that covers its status polling (for example 600).
+
+```json
+"LightningInvoices": {
+  "DefaultExpirySeconds": 600,
+  "MaxAmountSat": 5000000,
+  "MinimumRateSources": 2,
+  "MaxFiatRateAge": "1.02:00:00",
+  "AllowedWebhookHosts": []
+}
+```
+
 ## Bitcoin news
 
 `BitcoinNewsBackgroundService` loads today's saved edition on startup and generates it only

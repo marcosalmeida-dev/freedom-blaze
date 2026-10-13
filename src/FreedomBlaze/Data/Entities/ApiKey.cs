@@ -1,7 +1,8 @@
 namespace FreedomBlaze.Data.Entities;
 
 /// <summary>
-/// A credential issued to an external client so it can call the public conversion API. The secret
+/// A credential issued to an external client so it can call the public conversion API and issue
+/// fiat-priced Lightning invoices (which can only receive funds, never send them). The secret
 /// itself is never stored — only a SHA-256 hash (<see cref="KeyHash"/>) is persisted, exactly as a
 /// password would be. The plaintext key is shown to the caller once, at creation time, and cannot be
 /// recovered afterwards. A short, non-secret <see cref="Prefix"/> is kept to make keys identifiable
@@ -28,7 +29,8 @@ public class ApiKey
 
     /// <summary>
     /// A master key authorizes the key-management endpoints (create/list/revoke other keys) in
-    /// addition to the normal conversion API. Ordinary keys can only call the conversion API.
+    /// addition to the normal conversion API. Ordinary keys can only call the conversion API and the
+    /// receive-only Lightning invoice endpoints.
     /// </summary>
     public bool IsMaster { get; set; }
 

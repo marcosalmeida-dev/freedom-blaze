@@ -19,4 +19,14 @@ public interface ICurrencyConversionService
     /// (server error).
     /// </exception>
     Task<ConversionResponse> ConvertAsync(ConversionRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Prices <paramref name="amount"/> of <paramref name="currency"/> in whole satoshis for a real
+    /// payment: rounded up, and refused unless the rates satisfy <paramref name="rules"/>.
+    /// </summary>
+    /// <exception cref="Exceptions.ConversionException">
+    /// Thrown for a bad amount or unsupported code (client error), or when the rates are missing,
+    /// too thinly sourced or stale (server error).
+    /// </exception>
+    Task<SatsQuote> QuoteSatsAsync(decimal amount, string currency, SatsQuoteRules rules, CancellationToken cancellationToken);
 }

@@ -69,13 +69,18 @@ public class ExchangeRateApiComClient(
     };
 
     // Stub rates (units per 1 USD) for local development when no API key is configured.
-    private static CurrencyExchangeRateModel BuildStubModel() => MapToModel(
-        DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-        new ConversionRates
-        {
-            USD = 1m, EUR = 0.92m, GBP = 0.79m, CHF = 0.88m, AUD = 1.52m,
-            JPY = 157m, ZAR = 18.5m, ARS = 950m, BRL = 5.6m
-        });
+    private static CurrencyExchangeRateModel BuildStubModel()
+    {
+        var model = MapToModel(
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            new ConversionRates
+            {
+                USD = 1m, EUR = 0.92m, GBP = 0.79m, CHF = 0.88m, AUD = 1.52m,
+                JPY = 157m, ZAR = 18.5m, ARS = 950m, BRL = 5.6m
+            });
+        model.IsSimulated = true;
+        return model;
+    }
 
     private sealed class ExchangeRateApiComModel
     {

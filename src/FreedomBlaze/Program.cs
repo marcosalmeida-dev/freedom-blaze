@@ -80,6 +80,9 @@ builder.Services.AddKeyedSingleton<ICurrencyExchangeRateClient, ExchangeRatesApi
 builder.Services.AddKeyedSingleton<ICurrencyExchangeRateClient, ExchangeRateApiComClient>(CurrencyExchangeClientType.ExchangeRateApiCom);
 builder.Services.AddSingleton<ICurrencyExchangeRateClient, CurrencyExchangeRateService>();
 
+// Pricing and webhook policy for the fiat-priced Lightning invoices at /api/v1/lightning.
+builder.Services.Configure<LightningInvoiceOptions>(builder.Configuration.GetSection(LightningInvoiceOptions.Section));
+
 builder.Services.AddScoped<CultureService>();
 
 builder.Services.AddSingleton(TimeProvider.System);

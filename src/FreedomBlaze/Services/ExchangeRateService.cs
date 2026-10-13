@@ -7,6 +7,8 @@ namespace FreedomBlaze.Services;
 /// <summary>
 /// Aggregates usable BTC/USD sources and fiat rates into one cached snapshot, including source health.
 /// The singleton's refresh gate prevents simultaneous page and API requests from flooding providers.
+/// The sources are combined by median, so a single exchange reporting a wild price cannot drag the
+/// quote the way it would drag an average.
 /// </summary>
 public sealed class ExchangeRateService(
     IMemoryCache cache,
@@ -47,7 +49,8 @@ public sealed class ExchangeRateService(
             {
                 rate = new BitcoinExchangeRateModel
                 {
-                    BitcoinRateInUSD = successfulRates.Average(result => result.Rate),
+                    BitcoinRateInUSD = Median(successfulRates.Select(result => result.Rate)),
+                    SourceCount = successfulRates.Length,
                     CurrencyExchangeRate = currencies
                 };
             }
@@ -73,6 +76,19 @@ public sealed class ExchangeRateService(
         {
             _refreshGate.Release();
         }
+    }
+
+    /// <summary>The middle value; the mean of the two middle values for an even count.</summary>
+    internal static decimal Median(IEnumerable<decimal> values)
+    {
+        var sorted = values.Order().ToArray();
+        if (sorted.Length == 0)
+            throw new ArgumentException("At least one value is required.", nameof(values));
+
+        var middle = sorted.Length / 2;
+        return sorted.Length % 2 == 1
+            ? sorted[middle]
+            : (sorted[middle - 1] + sorted[middle]) / 2m;
     }
 
     private BitcoinExchangeRateModel? ReadSnapshot(RateSnapshot snapshot)
