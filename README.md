@@ -26,6 +26,37 @@ dotnet watch run
 
 Navigate to https://localhost:7029. The application will automatically reload if you change any of the source files.
 
+## Lightning payments with phoenixd
+
+The [phoenixd.NET integration](src/submodules/phoenixd.NET/README.md) and Docker Compose
+image track [ACINQ phoenixd v0.9.2](https://github.com/ACINQ/phoenixd/releases/tag/v0.9.2).
+Configure `PhoenixConfig:Host` and `PhoenixConfig:Token` on the server to enable payments.
+`PhoenixConfig:TokenFile` can instead read the password from a mounted secret file; the
+file takes precedence over the literal token. HTTP and websocket clients use the same
+credentials. See the integration README for daemon password-file options and configuration.
+
+The operator API at `/api/payment-manager` requires a **master API key** in `X-Api-Key`.
+It exposes invoices, BOLT12 offers, Lightning addresses, LNURL operations, swap-in addresses
+and balances, channel summaries and complete channel states, on-chain payments, fee bumping,
+payment lookups, and filtered history. `POST send-invoice` accepts `sendAll=true` with
+`amountSat` omitted or zero; the JSON requests for `pay-offer`, `pay-lightning-address`,
+and `lnurl-pay` also accept `sendAll`. Supplying both an amount and `sendAll` is rejected.
+`POST create-invoice` accepts a nullable `amountSat` for invoices where the payer chooses
+the amount. Existing donation invoice calls remain supported.
+
+phoenixd 0.9.x uses Electrum by default, which enables the swap-in wallet. Selecting
+`--mempool-space-url` uses the polling blockchain client and disables swap-in; use
+`--electrum-server=host:port` to select a custom TLS Electrum server. The balance response
+includes `swapIn` confirmation buckets when the wallet is available. Outgoing payment
+lookups accept the UUID returned by phoenixd for both Lightning and on-chain payments;
+missing payments return HTTP 404. Failed Lightning payments and failed on-chain sends
+return provider errors even when phoenixd sends HTTP 200. `POST export-payments` exports
+successful history to a CSV file on the daemon and returns its location.
+
+Build or pull the updated image before restarting a deployed daemon with its existing
+persistent volume. This source update does not restart a running node. The library's
+request tests and the application API tests use simulated responses, without moving funds.
+
 ## Bitcoin news
 
 `BitcoinNewsBackgroundService` loads today's saved edition on startup and generates it only
