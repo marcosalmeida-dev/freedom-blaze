@@ -53,6 +53,10 @@ missing payments return HTTP 404. Failed Lightning payments and failed on-chain 
 return provider errors even when phoenixd sends HTTP 200. `POST export-payments` exports
 successful history to a CSV file on the daemon and returns its location.
 
+The phoenixd clients are excluded from the automatic retries the service defaults give other HTTP
+clients: a retried `payinvoice`, `payoffer`, `paylnaddress` or `sendtoaddress` whose first
+attempt timed out but went through would pay twice.
+
 Build or pull the updated image before restarting a deployed daemon with its existing
 persistent volume. This source update does not restart a running node. The library's
 request tests and the application API tests use simulated responses, without moving funds.
@@ -133,11 +137,56 @@ the invoice scopes. Master keys hold every scope but belong to no merchant, so t
 endpoints refuse them with 403. `PATCH /api/admin/merchants/{id}` renames a merchant or sets
 `isActive`; a deactivated merchant's keys stop authenticating, and its invoices are kept.
 
-Every merchant shares the operator's phoenixd node, so the money of every merchant lands in one
-wallet: register only the operator's own businesses until merchants can bring their own backend.
-
 The `AddMerchantsAndInvoices` migration runs at startup. Keys issued before it keep only the
 `convert` scope, so an integration that already creates invoices needs a new merchant key.
+
+#### Lightning backends
+
+Each merchant's invoices are issued on its **backend**: the merchant's own phoenixd (`phoenixd`), or
+the gateway's own node (`operator`). The operator's node pays into the operator's wallet, so give
+it only to the operator's own businesses; every other merchant brings its own node and keeps
+custody of its money. Backends are managed with a master key:
+
+```http
+PUT /api/admin/merchants/2/backend
+{ "kind": "phoenixd", "url": "https://node.merchant.example", "password": "<http-password-limited-access>" }
+
+PUT /api/admin/merchants/1/backend
+{ "kind": "operator" }
+```
+
+- **Receive-only.** Give the gateway phoenixd's `http-password-limited-access` from `phoenix.conf`:
+  it can issue and read invoices but never send. The full-access `http-password` is refused (told
+  apart by a `lnurlauth` call without an lnurl, which signs and sends nothing). The gateway's own
+  client only calls `getinfo`, `createinvoice` and `payments/incoming`. For the operator's node, set
+  `PhoenixConfig:LimitedAccessToken` so invoicing uses its receive-only password too.
+- **Checked and pinned.** The node must answer before it is saved, and its node id is pinned. An
+  invoice is handed out only when it carries that node's signature, the payment hash the node
+  reported, exactly the quoted amount and no longer a lifetime; a payment counts only when the node
+  shows the preimage that hashes to the payment hash. A different node answering at the merchant's
+  URL can therefore neither take nor fake its payments. If a node is replaced on purpose (a new
+  seed), configure the backend again to re-pin it.
+- **Encrypted passwords.** Node passwords are stored encrypted with AES-256-GCM under a key that must
+  stay out of the database, for example in the container's environment:
+
+  ```
+  LightningBackends__CredentialKeys__k1=<32 random bytes in base64, e.g. openssl rand -base64 32>
+  ```
+
+  Without a key only `operator` backends can be configured, and a malformed key stops startup. To
+  rotate, add `k2`, set `LightningBackends__ActiveCredentialKeyId=k2`, and keep `k1` listed until
+  every backend has been configured again; a backend whose key is missing answers 503 rather than
+  using the wrong credential.
+- **Lifecycle.** `GET .../backend` shows the current backend (never its password),
+  `POST .../backend/check` probes the node and records the result (including a changed identity),
+  and `DELETE .../backend` retires it. A replaced or retired backend is kept: the invoices it
+  issued are still read through it. `GET /api/v1/lightning/status` reports the key's own merchant.
+- **New merchants start without a backend** and cannot issue invoices (503) until one is set. The
+  `AddLightningBackends` migration gives every merchant that already existed the operator's node,
+  pinned on its first invoice.
+- Node URLs must be HTTPS (`LightningBackends:AllowInsecureHttp` is for local development only);
+  requests follow no redirects, are never retried, and time out after
+  `LightningBackends:RequestTimeoutSeconds` (15).
 
 ```json
 "LightningInvoices": {

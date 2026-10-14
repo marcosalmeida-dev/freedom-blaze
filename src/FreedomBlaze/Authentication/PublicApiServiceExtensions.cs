@@ -1,7 +1,9 @@
 using System.Threading.RateLimiting;
 using FreedomBlaze.Options;
 using FreedomBlaze.Services;
+using FreedomBlaze.Services.Lightning;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
 
 namespace FreedomBlaze.Authentication;
 
@@ -39,8 +41,26 @@ public static class PublicApiServiceExtensions
         services.AddSingleton<IMerchantService, MerchantService>();
         services.AddSingleton<ICurrencyConversionService, CurrencyConversionService>();
 
-        // Scoped, not singleton: it holds the phoenixd typed HttpClient, which must not outlive its handler.
-        services.AddScoped<ILightningInvoiceService, LightningInvoiceService>();
+        // Merchants' Lightning nodes. A malformed credential key stops startup instead of a later request.
+        services.AddOptions<LightningBackendOptions>()
+            .Bind(configuration.GetSection(LightningBackendOptions.Section))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<LightningBackendOptions>, LightningBackendOptionsValidator>();
+        services.AddSingleton<ILightningCredentialProtector, AesGcmCredentialProtector>();
+        services.AddSingleton<ILightningBackendFactory, LightningBackendFactory>();
+        services.AddSingleton<ILightningBackendService, LightningBackendService>();
+        services.AddSingleton<ILightningInvoiceService, LightningInvoiceService>();
+
+        // No redirects: a node's password is only ever sent to the address it was configured for. No retries
+        // either, including the ones the service defaults give every client: a retried createinvoice issues a
+        // second invoice behind the idempotency reservation's back.
+#pragma warning disable EXTEXP0001 // RemoveAllResilienceHandlers is experimental; it is the only way to opt out of the defaults.
+        services.AddHttpClient(LightningBackendFactory.HttpClientName)
+            .ConfigureHttpClient((provider, client) => client.Timeout =
+                TimeSpan.FromSeconds(provider.GetRequiredService<IOptions<LightningBackendOptions>>().Value.RequestTimeoutSeconds))
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false })
+            .RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
 
         services.AddAuthentication()
             .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(ApiKeyDefaults.Scheme, _ => { });

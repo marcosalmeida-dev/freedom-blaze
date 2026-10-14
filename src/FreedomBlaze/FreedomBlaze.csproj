@@ -17,6 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="NBitcoin.Secp256k1" Version="4.0.1" />
     <ProjectReference Include="..\FreedomBlaze.Client\FreedomBlaze.Client.csproj" />
     <ProjectReference Include="..\FreedomBlaze.Resources\FreedomBlaze.Resources.csproj" />
     <ProjectReference Include="..\FreedomBlaze.ServiceDefaults\FreedomBlaze.ServiceDefaults.csproj" />

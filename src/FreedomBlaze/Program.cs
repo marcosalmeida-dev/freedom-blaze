@@ -18,12 +18,12 @@ using FreedomBlaze.OpenApi;
 using FreedomBlaze.Options;
 using FreedomBlaze.ServiceDefaults;
 using FreedomBlaze.Services;
+using FreedomBlaze.Services.Lightning;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using MudBlazor.Services;
 using OpenAI;
-using Phoenixd.NET;
 using Phoenixd.NET.Hubs;
 using Scalar.AspNetCore;
 
@@ -295,8 +295,7 @@ var phoenixdHost = builder.Configuration["PhoenixConfig:Host"];
 var phoenixdEnabled = !string.IsNullOrWhiteSpace(phoenixdHost);
 if (phoenixdEnabled)
 {
-    builder.Services.AddSignalR();
-    builder.Services.ConfigurePhoenixdServices(builder.Configuration);
+    builder.Services.AddOperatorNode(builder.Configuration);
 }
 
 builder.Services.AddRazorComponents()

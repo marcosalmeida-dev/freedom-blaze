@@ -20,11 +20,11 @@ public enum InvoiceCreationOutcome
     /// <summary>No trustworthy price right now (too few exchanges, stale or placeholder fiat rate).</summary>
     PriceUnavailable,
 
-    /// <summary>No node is configured on this server.</summary>
-    NodeUnavailable,
+    /// <summary>The merchant has no usable Lightning backend (none configured, or unusable on this server).</summary>
+    BackendUnavailable,
 
-    /// <summary>The node refused or could not be reached.</summary>
-    NodeFailure,
+    /// <summary>The merchant's node refused, could not be reached, or issued an invoice that failed verification.</summary>
+    BackendFailure,
 
     /// <summary>The <c>Idempotency-Key</c> was already used for a different request.</summary>
     IdempotencyMismatch,
@@ -43,33 +43,38 @@ public enum InvoiceReadOutcome
     /// <summary>No such invoice for this merchant — including another merchant's invoice.</summary>
     NotFound,
 
-    NodeUnavailable,
-    NodeFailure,
+    /// <summary>The backend that issued the invoice cannot be used on this server.</summary>
+    BackendUnavailable,
+
+    /// <summary>The node refused, could not be reached, or reported a payment it could not prove.</summary>
+    BackendFailure,
 }
 
-public sealed record InvoiceReadResult(InvoiceReadOutcome Outcome, LightningInvoice? Invoice = null);
+public sealed record InvoiceReadResult(InvoiceReadOutcome Outcome, LightningInvoice? Invoice = null, string? Message = null);
 
 /// <summary>Filters for listing a merchant's invoices; <see cref="Before"/> is the paging cursor.</summary>
 public sealed record LightningInvoiceQuery(
     LightningInvoiceStatus? Status = null, string? ExternalId = null, int? Limit = null, long? Before = null);
 
 /// <summary>
-/// Issues, reads and lists merchants' Lightning invoices. Every operation is scoped to one merchant:
-/// another merchant's invoice is indistinguishable from one that does not exist.
+/// Issues, reads and lists merchants' Lightning invoices, each on the merchant's own backend. Every
+/// operation is scoped to one merchant: another merchant's invoice is indistinguishable from one that
+/// does not exist.
 /// </summary>
 public interface ILightningInvoiceService
 {
-    /// <summary>True when a node is configured; without one nothing can be issued or checked.</summary>
-    bool IsConfigured { get; }
+    /// <summary>Whether the merchant can take Lightning payments right now: a backend is configured and its pinned node answers.</summary>
+    Task<LightningGatewayStatus> GetStatusAsync(int merchantId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Prices the request and issues the invoice. With an <paramref name="idempotencyKey"/>, a repeat of
-    /// the same request returns the original invoice instead of issuing another.
+    /// Prices the request and issues the invoice on the merchant's backend. With an
+    /// <paramref name="idempotencyKey"/>, a repeat of the same request returns the original invoice
+    /// instead of issuing another.
     /// </summary>
     Task<InvoiceCreationResult> CreateAsync(
         InvoiceIssuer issuer, CreateLightningInvoiceRequest request, string? idempotencyKey, CancellationToken cancellationToken);
 
-    /// <summary>The merchant's invoice, refreshed from the node while it is still pending.</summary>
+    /// <summary>The merchant's invoice, refreshed from the node that issued it while it is still pending.</summary>
     Task<InvoiceReadResult> GetAsync(int merchantId, string paymentHash, CancellationToken cancellationToken);
 
     /// <summary>

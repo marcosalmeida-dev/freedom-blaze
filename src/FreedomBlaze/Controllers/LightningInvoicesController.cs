@@ -8,8 +8,6 @@ using FreedomBlaze.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Phoenixd.NET.Exceptions;
-using Phoenixd.NET.Interfaces;
 
 namespace FreedomBlaze.Controllers;
 
@@ -17,7 +15,7 @@ namespace FreedomBlaze.Controllers;
 /// Fiat-priced Lightning invoices for merchants' integrations (e.g. a store checkout). Unlike the
 /// operator API at <c>/api/payment-manager</c>, which needs a master key because it can move funds,
 /// these endpoints can only <b>receive</b>: they quote an amount in satoshis, create the invoice on the
-/// node in the same request, and report its status.
+/// merchant's own Lightning backend in the same request, and report its status.
 /// <para>
 /// Every invoice belongs to the merchant of the key that issued it, and is recorded by the gateway.
 /// Keys need the <c>invoices:write</c> scope to issue and <c>invoices:read</c> to read; any key of the
@@ -31,10 +29,7 @@ namespace FreedomBlaze.Controllers;
 [Authorize(AuthenticationSchemes = ApiKeyDefaults.Scheme)]
 [EnableRateLimiting(RateLimitPolicies.PerApiKey)]
 [Produces("application/json")]
-public sealed partial class LightningInvoicesController(
-    ILightningInvoiceService invoiceService,
-    ILogger<LightningInvoicesController> logger,
-    INodeService? node = null) : ControllerBase
+public sealed partial class LightningInvoicesController(ILightningInvoiceService invoiceService) : ControllerBase
 {
     /// <summary>Request header that makes invoice creation safe to retry.</summary>
     public const string IdempotencyKeyHeader = "Idempotency-Key";
@@ -42,32 +37,21 @@ public sealed partial class LightningInvoicesController(
     /// <summary>Response header marking a replayed creation.</summary>
     public const string IdempotentReplayedHeader = "Idempotent-Replayed";
 
-    private static readonly TimeSpan NodeProbeTimeout = TimeSpan.FromSeconds(5);
-
-    /// <summary>Reports whether invoices can be issued right now, so a checkout can hide the option when not.</summary>
+    /// <summary>
+    /// Reports whether the key's merchant can take Lightning payments right now (a backend is configured
+    /// and its pinned node answers), so a checkout can hide the option when not.
+    /// </summary>
     [HttpGet("status")]
     [Authorize(Policy = ApiKeyPolicies.InvoicesWrite)]
     [ProducesResponseType(typeof(LightningGatewayStatus), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<LightningGatewayStatus>> GetStatus(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetStatus(CancellationToken cancellationToken)
     {
-        if (!invoiceService.IsConfigured || node is null)
-            return Ok(new LightningGatewayStatus { Enabled = false, Reachable = false });
+        if (MerchantId() is not { } merchantId)
+            return NoMerchant();
 
-        using var probe = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        probe.CancelAfter(NodeProbeTimeout);
-        try
-        {
-            await node.GetNodeInfo(probe.Token);
-            return Ok(new LightningGatewayStatus { Enabled = true, Reachable = true });
-        }
-        catch (Exception ex) when (!cancellationToken.IsCancellationRequested
-            && ex is PhoenixdApiException or HttpRequestException or OperationCanceledException)
-        {
-            logger.LogWarning(ex, "phoenixd did not answer the gateway status probe.");
-            return Ok(new LightningGatewayStatus { Enabled = true, Reachable = false });
-        }
+        return Ok(await invoiceService.GetStatusAsync(merchantId, cancellationToken));
     }
 
     /// <summary>
@@ -119,8 +103,8 @@ public sealed partial class LightningInvoicesController(
                 return Problem(title: "Price unavailable", detail: result.Message,
                     statusCode: StatusCodes.Status503ServiceUnavailable);
 
-            case InvoiceCreationOutcome.NodeUnavailable:
-                return Unavailable();
+            case InvoiceCreationOutcome.BackendUnavailable:
+                return Unavailable(result.Message);
 
             case InvoiceCreationOutcome.IdempotencyMismatch:
                 return Problem(title: "Idempotency-Key reused", detail: result.Message,
@@ -133,7 +117,7 @@ public sealed partial class LightningInvoicesController(
                     statusCode: StatusCodes.Status409Conflict);
 
             default:
-                return NodeFailure();
+                return NodeFailure(result.Message);
         }
     }
 
@@ -164,8 +148,8 @@ public sealed partial class LightningInvoicesController(
         {
             InvoiceReadOutcome.Found when result.Invoice is { } invoice => Ok(LightningInvoiceStatusResponse.From(invoice)),
             InvoiceReadOutcome.NotFound => NotFound(),
-            InvoiceReadOutcome.NodeUnavailable => Unavailable(),
-            _ => NodeFailure(),
+            InvoiceReadOutcome.BackendUnavailable => Unavailable(result.Message),
+            _ => NodeFailure(result.Message),
         };
     }
 
@@ -229,12 +213,13 @@ public sealed partial class LightningInvoicesController(
     private ObjectResult Invalid(string detail) =>
         Problem(title: "Invalid invoice request", detail: detail, statusCode: StatusCodes.Status400BadRequest);
 
-    private ObjectResult Unavailable() =>
-        Problem(title: "Lightning payments unavailable", detail: "phoenixd is not configured on this server.",
+    private ObjectResult Unavailable(string? detail) =>
+        Problem(title: "Lightning payments unavailable",
+            detail: detail ?? "No Lightning backend is available for this merchant.",
             statusCode: StatusCodes.Status503ServiceUnavailable);
 
-    private ObjectResult NodeFailure() =>
-        Problem(title: "Lightning node error", detail: "The Lightning node could not complete the request.",
+    private ObjectResult NodeFailure(string? detail) =>
+        Problem(title: "Lightning node error", detail: detail ?? "The Lightning node could not complete the request.",
             statusCode: StatusCodes.Status502BadGateway);
 
     [GeneratedRegex("^[0-9a-fA-F]{64}$")]

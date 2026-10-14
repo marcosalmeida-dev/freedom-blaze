@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Net;
 using System.Reflection;
 using System.Security.Claims;
 using FreedomBlaze.Authentication;
@@ -12,8 +11,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Logging.Abstractions;
-using Phoenixd.NET.Interfaces;
 
 namespace FreedomBlaze.Tests;
 
@@ -71,6 +68,7 @@ public sealed class LightningInvoicesControllerTests
         var controller = Controller(service, ApiKeyAuthenticationHandler.BuildPrincipal(
             new ApiKey { Id = 1, Name = "master", IsMaster = true }));
 
+        Assert.Equal(StatusCodes.Status403Forbidden, StatusOf(await controller.GetStatus(default)));
         Assert.Equal(StatusCodes.Status403Forbidden, StatusOf(await controller.CreateInvoice(Request(), null, default)));
         Assert.Equal(StatusCodes.Status403Forbidden, StatusOf(await controller.GetInvoice(Hash, default)));
         Assert.Equal(StatusCodes.Status403Forbidden, StatusOf(await controller.ListInvoices(null, null, null, null, default)));
@@ -117,8 +115,8 @@ public sealed class LightningInvoicesControllerTests
     [Theory]
     [InlineData(InvoiceCreationOutcome.Invalid, StatusCodes.Status400BadRequest)]
     [InlineData(InvoiceCreationOutcome.PriceUnavailable, StatusCodes.Status503ServiceUnavailable)]
-    [InlineData(InvoiceCreationOutcome.NodeUnavailable, StatusCodes.Status503ServiceUnavailable)]
-    [InlineData(InvoiceCreationOutcome.NodeFailure, StatusCodes.Status502BadGateway)]
+    [InlineData(InvoiceCreationOutcome.BackendUnavailable, StatusCodes.Status503ServiceUnavailable)]
+    [InlineData(InvoiceCreationOutcome.BackendFailure, StatusCodes.Status502BadGateway)]
     [InlineData(InvoiceCreationOutcome.IdempotencyMismatch, StatusCodes.Status422UnprocessableEntity)]
     [InlineData(InvoiceCreationOutcome.IdempotencyInProgress, StatusCodes.Status409Conflict)]
     public async Task CreationOutcomesAreAnsweredWithTheirStatusCodes(InvoiceCreationOutcome outcome, int status)
@@ -129,6 +127,22 @@ public sealed class LightningInvoicesControllerTests
 
         Assert.Equal(status, StatusOf(result));
         Assert.IsType<ProblemDetails>(Assert.IsType<ObjectResult>(result).Value);
+    }
+
+    [Theory]
+    [InlineData(InvoiceCreationOutcome.BackendUnavailable)]
+    [InlineData(InvoiceCreationOutcome.BackendFailure)]
+    public async Task ABackendProblemTellsTheMerchantWhatWentWrong(InvoiceCreationOutcome outcome)
+    {
+        var controller = Controller(new StubInvoiceService
+        {
+            Creation = new(outcome, Message: "No Lightning backend is configured for this merchant.")
+        });
+
+        var result = await controller.CreateInvoice(Request(), "attempt-1", default);
+
+        var problem = Assert.IsType<ProblemDetails>(Assert.IsType<ObjectResult>(result).Value);
+        Assert.Equal("No Lightning backend is configured for this merchant.", problem.Detail);
     }
 
     [Fact]
@@ -191,8 +205,8 @@ public sealed class LightningInvoicesControllerTests
 
     [Theory]
     [InlineData(InvoiceReadOutcome.NotFound, StatusCodes.Status404NotFound)]
-    [InlineData(InvoiceReadOutcome.NodeUnavailable, StatusCodes.Status503ServiceUnavailable)]
-    [InlineData(InvoiceReadOutcome.NodeFailure, StatusCodes.Status502BadGateway)]
+    [InlineData(InvoiceReadOutcome.BackendUnavailable, StatusCodes.Status503ServiceUnavailable)]
+    [InlineData(InvoiceReadOutcome.BackendFailure, StatusCodes.Status502BadGateway)]
     public async Task ReadOutcomesAreAnsweredWithTheirStatusCodes(InvoiceReadOutcome outcome, int status)
     {
         var controller = Controller(new StubInvoiceService { Read = new(outcome) });
@@ -255,24 +269,16 @@ public sealed class LightningInvoicesControllerTests
     }
 
     [Fact]
-    public async Task GatewayStatusProbesTheNode()
+    public async Task GatewayStatusIsTheKeysMerchants()
     {
-        using var healthy = new PhoenixdStub(_ => PhoenixdStub.Json("""
-            {"nodeId":"03abc","channels":[],"chain":"mainnet","blockHeight":971166,"version":"0.9.2"}
-            """));
-        using var broken = new PhoenixdStub(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        var service = new StubInvoiceService { Status = new LightningGatewayStatus { Enabled = true, Reachable = false } };
 
-        var up = await GatewayStatus(new StubInvoiceService(), healthy.Node);
-        var down = await GatewayStatus(new StubInvoiceService(), broken.Node);
-        var off = await GatewayStatus(new StubInvoiceService { IsConfigured = false }, node: null);
+        var result = await Controller(service).GetStatus(default);
 
-        Assert.True(up.Enabled);
-        Assert.True(up.Reachable);
-        Assert.Equal("/getinfo", Assert.Single(healthy.Requests).Path);
-        Assert.True(down.Enabled);
-        Assert.False(down.Reachable);
-        Assert.False(off.Enabled);
-        Assert.False(off.Reachable);
+        var status = Assert.IsType<LightningGatewayStatus>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.True(status.Enabled);
+        Assert.False(status.Reachable);
+        Assert.Equal(MerchantId, service.LastStatus);
     }
 
     [Theory]
@@ -300,15 +306,8 @@ public sealed class LightningInvoicesControllerTests
             request, new ValidationContext(request), [], validateAllProperties: true));
     }
 
-    private static async Task<LightningGatewayStatus> GatewayStatus(ILightningInvoiceService service, INodeService? node)
-    {
-        var result = await Controller(service, node: node).GetStatus(default);
-        return Assert.IsType<LightningGatewayStatus>(Assert.IsType<OkObjectResult>(result.Result).Value);
-    }
-
-    private static LightningInvoicesController Controller(
-        ILightningInvoiceService service, ClaimsPrincipal? user = null, INodeService? node = null) =>
-        new(service, NullLogger<LightningInvoicesController>.Instance, node)
+    private static LightningInvoicesController Controller(ILightningInvoiceService service, ClaimsPrincipal? user = null) =>
+        new(service)
         {
             ControllerContext = new ControllerContext
             {
@@ -350,12 +349,21 @@ public sealed class LightningInvoicesControllerTests
 
     private sealed class StubInvoiceService : ILightningInvoiceService
     {
-        public bool IsConfigured { get; init; } = true;
-        public InvoiceCreationResult Creation { get; init; } = new(InvoiceCreationOutcome.NodeFailure);
+        public LightningGatewayStatus Status { get; init; } = new() { Enabled = true, Reachable = true };
+        public InvoiceCreationResult Creation { get; init; } = new(InvoiceCreationOutcome.BackendFailure);
         public InvoiceReadResult Read { get; init; } = new(InvoiceReadOutcome.NotFound);
         public (IReadOnlyList<LightningInvoice> Items, long? NextCursor) Page { get; init; } = ([], null);
 
         public int Calls { get; private set; }
+        public int? LastStatus { get; private set; }
+
+        public Task<LightningGatewayStatus> GetStatusAsync(int merchantId, CancellationToken cancellationToken)
+        {
+            Calls++;
+            LastStatus = merchantId;
+            return Task.FromResult(Status);
+        }
+
         public (InvoiceIssuer Issuer, CreateLightningInvoiceRequest Request, string? IdempotencyKey)? LastCreate { get; private set; }
         public (int MerchantId, string PaymentHash)? LastRead { get; private set; }
         public (int MerchantId, LightningInvoiceQuery Query)? LastList { get; private set; }

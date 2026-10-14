@@ -141,6 +141,64 @@ namespace FreedomBlaze.Data.Migrations
                     b.ToTable("Donations", (string)null);
                 });
 
+            modelBuilder.Entity("FreedomBlaze.Data.Entities.LightningBackend", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Chain")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("CheckError")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<DateTimeOffset?>("CheckedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MerchantId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NodeId")
+                        .HasMaxLength(66)
+                        .HasColumnType("nvarchar(66)");
+
+                    b.Property<string>("ProtectedPassword")
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<bool?>("Reachable")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("RetiredAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MerchantId")
+                        .IsUnique()
+                        .HasFilter("[IsActive] = 1");
+
+                    b.ToTable("LightningBackends", (string)null);
+                });
+
             modelBuilder.Entity("FreedomBlaze.Data.Entities.LightningInvoice", b =>
                 {
                     b.Property<long>("Id")
@@ -157,6 +215,9 @@ namespace FreedomBlaze.Data.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<int?>("ApiKeyId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BackendId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("BitcoinPrice")
@@ -234,6 +295,8 @@ namespace FreedomBlaze.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ApiKeyId");
+
+                    b.HasIndex("BackendId");
 
                     b.HasIndex("PaymentHash")
                         .IsUnique()
@@ -399,12 +462,27 @@ namespace FreedomBlaze.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("FreedomBlaze.Data.Entities.LightningBackend", b =>
+                {
+                    b.HasOne("FreedomBlaze.Data.Entities.Merchant", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FreedomBlaze.Data.Entities.LightningInvoice", b =>
                 {
                     b.HasOne("FreedomBlaze.Data.Entities.ApiKey", null)
                         .WithMany()
                         .HasForeignKey("ApiKeyId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FreedomBlaze.Data.Entities.LightningBackend", null)
+                        .WithMany()
+                        .HasForeignKey("BackendId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("FreedomBlaze.Data.Entities.Merchant", null)
                         .WithMany()

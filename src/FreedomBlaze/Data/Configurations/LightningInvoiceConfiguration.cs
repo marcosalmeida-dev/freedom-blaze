@@ -37,5 +37,6 @@ public class LightningInvoiceConfiguration : IEntityTypeConfiguration<LightningI
 
         builder.HasOne<Merchant>().WithMany().HasForeignKey(i => i.MerchantId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<ApiKey>().WithMany().HasForeignKey(i => i.ApiKeyId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<LightningBackend>().WithMany().HasForeignKey(i => i.BackendId).OnDelete(DeleteBehavior.Restrict);
     }
 }

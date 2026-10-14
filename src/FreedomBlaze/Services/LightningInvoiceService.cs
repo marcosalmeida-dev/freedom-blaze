@@ -1,3 +1,5 @@
+using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -6,30 +8,30 @@ using FreedomBlaze.Data.Repositories;
 using FreedomBlaze.Exceptions;
 using FreedomBlaze.Models.Api;
 using FreedomBlaze.Options;
+using FreedomBlaze.Services.Lightning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Phoenixd.NET.Exceptions;
-using Phoenixd.NET.Interfaces;
-using Phoenixd.NET.Models;
 
 namespace FreedomBlaze.Services;
 
 /// <summary>
-/// Default <see cref="ILightningInvoiceService"/>. Every invoice is recorded before the node is asked to
-/// issue it: with an <c>Idempotency-Key</c>, the unique (merchant, key) index makes the first request
-/// the only one that can reach the node, and retries are answered from the record.
+/// Default <see cref="ILightningInvoiceService"/>. Every invoice is recorded before the merchant's node is
+/// asked to issue it: with an <c>Idempotency-Key</c>, the unique (merchant, key) index makes the first
+/// request the only one that can reach the node, and retries are answered from the record.
 /// <para>
-/// The record is the gateway's: ownership, listing and history. The node remains the source of truth
-/// for whether a pending invoice has been paid, so a read refreshes it from there.
+/// The node is not taken on trust. Each backend pins its node's public key, an issued invoice is handed
+/// out only when its signature, payment hash, amount and lifetime check out, and a payment counts only
+/// when the node shows the preimage that hashes to the invoice's payment hash.
 /// </para>
 /// </summary>
 public sealed class LightningInvoiceService(
     ICurrencyConversionService conversionService,
     IRepository<LightningInvoice> invoices,
+    IRepository<LightningBackend> backends,
+    ILightningBackendFactory backendFactory,
     IOptions<LightningInvoiceOptions> options,
     TimeProvider timeProvider,
-    ILogger<LightningInvoiceService> logger,
-    IPaymentService? payments = null) : ILightningInvoiceService
+    ILogger<LightningInvoiceService> logger) : ILightningInvoiceService
 {
     public const int DefaultPageSize = 50;
     public const int MaxPageSize = 100;
@@ -40,16 +42,42 @@ public sealed class LightningInvoiceService(
     /// </summary>
     internal static readonly TimeSpan AbandonedReservationAge = TimeSpan.FromMinutes(2);
 
+    private static readonly TimeSpan StatusProbeTimeout = TimeSpan.FromSeconds(5);
+
     private readonly LightningInvoiceOptions _settings = options.Value;
 
-    public bool IsConfigured => payments is not null;
+    public async Task<LightningGatewayStatus> GetStatusAsync(int merchantId, CancellationToken cancellationToken)
+    {
+        var backend = await ActiveBackendAsync(merchantId, cancellationToken);
+        if (backend is null)
+            return new LightningGatewayStatus { Enabled = false, Reachable = false };
+
+        if (!TryConnect(backend, out var node, out _))
+            return new LightningGatewayStatus { Enabled = true, Reachable = false };
+
+        using var probe = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        probe.CancelAfter(StatusProbeTimeout);
+        try
+        {
+            var info = await node.GetInfoAsync(probe.Token);
+            var samePinnedNode = backend.NodeId is null || string.Equals(info.NodeId, backend.NodeId, StringComparison.OrdinalIgnoreCase);
+            if (!samePinnedNode)
+                logger.LogError("Backend {BackendId} of merchant {MerchantId} now answers as node {NodeId}, not the pinned {PinnedNodeId}.",
+                    backend.Id, merchantId, info.NodeId, backend.NodeId);
+
+            return new LightningGatewayStatus { Enabled = true, Reachable = samePinnedNode };
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested
+            && ex is LightningBackendException or OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Backend {BackendId} of merchant {MerchantId} did not answer the status probe.", backend.Id, merchantId);
+            return new LightningGatewayStatus { Enabled = true, Reachable = false };
+        }
+    }
 
     public async Task<InvoiceCreationResult> CreateAsync(
         InvoiceIssuer issuer, CreateLightningInvoiceRequest request, string? idempotencyKey, CancellationToken cancellationToken)
     {
-        if (payments is null)
-            return new InvoiceCreationResult(InvoiceCreationOutcome.NodeUnavailable);
-
         if (request.Amount <= 0)
             return Invalid("Amount must be greater than zero.");
 
@@ -60,6 +88,16 @@ public sealed class LightningInvoiceService(
         if (idempotencyKey is not null
             && await ResolvePriorAsync(issuer.MerchantId, idempotencyKey, requestHash, reclaimAbandoned: true, cancellationToken) is { } prior)
             return prior;
+
+        var backend = await ActiveBackendAsync(issuer.MerchantId, cancellationToken);
+        if (backend is null)
+            return Unavailable("No Lightning backend is configured for this merchant.");
+
+        if (!TryConnect(backend, out var node, out var problem))
+            return Unavailable(problem);
+
+        if (backend.NodeId is null && await PinAsync(backend, node, cancellationToken) is { } pinFailure)
+            return pinFailure;
 
         SatsQuote quote;
         try
@@ -85,6 +123,7 @@ public sealed class LightningInvoiceService(
         {
             MerchantId = issuer.MerchantId,
             ApiKeyId = issuer.ApiKeyId,
+            BackendId = backend.Id,
             Status = LightningInvoiceStatus.Creating,
             ExternalId = request.ExternalId,
             Description = string.IsNullOrWhiteSpace(request.Description)
@@ -118,40 +157,47 @@ public sealed class LightningInvoiceService(
             throw; // Nothing holds the key, so the insert failed for another reason.
         }
 
-        Invoice issued;
+        BackendInvoice issued;
         try
         {
-            issued = await payments.CreateInvoiceAsync(new CreateInvoiceRequest
-            {
-                AmountSat = invoice.AmountSat,
-                Description = invoice.Description,
+            issued = await node.CreateInvoiceAsync(new BackendInvoiceRequest(
+                invoice.AmountSat,
+                invoice.Description,
                 // The node's own label: whose invoice it is, then the merchant's reference.
-                ExternalId = $"m{issuer.MerchantId}:{request.ExternalId}",
-                ExpirySeconds = expirySeconds,
-                WebhookUrl = invoice.WebhookUrl,
-            }, cancellationToken);
+                $"m{issuer.MerchantId}:{request.ExternalId}",
+                expirySeconds,
+                invoice.WebhookUrl), cancellationToken);
         }
-        catch (Exception ex) when (ex is PhoenixdApiException or HttpRequestException or OperationCanceledException)
+        catch (Exception ex) when (ex is LightningBackendException or OperationCanceledException)
         {
             // Whatever the node may have issued was never handed out, so the key must stay usable for a retry.
             await ReleaseAsync(invoice);
             cancellationToken.ThrowIfCancellationRequested();
 
-            logger.LogError(ex, "phoenixd could not create a {AmountSat} sat invoice for merchant {MerchantId}.",
-                invoice.AmountSat, issuer.MerchantId);
-            return new InvoiceCreationResult(InvoiceCreationOutcome.NodeFailure);
+            logger.LogError(ex, "Backend {BackendId} could not create a {AmountSat} sat invoice for merchant {MerchantId}.",
+                backend.Id, invoice.AmountSat, issuer.MerchantId);
+            return new InvoiceCreationResult(InvoiceCreationOutcome.BackendFailure, Message: ex.Message);
         }
 
-        invoice.PaymentHash = issued.PaymentHash.ToLowerInvariant();
-        invoice.Bolt11 = issued.Serialized;
+        if (VerifyIssued(issued, invoice.AmountSat, expirySeconds, backend.NodeId!) is { } rejection)
+        {
+            await ReleaseAsync(invoice);
+            logger.LogError("Refused the invoice backend {BackendId} issued for merchant {MerchantId}: {Reason}. Invoice: {Bolt11}",
+                backend.Id, issuer.MerchantId, rejection, issued.Bolt11);
+            return new InvoiceCreationResult(InvoiceCreationOutcome.BackendFailure,
+                Message: $"The node's invoice failed verification: {rejection}.");
+        }
+
+        invoice.PaymentHash = issued.PaymentHash;
+        invoice.Bolt11 = issued.Bolt11;
         invoice.Status = LightningInvoiceStatus.Pending;
 
         // Recorded even if the caller has gone: the node issued it, and a retry must find it.
         await invoices.UpdateAsync(invoice, CancellationToken.None);
 
         logger.LogInformation(
-            "Issued {AmountSat} sat invoice {PaymentHash} for {Amount} {Currency} (merchant {MerchantId}, ref {ExternalId}).",
-            invoice.AmountSat, invoice.PaymentHash, invoice.Amount, invoice.Currency, issuer.MerchantId, invoice.ExternalId);
+            "Issued {AmountSat} sat invoice {PaymentHash} for {Amount} {Currency} (merchant {MerchantId}, backend {BackendId}, ref {ExternalId}).",
+            invoice.AmountSat, invoice.PaymentHash, invoice.Amount, invoice.Currency, issuer.MerchantId, backend.Id, invoice.ExternalId);
         return new InvoiceCreationResult(InvoiceCreationOutcome.Created, invoice);
     }
 
@@ -166,24 +212,38 @@ public sealed class LightningInvoiceService(
         if (invoice.Status != LightningInvoiceStatus.Pending)
             return new InvoiceReadResult(InvoiceReadOutcome.Found, invoice);
 
-        if (payments is null)
-            return new InvoiceReadResult(InvoiceReadOutcome.NodeUnavailable);
+        // Read from the backend that issued it, even if the merchant has moved to another one since.
+        var backend = await backends.GetByIdAsync(invoice.BackendId, cancellationToken);
+        if (backend is null)
+            return new InvoiceReadResult(InvoiceReadOutcome.BackendUnavailable,
+                Message: "The backend that issued this invoice no longer exists.");
 
-        PaymentInfo? payment;
+        if (!TryConnect(backend, out var node, out var problem))
+            return new InvoiceReadResult(InvoiceReadOutcome.BackendUnavailable, Message: problem);
+
+        BackendPayment? payment;
         try
         {
-            payment = await payments.FindIncomingPaymentAsync(hash, cancellationToken);
+            payment = await node.FindIncomingPaymentAsync(hash, cancellationToken);
         }
-        catch (Exception ex) when (ex is PhoenixdApiException or HttpRequestException)
+        catch (LightningBackendException ex)
         {
-            logger.LogError(ex, "phoenixd could not look up invoice {PaymentHash}.", hash);
-            return new InvoiceReadResult(InvoiceReadOutcome.NodeFailure);
+            logger.LogError(ex, "Backend {BackendId} could not look up invoice {PaymentHash}.", backend.Id, hash);
+            return new InvoiceReadResult(InvoiceReadOutcome.BackendFailure, Message: ex.Message);
         }
 
         if (payment is null)
         {
-            logger.LogError("The node no longer knows invoice {PaymentHash} issued for merchant {MerchantId}.", hash, merchantId);
+            logger.LogError("Backend {BackendId} no longer knows invoice {PaymentHash} issued for merchant {MerchantId}.",
+                backend.Id, hash, merchantId);
             return new InvoiceReadResult(InvoiceReadOutcome.Found, invoice);
+        }
+
+        if (payment.IsPaid && !ProvesPayment(payment.Preimage, hash))
+        {
+            logger.LogError("Backend {BackendId} reported invoice {PaymentHash} paid without its preimage; not recorded.", backend.Id, hash);
+            return new InvoiceReadResult(InvoiceReadOutcome.BackendFailure,
+                Message: "The node reported a payment it could not prove.");
         }
 
         if (ApplyNodeState(invoice, payment))
@@ -215,6 +275,86 @@ public sealed class LightningInvoiceService(
 
         var items = page.Take(limit).ToList();
         return (items, items[^1].Id);
+    }
+
+    /// <summary>
+    /// Why an invoice the node issued must not be handed out, or null when it checks out: it must carry the
+    /// pinned node's signature, the payment hash the node reported, exactly the quoted amount, and no longer
+    /// a lifetime than the quote holds for.
+    /// </summary>
+    internal static string? VerifyIssued(BackendInvoice issued, long amountSat, int expirySeconds, string pinnedNodeId)
+    {
+        if (!Bolt11Invoice.TryParse(issued.Bolt11, out var bolt11, out var error))
+            return $"it is not a valid BOLT11 invoice ({error})";
+        if (!string.Equals(bolt11.PayeeNodeId, pinnedNodeId, StringComparison.OrdinalIgnoreCase))
+            return $"it is signed by node {bolt11.PayeeNodeId}, not the pinned {pinnedNodeId}";
+        if (!string.Equals(bolt11.PaymentHash, issued.PaymentHash, StringComparison.OrdinalIgnoreCase))
+            return "its payment hash is not the one the node reported";
+        if (bolt11.AmountMsat != amountSat * 1000)
+            return $"it asks for {bolt11.AmountMsat?.ToString(CultureInfo.InvariantCulture) ?? "any amount"} msat instead of {amountSat * 1000}";
+        if (bolt11.ExpirySeconds > expirySeconds)
+            return $"it stays payable for {bolt11.ExpirySeconds} s instead of {expirySeconds} s";
+        return null;
+    }
+
+    /// <summary>True when <paramref name="preimage"/> hashes to <paramref name="paymentHash"/>, which only a real payment reveals.</summary>
+    internal static bool ProvesPayment(string? preimage, string paymentHash)
+    {
+        Span<byte> bytes = stackalloc byte[32];
+        if (preimage is not { Length: 64 }
+            || Convert.FromHexString(preimage, bytes, out _, out var written) != OperationStatus.Done || written != 32)
+            return false;
+
+        return string.Equals(Convert.ToHexStringLower(SHA256.HashData(bytes)), paymentHash, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private Task<LightningBackend?> ActiveBackendAsync(int merchantId, CancellationToken cancellationToken) =>
+        backends.FirstOrDefaultAsync(b => b.MerchantId == merchantId && b.IsActive, cancellationToken);
+
+    private bool TryConnect(LightningBackend backend, [NotNullWhen(true)] out ILightningBackend? node, [NotNullWhen(false)] out string? problem)
+    {
+        try
+        {
+            node = backendFactory.Create(backend);
+            problem = null;
+            return true;
+        }
+        catch (LightningBackendUnavailableException ex)
+        {
+            logger.LogError(ex, "Backend {BackendId} of merchant {MerchantId} cannot be used.", backend.Id, backend.MerchantId);
+            node = null;
+            problem = ex.Message;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Pins the node a backend reaches on its first use, for backends created before pinning existed. Only
+    /// fills an empty pin, so it never overwrites one an operator set.
+    /// </summary>
+    private async Task<InvoiceCreationResult?> PinAsync(LightningBackend backend, ILightningBackend node, CancellationToken cancellationToken)
+    {
+        BackendNodeInfo info;
+        try
+        {
+            info = await node.GetInfoAsync(cancellationToken);
+        }
+        catch (LightningBackendException ex)
+        {
+            logger.LogError(ex, "Backend {BackendId} did not describe its node, so it cannot be pinned.", backend.Id);
+            return new InvoiceCreationResult(InvoiceCreationOutcome.BackendFailure, Message: ex.Message);
+        }
+
+        await backends.QueryAsync((all, token) => all
+            .Where(b => b.Id == backend.Id && b.NodeId == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(b => b.NodeId, info.NodeId).SetProperty(b => b.Chain, info.Chain), token),
+            CancellationToken.None);
+
+        backend.NodeId = info.NodeId;
+        backend.Chain = info.Chain;
+        logger.LogInformation("Pinned node {NodeId} ({Chain}) for backend {BackendId} of merchant {MerchantId}.",
+            info.NodeId, info.Chain, backend.Id, backend.MerchantId);
+        return null;
     }
 
     /// <summary>
@@ -259,7 +399,7 @@ public sealed class LightningInvoiceService(
     }
 
     /// <summary>Copies the node's verdict onto the record. True when anything changed.</summary>
-    private bool ApplyNodeState(LightningInvoice invoice, PaymentInfo payment)
+    private bool ApplyNodeState(LightningInvoice invoice, BackendPayment payment)
     {
         if (payment.IsPaid)
         {
@@ -268,11 +408,9 @@ public sealed class LightningInvoiceService(
                     invoice.PaymentHash, requested, invoice.AmountSat);
 
             invoice.Status = LightningInvoiceStatus.Paid;
-            invoice.PaidAtUtc = payment.CompletedAt is { } completedAt
-                ? DateTimeOffset.FromUnixTimeMilliseconds(completedAt)
-                : timeProvider.GetUtcNow();
+            invoice.PaidAtUtc = payment.CompletedAt ?? timeProvider.GetUtcNow();
             invoice.ReceivedSat = payment.ReceivedSat;
-            invoice.FeeSat = (long)Math.Ceiling(payment.Fees / 1000m); // phoenixd reports millisatoshis
+            invoice.FeeSat = (long)Math.Ceiling(payment.FeesMsat / 1000m);
             return true;
         }
 
@@ -332,4 +470,7 @@ public sealed class LightningInvoiceService(
 
     private static InvoiceCreationResult Invalid(string message) =>
         new(InvoiceCreationOutcome.Invalid, Message: message);
+
+    private static InvoiceCreationResult Unavailable(string message) =>
+        new(InvoiceCreationOutcome.BackendUnavailable, Message: message);
 }

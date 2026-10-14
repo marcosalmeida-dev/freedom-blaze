@@ -28,6 +28,8 @@ public class FreedomBlazeDbContext : DbContext
 
     public DbSet<LightningInvoice> LightningInvoices => Set<LightningInvoice>();
 
+    public DbSet<LightningBackend> LightningBackends => Set<LightningBackend>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FreedomBlazeDbContext).Assembly);

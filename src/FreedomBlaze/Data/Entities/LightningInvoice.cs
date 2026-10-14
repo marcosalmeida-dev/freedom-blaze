@@ -34,6 +34,9 @@ public class LightningInvoice
     /// <summary>The key that issued it, for auditing.</summary>
     public int? ApiKeyId { get; set; }
 
+    /// <summary>The backend that issued it, and so the node its status is read from.</summary>
+    public int BackendId { get; set; }
+
     public LightningInvoiceStatus Status { get; set; }
 
     /// <summary>The node's payment hash (64 hex). Null only while <see cref="LightningInvoiceStatus.Creating"/>.</summary>
