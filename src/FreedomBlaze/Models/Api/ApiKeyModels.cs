@@ -21,6 +21,18 @@ public sealed class CreateApiKeyRequest
     /// can mint another master key.
     /// </summary>
     public bool IsMaster { get; set; }
+
+    /// <summary>
+    /// The merchant the key acts for. Required for the invoice scopes; never set on a master key.
+    /// </summary>
+    public int? MerchantId { get; set; }
+
+    /// <summary>
+    /// What the key may do: <c>convert</c>, <c>invoices:write</c>, <c>invoices:read</c>. When omitted, a
+    /// merchant key gets all three and any other key gets <c>convert</c>. Ignored for master keys,
+    /// which hold every scope.
+    /// </summary>
+    public string[]? Scopes { get; set; }
 }
 
 /// <summary>
@@ -37,6 +49,8 @@ public sealed class CreateApiKeyResponse
 
     public string Prefix { get; init; } = string.Empty;
     public bool IsMaster { get; init; }
+    public int? MerchantId { get; init; }
+    public IReadOnlyList<string> Scopes { get; init; } = [];
     public DateTimeOffset CreatedAtUtc { get; init; }
     public DateTimeOffset? ExpiresAtUtc { get; init; }
 }
@@ -49,6 +63,8 @@ public sealed class ApiKeyInfo
     public string Prefix { get; init; } = string.Empty;
     public bool IsActive { get; init; }
     public bool IsMaster { get; init; }
+    public int? MerchantId { get; init; }
+    public IReadOnlyList<string> Scopes { get; init; } = [];
     public int? RateLimitPerMinute { get; init; }
     public DateTimeOffset CreatedAtUtc { get; init; }
     public DateTimeOffset? ExpiresAtUtc { get; init; }

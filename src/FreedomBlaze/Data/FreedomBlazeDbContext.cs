@@ -24,6 +24,10 @@ public class FreedomBlazeDbContext : DbContext
 
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
+    public DbSet<Merchant> Merchants => Set<Merchant>();
+
+    public DbSet<LightningInvoice> LightningInvoices => Set<LightningInvoice>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FreedomBlazeDbContext).Assembly);

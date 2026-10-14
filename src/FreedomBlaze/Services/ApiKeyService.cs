@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using FreedomBlaze.Data.Entities;
 using FreedomBlaze.Data.Repositories;
+using FreedomBlaze.Exceptions;
 using FreedomBlaze.Models.Api;
 
 namespace FreedomBlaze.Services;
@@ -9,13 +10,17 @@ namespace FreedomBlaze.Services;
 /// Default <see cref="IApiKeyService"/>. Keys look like <c>fb_live_&lt;43 url-safe chars&gt;</c> (256
 /// bits of entropy), are persisted only as a SHA-256 hash, and are matched in constant time on
 /// validation. <see cref="ApiKey.LastUsedAtUtc"/> is written at most once per minute per key to keep
-/// the auth path read-only under load.
+/// the auth path read-only under load. A key bound to a merchant stops authenticating while that
+/// merchant is deactivated.
 /// </summary>
 public sealed class ApiKeyService(
     IRepository<ApiKey> apiKeys,
+    IRepository<Merchant> merchants,
     TimeProvider timeProvider,
     ILogger<ApiKeyService> logger) : IApiKeyService
 {
+    private const ApiKeyScopes InvoiceScopes = ApiKeyScopes.InvoicesWrite | ApiKeyScopes.InvoicesRead;
+
     private const string KeyScheme = "fb_live_";
     private const int SecretBytes = 32; // 256 bits
     private const int PrefixSecretChars = 6;
@@ -23,6 +28,11 @@ public sealed class ApiKeyService(
 
     public async Task<CreateApiKeyResponse> CreateAsync(CreateApiKeyRequest request, CancellationToken cancellationToken)
     {
+        var scopes = ResolveScopes(request);
+        if (request.MerchantId is { } merchantId
+            && !await merchants.AnyAsync(m => m.Id == merchantId && m.IsActive, cancellationToken))
+            throw new RequestValidationException($"Merchant {merchantId} does not exist or is inactive.");
+
         var secret = GenerateSecret();
         var plaintext = KeyScheme + secret;
         var now = timeProvider.GetUtcNow();
@@ -34,6 +44,8 @@ public sealed class ApiKeyService(
             Prefix = KeyScheme + secret[..PrefixSecretChars],
             IsActive = true,
             IsMaster = request.IsMaster,
+            MerchantId = request.MerchantId,
+            Scopes = scopes,
             RateLimitPerMinute = request.RateLimitPerMinute,
             CreatedAtUtc = now,
             ExpiresAtUtc = request.ExpiresAtUtc,
@@ -41,7 +53,8 @@ public sealed class ApiKeyService(
 
         await apiKeys.AddAsync(entity, cancellationToken);
 
-        logger.LogInformation("Issued API key {Prefix} ({Id}) for '{Name}'.", entity.Prefix, entity.Id, entity.Name);
+        logger.LogInformation("Issued API key {Prefix} ({Id}) for '{Name}' (merchant {MerchantId}, scopes {Scopes}).",
+            entity.Prefix, entity.Id, entity.Name, entity.MerchantId, string.Join(' ', ApiKeyScopeNames.ToNames(scopes)));
 
         return new CreateApiKeyResponse
         {
@@ -50,9 +63,41 @@ public sealed class ApiKeyService(
             Key = plaintext,
             Prefix = entity.Prefix,
             IsMaster = entity.IsMaster,
+            MerchantId = entity.MerchantId,
+            Scopes = ApiKeyScopeNames.ToNames(scopes),
             CreatedAtUtc = entity.CreatedAtUtc,
             ExpiresAtUtc = entity.ExpiresAtUtc,
         };
+    }
+
+    /// <summary>
+    /// The scopes a new key gets. Master keys get everything and act for no merchant; invoice scopes need
+    /// a merchant, because every invoice belongs to one.
+    /// </summary>
+    private static ApiKeyScopes ResolveScopes(CreateApiKeyRequest request)
+    {
+        if (request.IsMaster)
+        {
+            return request.MerchantId is null
+                ? ApiKeyScopes.All
+                : throw new RequestValidationException("A master key administers the gateway and cannot be bound to a merchant.");
+        }
+
+        var scopes = request.MerchantId is null ? ApiKeyScopes.Convert : ApiKeyScopes.All;
+        if (request.Scopes is { } names)
+        {
+            if (!ApiKeyScopeNames.TryParse(names, out scopes, out var unknown))
+                throw new RequestValidationException(
+                    $"Unknown scope '{unknown}'. Valid scopes: {string.Join(", ", ApiKeyScopeNames.All)}.");
+        }
+
+        if (scopes == ApiKeyScopes.None)
+            throw new RequestValidationException("A key needs at least one scope.");
+
+        if ((scopes & InvoiceScopes) != 0 && request.MerchantId is null)
+            throw new RequestValidationException("The invoice scopes need a merchantId: every invoice belongs to a merchant.");
+
+        return scopes;
     }
 
     public async Task<CreateApiKeyResponse?> EnsureMasterKeyAsync(CancellationToken cancellationToken)
@@ -83,6 +128,11 @@ public sealed class ApiKeyService(
         if (!key.IsActive || key.RevokedAtUtc is not null || (key.ExpiresAtUtc is { } expiry && expiry <= now))
             return null;
 
+        // A deactivated merchant's keys are refused outright rather than scope by scope.
+        if (key.MerchantId is { } merchantId
+            && !await merchants.AnyAsync(m => m.Id == merchantId && m.IsActive, cancellationToken))
+            return null;
+
         await TouchLastUsedAsync(key, now, cancellationToken);
         return key;
     }
@@ -99,6 +149,8 @@ public sealed class ApiKeyService(
                 Prefix = k.Prefix,
                 IsActive = k.IsActive,
                 IsMaster = k.IsMaster,
+                MerchantId = k.MerchantId,
+                Scopes = ApiKeyScopeNames.ToNames(k.IsMaster ? ApiKeyScopes.All : k.Scopes),
                 RateLimitPerMinute = k.RateLimitPerMinute,
                 CreatedAtUtc = k.CreatedAtUtc,
                 ExpiresAtUtc = k.ExpiresAtUtc,

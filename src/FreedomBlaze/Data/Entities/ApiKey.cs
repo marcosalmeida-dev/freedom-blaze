@@ -28,11 +28,19 @@ public class ApiKey
     public bool IsActive { get; set; } = true;
 
     /// <summary>
-    /// A master key authorizes the key-management endpoints (create/list/revoke other keys) in
-    /// addition to the normal conversion API. Ordinary keys can only call the conversion API and the
-    /// receive-only Lightning invoice endpoints.
+    /// A master key administers the gateway (keys, merchants, the node) and holds every scope. Ordinary
+    /// keys are limited to their <see cref="Scopes"/>.
     /// </summary>
     public bool IsMaster { get; set; }
+
+    /// <summary>
+    /// The merchant the key acts for. Invoice scopes require one; master keys never have one, since they
+    /// administer the gateway rather than act for a business.
+    /// </summary>
+    public int? MerchantId { get; set; }
+
+    /// <summary>What the key may do. Master keys hold every scope regardless of this value.</summary>
+    public ApiKeyScopes Scopes { get; set; }
 
     /// <summary>
     /// Optional per-key request budget per minute. When null the global default policy applies.

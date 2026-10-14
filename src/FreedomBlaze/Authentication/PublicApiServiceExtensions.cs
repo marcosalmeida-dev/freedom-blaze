@@ -36,7 +36,11 @@ public static class PublicApiServiceExtensions
         services.Configure<ApiKeyOptions>(configuration.GetSection(ApiKeyOptions.Section));
 
         services.AddSingleton<IApiKeyService, ApiKeyService>();
+        services.AddSingleton<IMerchantService, MerchantService>();
         services.AddSingleton<ICurrencyConversionService, CurrencyConversionService>();
+
+        // Scoped, not singleton: it holds the phoenixd typed HttpClient, which must not outlive its handler.
+        services.AddScoped<ILightningInvoiceService, LightningInvoiceService>();
 
         services.AddAuthentication()
             .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(ApiKeyDefaults.Scheme, _ => { });
@@ -48,6 +52,15 @@ public static class PublicApiServiceExtensions
                 .AddAuthenticationSchemes(ApiKeyDefaults.Scheme)
                 .RequireAuthenticatedUser()
                 .RequireClaim(ApiKeyDefaults.MasterClaim, "true"));
+
+            // One policy per scope; master keys carry every scope claim, so they pass them all.
+            foreach (var (name, scope) in ApiKeyPolicies.All)
+            {
+                options.AddPolicy(name, policy => policy
+                    .AddAuthenticationSchemes(ApiKeyDefaults.Scheme)
+                    .RequireAuthenticatedUser()
+                    .RequireClaim(ApiKeyDefaults.ScopeClaim, scope));
+            }
         });
 
         services.AddRateLimiter(options =>

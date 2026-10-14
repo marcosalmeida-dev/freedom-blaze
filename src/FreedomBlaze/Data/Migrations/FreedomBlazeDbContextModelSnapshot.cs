@@ -50,6 +50,9 @@ namespace FreedomBlaze.Data.Migrations
                     b.Property<DateTimeOffset?>("LastUsedAtUtc")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<int?>("MerchantId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -66,10 +69,15 @@ namespace FreedomBlaze.Data.Migrations
                     b.Property<DateTimeOffset?>("RevokedAtUtc")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<int>("Scopes")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("KeyHash")
                         .IsUnique();
+
+                    b.HasIndex("MerchantId");
 
                     b.ToTable("ApiKeys", (string)null);
                 });
@@ -131,6 +139,140 @@ namespace FreedomBlaze.Data.Migrations
                     b.HasIndex("Status", "CreatedAtUtc");
 
                     b.ToTable("Donations", (string)null);
+                });
+
+            modelBuilder.Entity("FreedomBlaze.Data.Entities.LightningInvoice", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(28, 8)
+                        .HasColumnType("decimal(28,8)");
+
+                    b.Property<long>("AmountSat")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("ApiKeyId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("BitcoinPrice")
+                        .HasPrecision(28, 8)
+                        .HasColumnType("decimal(28,8)");
+
+                    b.Property<decimal?>("BitcoinPriceUsd")
+                        .HasPrecision(28, 8)
+                        .HasColumnType("decimal(28,8)");
+
+                    b.Property<string>("Bolt11")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("nvarchar(8)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<long?>("FeeSat")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("FiatRateTimestamp")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("MerchantId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("PaidAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("PaymentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTimeOffset>("QuotedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("RateSources")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("ReceivedSat")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("RequestHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WebhookUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApiKeyId");
+
+                    b.HasIndex("PaymentHash")
+                        .IsUnique()
+                        .HasFilter("[PaymentHash] IS NOT NULL");
+
+                    b.HasIndex("MerchantId", "ExternalId");
+
+                    b.HasIndex("MerchantId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("[IdempotencyKey] IS NOT NULL");
+
+                    b.ToTable("LightningInvoices", (string)null);
+                });
+
+            modelBuilder.Entity("FreedomBlaze.Data.Entities.Merchant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("DeactivatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Merchants", (string)null);
                 });
 
             modelBuilder.Entity("FreedomBlaze.Data.Entities.NewsArticle", b =>
@@ -247,6 +389,28 @@ namespace FreedomBlaze.Data.Migrations
                     b.HasKey("Date");
 
                     b.ToTable("NewsGenerationAttempts", (string)null);
+                });
+
+            modelBuilder.Entity("FreedomBlaze.Data.Entities.ApiKey", b =>
+                {
+                    b.HasOne("FreedomBlaze.Data.Entities.Merchant", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("FreedomBlaze.Data.Entities.LightningInvoice", b =>
+                {
+                    b.HasOne("FreedomBlaze.Data.Entities.ApiKey", null)
+                        .WithMany()
+                        .HasForeignKey("ApiKeyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FreedomBlaze.Data.Entities.Merchant", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FreedomBlaze.Data.Entities.NewsArticle", b =>

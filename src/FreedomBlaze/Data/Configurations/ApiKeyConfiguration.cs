@@ -19,5 +19,7 @@ public class ApiKeyConfiguration : IEntityTypeConfiguration<ApiKey>
         builder.HasIndex(k => k.KeyHash).IsUnique();
 
         builder.Property(k => k.Prefix).IsRequired().HasMaxLength(32);
+
+        builder.HasOne<Merchant>().WithMany().HasForeignKey(k => k.MerchantId).OnDelete(DeleteBehavior.Restrict);
     }
 }

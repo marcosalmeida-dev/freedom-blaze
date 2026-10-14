@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using FreedomBlaze.Data.Entities;
 using FreedomBlaze.Options;
 using FreedomBlaze.Services;
 using Microsoft.AspNetCore.Authentication;
@@ -35,15 +37,7 @@ public sealed class ApiKeyAuthenticationHandler(
         if (key is null)
             return AuthenticateResult.Fail("Invalid or expired API key.");
 
-        var claims = new[]
-        {
-            new Claim(ApiKeyDefaults.KeyIdClaim, key.Id.ToString()),
-            new Claim(ClaimTypes.Name, key.Name),
-            new Claim(ApiKeyDefaults.MasterClaim, key.IsMaster ? "true" : "false"),
-        };
-
-        var identity = new ClaimsIdentity(claims, ApiKeyDefaults.Scheme);
-        var principal = new ClaimsPrincipal(identity);
+        var principal = BuildPrincipal(key);
 
         // Hand the rate limiter a stable partition (the key id) and this key's budget.
         Context.Items[ApiKeyDefaults.PartitionItemKey] = key.Id.ToString();
@@ -51,6 +45,28 @@ public sealed class ApiKeyAuthenticationHandler(
             key.RateLimitPerMinute ?? _keyOptions.DefaultRateLimitPerMinute;
 
         return AuthenticateResult.Success(new AuthenticationTicket(principal, ApiKeyDefaults.Scheme));
+    }
+
+    /// <summary>
+    /// The principal for an authenticated key: its id, name and master flag, the merchant it acts for,
+    /// and one claim per scope. Master keys carry every scope.
+    /// </summary>
+    internal static ClaimsPrincipal BuildPrincipal(ApiKey key)
+    {
+        var claims = new List<Claim>
+        {
+            new(ApiKeyDefaults.KeyIdClaim, key.Id.ToString(CultureInfo.InvariantCulture)),
+            new(ClaimTypes.Name, key.Name),
+            new(ApiKeyDefaults.MasterClaim, key.IsMaster ? "true" : "false"),
+        };
+
+        if (key.MerchantId is { } merchantId)
+            claims.Add(new Claim(ApiKeyDefaults.MerchantIdClaim, merchantId.ToString(CultureInfo.InvariantCulture)));
+
+        foreach (var scope in ApiKeyScopeNames.ToNames(key.IsMaster ? ApiKeyScopes.All : key.Scopes))
+            claims.Add(new Claim(ApiKeyDefaults.ScopeClaim, scope));
+
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, ApiKeyDefaults.Scheme));
     }
 
     /// <summary>Adds a WWW-Authenticate hint so clients know which header to send.</summary>

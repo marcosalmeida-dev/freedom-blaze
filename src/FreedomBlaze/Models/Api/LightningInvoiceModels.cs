@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using FreedomBlaze.Data.Entities;
 using FreedomBlaze.Options;
 
 namespace FreedomBlaze.Models.Api;
@@ -81,9 +82,25 @@ public sealed class LightningInvoiceResponse
 
     /// <summary>The caller's reference, as supplied.</summary>
     public string? ExternalId { get; init; }
+
+    public static LightningInvoiceResponse From(LightningInvoice invoice) => new()
+    {
+        PaymentHash = invoice.PaymentHash ?? string.Empty,
+        Bolt11 = invoice.Bolt11 ?? string.Empty,
+        AmountSat = invoice.AmountSat,
+        Amount = invoice.Amount,
+        Currency = invoice.Currency,
+        BitcoinPrice = invoice.BitcoinPrice,
+        BitcoinPriceUsd = invoice.BitcoinPriceUsd,
+        RateSources = invoice.RateSources,
+        FiatRateTimestamp = invoice.FiatRateTimestamp,
+        QuotedAt = invoice.QuotedAtUtc,
+        ExpiresAt = invoice.ExpiresAtUtc,
+        ExternalId = invoice.ExternalId,
+    };
 }
 
-/// <summary>Live state of an invoice, read from the node.</summary>
+/// <summary>An invoice's state: refreshed from the node on a single read, as last recorded in a listing.</summary>
 public sealed class LightningInvoiceStatusResponse
 {
     public const string Pending = "pending";
@@ -100,6 +117,17 @@ public sealed class LightningInvoiceStatusResponse
 
     public bool IsPaid { get; init; }
 
+    /// <summary>The amount that was priced, in <see cref="Currency"/>.</summary>
+    public decimal Amount { get; init; }
+
+    public string Currency { get; init; } = string.Empty;
+
+    /// <summary>Text the payer's wallet shows.</summary>
+    public string Description { get; init; } = string.Empty;
+
+    /// <summary>Price of one bitcoin in <see cref="Currency"/> that the quote used.</summary>
+    public decimal BitcoinPrice { get; init; }
+
     /// <summary>Satoshis the invoice asked for.</summary>
     public long? RequestedSat { get; init; }
 
@@ -112,9 +140,60 @@ public sealed class LightningInvoiceStatusResponse
     /// <summary>The BOLT11 payment request, for re-displaying the QR code.</summary>
     public string? Bolt11 { get; init; }
 
+    public DateTimeOffset QuotedAt { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset? ExpiresAt { get; init; }
     public DateTimeOffset? CompletedAt { get; init; }
+
+    public static LightningInvoiceStatusResponse From(LightningInvoice invoice) => new()
+    {
+        PaymentHash = invoice.PaymentHash ?? string.Empty,
+        ExternalId = invoice.ExternalId,
+        Status = StatusName(invoice.Status),
+        IsPaid = invoice.Status == LightningInvoiceStatus.Paid,
+        Amount = invoice.Amount,
+        Currency = invoice.Currency,
+        Description = invoice.Description,
+        BitcoinPrice = invoice.BitcoinPrice,
+        RequestedSat = invoice.AmountSat,
+        ReceivedSat = invoice.ReceivedSat ?? 0,
+        FeeSat = invoice.FeeSat ?? 0,
+        Bolt11 = invoice.Bolt11,
+        QuotedAt = invoice.QuotedAtUtc,
+        CreatedAt = invoice.CreatedAtUtc,
+        ExpiresAt = invoice.ExpiresAtUtc,
+        CompletedAt = invoice.PaidAtUtc,
+    };
+
+    /// <summary>The wire name of a status a merchant can see.</summary>
+    public static string StatusName(LightningInvoiceStatus status) => status switch
+    {
+        LightningInvoiceStatus.Paid => Paid,
+        LightningInvoiceStatus.Expired => Expired,
+        _ => Pending,
+    };
+
+    /// <summary>Parses a wire status name (<c>pending</c>, <c>paid</c>, <c>expired</c>), case-insensitively.</summary>
+    public static bool TryParseStatus(string? name, out LightningInvoiceStatus status)
+    {
+        status = name?.Trim().ToLowerInvariant() switch
+        {
+            Pending => LightningInvoiceStatus.Pending,
+            Paid => LightningInvoiceStatus.Paid,
+            Expired => LightningInvoiceStatus.Expired,
+            _ => LightningInvoiceStatus.Creating,
+        };
+        return status != LightningInvoiceStatus.Creating;
+    }
+}
+
+/// <summary>One page of a merchant's invoices, newest first.</summary>
+public sealed class LightningInvoicePage
+{
+    public IReadOnlyList<LightningInvoiceStatusResponse> Items { get; init; } = [];
+
+    /// <summary>Pass as <c>before</c> to fetch the next (older) page; null on the last page.</summary>
+    public long? NextCursor { get; init; }
 }
 
 /// <summary>Whether the gateway can currently issue invoices.</summary>

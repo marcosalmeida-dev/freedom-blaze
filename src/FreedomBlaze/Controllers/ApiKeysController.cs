@@ -1,4 +1,5 @@
 using FreedomBlaze.Authentication;
+using FreedomBlaze.Exceptions;
 using FreedomBlaze.Models.Api;
 using FreedomBlaze.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -19,15 +20,26 @@ namespace FreedomBlaze.Controllers;
 [Produces("application/json")]
 public sealed class ApiKeysController(IApiKeyService apiKeyService) : ControllerBase
 {
-    /// <summary>Issues a new API key. The plaintext secret is returned once and cannot be recovered.</summary>
+    /// <summary>
+    /// Issues a new API key. The plaintext secret is returned once and cannot be recovered. A key for a
+    /// merchant's integration takes <c>merchantId</c> and, optionally, <c>scopes</c>.
+    /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(CreateApiKeyResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Create(CreateApiKeyRequest request, CancellationToken cancellationToken)
     {
-        var created = await apiKeyService.CreateAsync(request, cancellationToken);
-        return CreatedAtAction(nameof(List), new { }, created);
+        try
+        {
+            var created = await apiKeyService.CreateAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(List), new { }, created);
+        }
+        catch (RequestValidationException ex)
+        {
+            return Problem(title: "Invalid key request", detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
     }
 
     /// <summary>Returns all issued keys (non-secret view; plaintext secrets are never stored).</summary>

@@ -59,18 +59,22 @@ request tests and the application API tests use simulated responses, without mov
 
 ### Fiat-priced invoices for integrations
 
-`/api/v1/lightning` lets another application (for example a store checkout) charge in its own
+`/api/v1/lightning` lets a merchant's application (for example a store checkout) charge in its own
 currency without holding any phoenixd credential or a master key. These endpoints can only
-**receive** funds, so any active API key may call them:
+**receive** funds, and every invoice belongs to the merchant of the key that issued it.
 
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /api/v1/lightning/status` | `{ enabled, reachable }` — hide the payment option when the node is down. |
-| `POST /api/v1/lightning/invoices` | Quote the amount in sats and create the BOLT11 invoice in one step. |
-| `GET /api/v1/lightning/invoices/{paymentHash}` | Live status: `pending`, `paid` or `expired`. |
+| Endpoint | Scope | Purpose |
+| --- | --- | --- |
+| `GET /api/v1/lightning/status` | `invoices:write` | `{ enabled, reachable }` — hide the payment option when the node is down. |
+| `POST /api/v1/lightning/invoices` | `invoices:write` | Quote the amount in sats and create the BOLT11 invoice in one step. |
+| `GET /api/v1/lightning/invoices/{paymentHash}` | `invoices:read` | Current status: `pending`, `paid` or `expired`. |
+| `GET /api/v1/lightning/invoices` | `invoices:read` | The merchant's invoices, newest first. |
 
-```json
+```http
 POST /api/v1/lightning/invoices
+X-Api-Key: fb_live_...
+Idempotency-Key: order-123-attempt-1
+
 { "amount": 38.50, "currency": "BRL", "externalId": "order-123",
   "description": "Pedido 123", "expirySeconds": 600,
   "webhookUrl": "https://shop.example/api/payments/lightning/webhook" }
@@ -87,15 +91,53 @@ The response carries `paymentHash`, `bolt11`, `amountSat` and the quote that pri
   published once a day; a paid plan publishes hourly and allows a tighter `MaxFiatRateAge`.
 - **Lifetime.** `expirySeconds` is 60–3600 (default 600) and is also how long the price holds.
   An expired Lightning invoice cannot be paid, so issue a new one to re-quote.
-- **Ownership.** Each invoice's phoenixd `externalId` is prefixed with the issuing key
-  (`key{id}:`). A status read for an invoice another key issued returns 404, exactly like an
-  unknown hash.
+- **Retries.** An `Idempotency-Key` (1–100 visible ASCII characters, one per payment attempt)
+  makes creation safe to retry. The same key with the same request returns the original invoice
+  (`201` with `Idempotent-Replayed: true`); with a different request it is refused (`422`); while
+  the first request is still running the answer is `409` with `Retry-After`. Keys are per merchant.
+  A request the node failed frees its key at once, and one abandoned mid-flight after two minutes.
+- **Records.** The gateway records every invoice with its quote. Reading one refreshes it from the
+  node while it is pending and records `paid` (with `receivedSat`, `feeSat`, `completedAt`) or
+  `expired`. The listing shows invoices as last recorded: filter with `status` and `externalId`,
+  page with `limit` (1–100, default 50) and `before` set to the previous page's `nextCursor`.
+- **Ownership.** A key sees only its merchant's invoices; another merchant's invoice returns 404,
+  exactly like an unknown hash. On the node, each invoice's `externalId` is prefixed with
+  `m{merchantId}:` so phoenixd's own history still says whose it is.
 - **Webhooks.** `webhookUrl` must be HTTPS, and `AllowedWebhookHosts` can restrict it further.
   phoenixd posts the `payment_received` event once, signed with the node's `webhook-secret` in
   `X-Phoenix-Signature`, and **never retries**; the websocket does not replay events either.
   Integrations must therefore also poll the status endpoint until the invoice is paid or expired.
-- **Keys.** Issue each integration its own key through `POST /api/admin/api-keys` (master key),
-  with a `rateLimitPerMinute` that covers its status polling (for example 600).
+
+#### Merchants and keys
+
+Merchants and keys are managed with a master key. Register the merchant, then issue its
+integration a key bound to it, with a `rateLimitPerMinute` that covers its status polling:
+
+```http
+POST /api/admin/merchants
+{ "name": "Artcana" }
+
+POST /api/admin/api-keys
+{ "name": "Artcana checkout", "merchantId": 1, "rateLimitPerMinute": 600 }
+```
+
+| Scope | Grants |
+| --- | --- |
+| `convert` | `POST /api/v1/convert` and `GET /api/v1/currencies`. |
+| `invoices:write` | Creating invoices and the gateway status. |
+| `invoices:read` | Reading and listing the merchant's invoices. |
+
+A merchant's key gets all three scopes unless `scopes` narrows them (for example
+`["invoices:read"]` for a reporting job). A key without a merchant gets `convert` and cannot hold
+the invoice scopes. Master keys hold every scope but belong to no merchant, so the invoice
+endpoints refuse them with 403. `PATCH /api/admin/merchants/{id}` renames a merchant or sets
+`isActive`; a deactivated merchant's keys stop authenticating, and its invoices are kept.
+
+Every merchant shares the operator's phoenixd node, so the money of every merchant lands in one
+wallet: register only the operator's own businesses until merchants can bring their own backend.
+
+The `AddMerchantsAndInvoices` migration runs at startup. Keys issued before it keep only the
+`convert` scope, so an integration that already creates invoices needs a new merchant key.
 
 ```json
 "LightningInvoices": {

@@ -11,6 +11,10 @@ namespace FreedomBlaze.Services;
 public interface IApiKeyService
 {
     /// <summary>Creates a new key, persists its hash, and returns the plaintext secret once.</summary>
+    /// <exception cref="Exceptions.RequestValidationException">
+    /// The merchant is unknown or inactive, a scope is unknown, or the scopes don't fit the key (invoice
+    /// scopes without a merchant, a master key bound to a merchant).
+    /// </exception>
     Task<CreateApiKeyResponse> CreateAsync(CreateApiKeyRequest request, CancellationToken cancellationToken);
 
     /// <summary>
