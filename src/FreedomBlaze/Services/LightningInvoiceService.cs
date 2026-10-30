@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -23,12 +22,17 @@ namespace FreedomBlaze.Services;
 /// out only when its signature, payment hash, amount and lifetime check out, and a payment counts only
 /// when the node shows the preimage that hashes to the invoice's payment hash.
 /// </para>
+/// <para>
+/// A pending invoice is also confirmed in the background (<see cref="LightningInvoiceSweeper"/>), and every
+/// settlement queues the merchant's webhooks in the same transaction (<see cref="LightningInvoiceRefresher"/>).
+/// </para>
 /// </summary>
 public sealed class LightningInvoiceService(
     ICurrencyConversionService conversionService,
     IRepository<LightningInvoice> invoices,
     IRepository<LightningBackend> backends,
     ILightningBackendFactory backendFactory,
+    LightningInvoiceRefresher refresher,
     IOptions<LightningInvoiceOptions> options,
     TimeProvider timeProvider,
     ILogger<LightningInvoiceService> logger) : ILightningInvoiceService
@@ -191,6 +195,7 @@ public sealed class LightningInvoiceService(
         invoice.PaymentHash = issued.PaymentHash;
         invoice.Bolt11 = issued.Bolt11;
         invoice.Status = LightningInvoiceStatus.Pending;
+        invoice.NextCheckAtUtc = LightningInvoiceSchedule.FirstCheck(invoice.CreatedAtUtc);
 
         // Recorded even if the caller has gone: the node issued it, and a retry must find it.
         await invoices.UpdateAsync(invoice, CancellationToken.None);
@@ -218,38 +223,16 @@ public sealed class LightningInvoiceService(
             return new InvoiceReadResult(InvoiceReadOutcome.BackendUnavailable,
                 Message: "The backend that issued this invoice no longer exists.");
 
-        if (!TryConnect(backend, out var node, out var problem))
-            return new InvoiceReadResult(InvoiceReadOutcome.BackendUnavailable, Message: problem);
-
-        BackendPayment? payment;
-        try
+        // Recorded the same way as by the background sweep, webhooks included, so whichever asks first
+        // records the change and the other finds it recorded.
+        var refreshed = await refresher.RefreshAsync(invoice, backend, cancellationToken);
+        return refreshed.Outcome switch
         {
-            payment = await node.FindIncomingPaymentAsync(hash, cancellationToken);
-        }
-        catch (LightningBackendException ex)
-        {
-            logger.LogError(ex, "Backend {BackendId} could not look up invoice {PaymentHash}.", backend.Id, hash);
-            return new InvoiceReadResult(InvoiceReadOutcome.BackendFailure, Message: ex.Message);
-        }
-
-        if (payment is null)
-        {
-            logger.LogError("Backend {BackendId} no longer knows invoice {PaymentHash} issued for merchant {MerchantId}.",
-                backend.Id, hash, merchantId);
-            return new InvoiceReadResult(InvoiceReadOutcome.Found, invoice);
-        }
-
-        if (payment.IsPaid && !ProvesPayment(payment.Preimage, hash))
-        {
-            logger.LogError("Backend {BackendId} reported invoice {PaymentHash} paid without its preimage; not recorded.", backend.Id, hash);
-            return new InvoiceReadResult(InvoiceReadOutcome.BackendFailure,
-                Message: "The node reported a payment it could not prove.");
-        }
-
-        if (ApplyNodeState(invoice, payment))
-            await invoices.UpdateAsync(invoice, CancellationToken.None);
-
-        return new InvoiceReadResult(InvoiceReadOutcome.Found, invoice);
+            InvoiceRefreshOutcome.BackendUnavailable => new InvoiceReadResult(InvoiceReadOutcome.BackendUnavailable, Message: refreshed.Message),
+            InvoiceRefreshOutcome.BackendFailure or InvoiceRefreshOutcome.Unproven =>
+                new InvoiceReadResult(InvoiceReadOutcome.BackendFailure, Message: refreshed.Message),
+            _ => new InvoiceReadResult(InvoiceReadOutcome.Found, refreshed.Invoice),
+        };
     }
 
     public async Task<(IReadOnlyList<LightningInvoice> Items, long? NextCursor)> ListAsync(
@@ -295,17 +278,6 @@ public sealed class LightningInvoiceService(
         if (bolt11.ExpirySeconds > expirySeconds)
             return $"it stays payable for {bolt11.ExpirySeconds} s instead of {expirySeconds} s";
         return null;
-    }
-
-    /// <summary>True when <paramref name="preimage"/> hashes to <paramref name="paymentHash"/>, which only a real payment reveals.</summary>
-    internal static bool ProvesPayment(string? preimage, string paymentHash)
-    {
-        Span<byte> bytes = stackalloc byte[32];
-        if (preimage is not { Length: 64 }
-            || Convert.FromHexString(preimage, bytes, out _, out var written) != OperationStatus.Done || written != 32)
-            return false;
-
-        return string.Equals(Convert.ToHexStringLower(SHA256.HashData(bytes)), paymentHash, StringComparison.OrdinalIgnoreCase);
     }
 
     private Task<LightningBackend?> ActiveBackendAsync(int merchantId, CancellationToken cancellationToken) =>
@@ -396,31 +368,6 @@ public sealed class LightningInvoiceService(
         {
             // A concurrent retry already cleared it.
         }
-    }
-
-    /// <summary>Copies the node's verdict onto the record. True when anything changed.</summary>
-    private bool ApplyNodeState(LightningInvoice invoice, BackendPayment payment)
-    {
-        if (payment.IsPaid)
-        {
-            if (payment.RequestedSat is { } requested && requested != invoice.AmountSat)
-                logger.LogError("Invoice {PaymentHash}: the node requested {RequestedSat} sats, the gateway recorded {AmountSat}.",
-                    invoice.PaymentHash, requested, invoice.AmountSat);
-
-            invoice.Status = LightningInvoiceStatus.Paid;
-            invoice.PaidAtUtc = payment.CompletedAt ?? timeProvider.GetUtcNow();
-            invoice.ReceivedSat = payment.ReceivedSat;
-            invoice.FeeSat = (long)Math.Ceiling(payment.FeesMsat / 1000m);
-            return true;
-        }
-
-        if (payment.IsExpired)
-        {
-            invoice.Status = LightningInvoiceStatus.Expired;
-            return true;
-        }
-
-        return false;
     }
 
     /// <summary>

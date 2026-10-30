@@ -87,6 +87,12 @@ public class LightningInvoice
     /// <summary>Fees the node paid on receipt (e.g. inbound liquidity), in satoshis.</summary>
     public long? FeeSat { get; set; }
 
+    /// <summary>
+    /// When the background sweep should next ask the node about this invoice. Set while it is pending;
+    /// cleared once it is paid or expired, or when the node has not been reachable for too long.
+    /// </summary>
+    public DateTimeOffset? NextCheckAtUtc { get; set; }
+
     /// <summary>Where phoenixd posts its own payment notification, when the merchant asked for one.</summary>
     public string? WebhookUrl { get; set; }
 

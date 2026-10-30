@@ -2,6 +2,7 @@ using System.Threading.RateLimiting;
 using FreedomBlaze.Options;
 using FreedomBlaze.Services;
 using FreedomBlaze.Services.Lightning;
+using FreedomBlaze.Services.Webhooks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
@@ -51,6 +52,16 @@ public static class PublicApiServiceExtensions
         services.AddSingleton<ILightningBackendService, LightningBackendService>();
         services.AddSingleton<ILightningInvoiceService, LightningInvoiceService>();
 
+        // Background confirmation of pending invoices and the merchants' webhooks.
+        services.Configure<LightningWebhookOptions>(configuration.GetSection(LightningWebhookOptions.Section));
+        services.Configure<LightningWorkerOptions>(configuration.GetSection(LightningWorkerOptions.Section));
+        services.AddSingleton<IWebhookOutbox, WebhookOutbox>();
+        services.AddSingleton<LightningInvoiceRefresher>();
+        services.AddSingleton<LightningInvoiceSweeper>();
+        services.AddSingleton<WebhookDispatcher>();
+        services.AddSingleton<IWebhookEndpointService, WebhookEndpointService>();
+        services.AddHostedService<LightningGatewayWorker>();
+
         // No redirects: a node's password is only ever sent to the address it was configured for. No retries
         // either, including the ones the service defaults give every client: a retried createinvoice issues a
         // second invoice behind the idempotency reservation's back.
@@ -58,6 +69,14 @@ public static class PublicApiServiceExtensions
         services.AddHttpClient(LightningBackendFactory.HttpClientName)
             .ConfigureHttpClient((provider, client) => client.Timeout =
                 TimeSpan.FromSeconds(provider.GetRequiredService<IOptions<LightningBackendOptions>>().Value.RequestTimeoutSeconds))
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false })
+            .RemoveAllResilienceHandlers();
+
+        // Webhooks keep their own retry schedule and delivery log, so the client must not retry on its own, and a
+        // redirect would send a signed event somewhere nobody configured.
+        services.AddHttpClient(WebhookDispatcher.HttpClientName)
+            .ConfigureHttpClient((provider, client) => client.Timeout =
+                TimeSpan.FromSeconds(provider.GetRequiredService<IOptions<LightningWebhookOptions>>().Value.RequestTimeoutSeconds))
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false })
             .RemoveAllResilienceHandlers();
 #pragma warning restore EXTEXP0001

@@ -265,6 +265,9 @@ namespace FreedomBlaze.Data.Migrations
                     b.Property<int>("MerchantId")
                         .HasColumnType("int");
 
+                    b.Property<DateTimeOffset?>("NextCheckAtUtc")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<DateTimeOffset?>("PaidAtUtc")
                         .HasColumnType("datetimeoffset");
 
@@ -297,6 +300,9 @@ namespace FreedomBlaze.Data.Migrations
                     b.HasIndex("ApiKeyId");
 
                     b.HasIndex("BackendId");
+
+                    b.HasIndex("NextCheckAtUtc")
+                        .HasFilter("[NextCheckAtUtc] IS NOT NULL");
 
                     b.HasIndex("PaymentHash")
                         .IsUnique()
@@ -454,6 +460,122 @@ namespace FreedomBlaze.Data.Migrations
                     b.ToTable("NewsGenerationAttempts", (string)null);
                 });
 
+            modelBuilder.Entity("FreedomBlaze.Data.Entities.WebhookDelivery", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("ClaimedUntilUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("DeliveredAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("EndpointId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EventId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<long?>("InvoiceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastAttemptAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<int?>("LastStatusCode")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MerchantId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("NextAttemptAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("State")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EndpointId");
+
+                    b.HasIndex("EventId");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("NextAttemptAtUtc")
+                        .HasFilter("[NextAttemptAtUtc] IS NOT NULL");
+
+                    b.HasIndex("MerchantId", "Id");
+
+                    b.ToTable("WebhookDeliveries", (string)null);
+                });
+
+            modelBuilder.Entity("FreedomBlaze.Data.Entities.WebhookEndpoint", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTimeOffset?>("DisabledAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MerchantId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ProtectedSecret")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MerchantId");
+
+                    b.ToTable("WebhookEndpoints", (string)null);
+                });
+
             modelBuilder.Entity("FreedomBlaze.Data.Entities.ApiKey", b =>
                 {
                     b.HasOne("FreedomBlaze.Data.Entities.Merchant", null)
@@ -500,6 +622,35 @@ namespace FreedomBlaze.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("NewsDay");
+                });
+
+            modelBuilder.Entity("FreedomBlaze.Data.Entities.WebhookDelivery", b =>
+                {
+                    b.HasOne("FreedomBlaze.Data.Entities.WebhookEndpoint", null)
+                        .WithMany()
+                        .HasForeignKey("EndpointId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FreedomBlaze.Data.Entities.LightningInvoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FreedomBlaze.Data.Entities.Merchant", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FreedomBlaze.Data.Entities.WebhookEndpoint", b =>
+                {
+                    b.HasOne("FreedomBlaze.Data.Entities.Merchant", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FreedomBlaze.Data.Entities.NewsDay", b =>

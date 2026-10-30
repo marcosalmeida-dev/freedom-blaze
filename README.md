@@ -110,7 +110,8 @@ The response carries `paymentHash`, `bolt11`, `amountSat` and the quote that pri
 - **Webhooks.** `webhookUrl` must be HTTPS, and `AllowedWebhookHosts` can restrict it further.
   phoenixd posts the `payment_received` event once, signed with the node's `webhook-secret` in
   `X-Phoenix-Signature`, and **never retries**; the websocket does not replay events either.
-  Integrations must therefore also poll the status endpoint until the invoice is paid or expired.
+  Prefer the gateway's own webhooks below: signed per endpoint, retried, and sent for every
+  settlement the gateway records.
 
 #### Merchants and keys
 
@@ -187,6 +188,53 @@ PUT /api/admin/merchants/1/backend
 - Node URLs must be HTTPS (`LightningBackends:AllowInsecureHttp` is for local development only);
   requests follow no redirects, are never retried, and time out after
   `LightningBackends:RequestTimeoutSeconds` (15).
+
+#### Background confirmation and webhooks
+
+The gateway confirms every pending invoice with its node on its own, so a payment is recorded even
+when nobody asks about it (the payer closed the page, the merchant stopped polling, the node's
+fire-once webhook was lost). An invoice is first checked five seconds after it is issued, every 5 s
+for two minutes, every 15 s until it expires, right after it expires, and then ever less often
+while the node cannot say, giving up a week after expiry. Reading an invoice still refreshes it
+at once; whichever finds a settlement first records it.
+
+Each settlement is announced to the merchant's webhook endpoints as `invoice.paid` or
+`invoice.expired`, written in the same transaction as the invoice change, so none is lost or sent
+twice. Endpoints are managed with a master key:
+
+```http
+POST  /api/admin/merchants/1/webhooks                  { "url": "https://shop.example/hooks", "description": "Checkout" }
+GET   /api/admin/merchants/1/webhooks
+PATCH /api/admin/merchants/1/webhooks/3                { "isActive": false }
+POST  /api/admin/merchants/1/webhooks/3/rotate-secret
+POST  /api/admin/merchants/1/webhooks/3/test
+GET   /api/admin/merchants/1/webhook-deliveries?state=failed
+POST  /api/admin/merchants/1/webhook-deliveries/42/redeliver
+```
+
+The `whsec_…` signing secret is returned only on creation and rotation, and stored encrypted under
+`LightningBackends:CredentialKeys` (required). Every delivery follows
+[Standard Webhooks](https://www.standardwebhooks.com), so its libraries can verify it:
+
+```
+webhook-id: evt_…          the event's id: the same on every retry and redelivery
+webhook-timestamp: 1791853300
+webhook-signature: v1,<base64 HMAC-SHA256(base64-decoded secret, "{id}.{timestamp}.{body}")>
+
+{ "id": "evt_…", "type": "invoice.paid", "timestamp": "…", "data": { …the invoice, as GET returns it… } }
+```
+
+```csharp
+var key = Convert.FromBase64String(secret["whsec_".Length..]);
+var expected = "v1," + Convert.ToBase64String(HMACSHA256.HashData(key, Encoding.UTF8.GetBytes($"{id}.{timestamp}.{body}")));
+// Compare with each space-separated signature in constant time, and refuse timestamps far from now.
+```
+
+Receivers should answer 2xx within 10 s and treat `webhook-id` as an idempotency key. A failed
+attempt is retried after 5 s, 5 min, 30 min, 2 h, 5 h, 10 h and 10 h (eight attempts, about a day),
+then the delivery is marked failed; the log keeps every delivery's attempts, last status and error.
+Redirects are never followed. Disabling an endpoint fails its pending deliveries. The worker
+(`LightningWorker`) claims each check and delivery in the database, so several replicas can run it.
 
 ```json
 "LightningInvoices": {

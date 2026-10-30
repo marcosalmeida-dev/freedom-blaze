@@ -27,7 +27,7 @@ internal sealed class TestDatabase : IDbContextFactory<FreedomBlazeDbContext>, I
         db.Database.EnsureCreated();
     }
 
-    public FreedomBlazeDbContext CreateDbContext() => new(_options);
+    public FreedomBlazeDbContext CreateDbContext() => new SqliteContext(_options);
 
     public IRepository<TEntity> Repository<TEntity>() where TEntity : class => new EfRepository<TEntity>(this);
 
@@ -68,5 +68,26 @@ internal sealed class TestDatabase : IDbContextFactory<FreedomBlazeDbContext>, I
         return db.LightningInvoices.AsNoTracking().OrderBy(i => i.Id).ToList();
     }
 
+    public List<WebhookDelivery> Deliveries()
+    {
+        using var db = CreateDbContext();
+        return db.WebhookDeliveries.AsNoTracking().OrderBy(d => d.Id).ToList();
+    }
+
     public void Dispose() => _connection.Dispose();
+
+    /// <summary>
+    /// The app's context with one SQLite-only difference: SQLite has no date type, and EF cannot compare
+    /// <see cref="DateTimeOffset"/> values stored as text, so they are stored as sortable integers instead,
+    /// letting "due by now" queries run here as they do on SQL Server.
+    /// </summary>
+    private sealed class SqliteContext(DbContextOptions<FreedomBlazeDbContext> options) : FreedomBlazeDbContext(options)
+    {
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            base.ConfigureConventions(configurationBuilder);
+            configurationBuilder.Properties<DateTimeOffset>()
+                .HaveConversion<Microsoft.EntityFrameworkCore.Storage.ValueConversion.DateTimeOffsetToBinaryConverter>();
+        }
+    }
 }

@@ -6,6 +6,7 @@ using FreedomBlaze.Models.Api;
 using FreedomBlaze.Options;
 using FreedomBlaze.Services;
 using FreedomBlaze.Services.Lightning;
+using FreedomBlaze.Services.Webhooks;
 using Microsoft.Extensions.Logging.Abstractions;
 using Phoenixd.NET.Models;
 
@@ -664,8 +665,10 @@ public sealed class LightningInvoiceServiceTests
             if (duringQuote is not null)
                 conversion = new RacingConversion(conversion, () => duringQuote(this));
 
+            var refresher = new LightningInvoiceRefresher(Db, factory, new WebhookOutbox(Clock), Clock,
+                NullLogger<LightningInvoiceRefresher>.Instance);
             Service = new LightningInvoiceService(conversion, Db.Repository<LightningInvoice>(), Db.Repository<LightningBackend>(),
-                factory, Microsoft.Extensions.Options.Options.Create(settings ?? new LightningInvoiceOptions()),
+                factory, refresher, Microsoft.Extensions.Options.Options.Create(settings ?? new LightningInvoiceOptions()),
                 Clock, NullLogger<LightningInvoiceService>.Instance);
         }
 

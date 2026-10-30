@@ -30,6 +30,10 @@ public class FreedomBlazeDbContext : DbContext
 
     public DbSet<LightningBackend> LightningBackends => Set<LightningBackend>();
 
+    public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
+
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FreedomBlazeDbContext).Assembly);

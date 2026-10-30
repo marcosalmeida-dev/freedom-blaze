@@ -31,6 +31,18 @@ public sealed class CredentialProtectorTests
     }
 
     [Fact]
+    public void ASecretOnlyOpensForItsPurpose()
+    {
+        var protector = TestCredentials.Protector();
+        var webhookSecret = protector.Protect(7, "whsec_abc", CredentialPurpose.WebhookSecret);
+        var nodePassword = protector.Protect(7, "limited-password");
+
+        Assert.Equal("whsec_abc", protector.Unprotect(7, webhookSecret, CredentialPurpose.WebhookSecret));
+        Assert.ThrowsAny<CryptographicException>(() => protector.Unprotect(7, webhookSecret));
+        Assert.ThrowsAny<CryptographicException>(() => protector.Unprotect(7, nodePassword, CredentialPurpose.WebhookSecret));
+    }
+
+    [Fact]
     public void AnAlteredValueIsRefused()
     {
         var protector = TestCredentials.Protector();

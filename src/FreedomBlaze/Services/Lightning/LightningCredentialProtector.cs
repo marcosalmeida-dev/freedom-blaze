@@ -6,25 +6,36 @@ using Microsoft.Extensions.Options;
 
 namespace FreedomBlaze.Services.Lightning;
 
-/// <summary>Encrypts the node passwords the gateway stores.</summary>
+/// <summary>What a protected secret is, so one kind can never be decrypted as another.</summary>
+public enum CredentialPurpose
+{
+    /// <summary>A merchant node's password.</summary>
+    NodePassword,
+
+    /// <summary>A webhook endpoint's signing secret.</summary>
+    WebhookSecret,
+}
+
+/// <summary>Encrypts the secrets the gateway stores: merchants' node passwords and webhook signing secrets.</summary>
 public interface ILightningCredentialProtector
 {
-    /// <summary>True when a key is configured, so a password can be stored.</summary>
+    /// <summary>True when a key is configured, so a secret can be stored.</summary>
     bool CanProtect { get; }
 
     /// <exception cref="InvalidOperationException">No credential key is configured.</exception>
-    string Protect(int merchantId, string password);
+    string Protect(int merchantId, string secret, CredentialPurpose purpose = CredentialPurpose.NodePassword);
 
     /// <exception cref="CryptographicException">
-    /// The value was altered, was encrypted for another merchant, or needs a key this server no longer has.
+    /// The value was altered, was encrypted for another merchant or purpose, or needs a key this server no
+    /// longer has.
     /// </exception>
-    string Unprotect(int merchantId, string protectedPassword);
+    string Unprotect(int merchantId, string protectedSecret, CredentialPurpose purpose = CredentialPurpose.NodePassword);
 }
 
 /// <summary>
 /// AES-256-GCM under keys from configuration, never from the database, so a copy of the database alone
-/// reveals no password. Each value names the key that encrypted it, so keys can rotate, and is bound to
-/// its merchant, so it cannot be moved to another merchant's row.
+/// reveals no secret. Each value names the key that encrypted it, so keys can rotate, and is bound to its
+/// merchant and purpose, so it cannot be moved to another merchant's row or read as another kind of secret.
 /// </summary>
 public sealed partial class AesGcmCredentialProtector : ILightningCredentialProtector
 {
@@ -47,39 +58,39 @@ public sealed partial class AesGcmCredentialProtector : ILightningCredentialProt
 
     public bool CanProtect => _activeKeyId is not null;
 
-    public string Protect(int merchantId, string password)
+    public string Protect(int merchantId, string secret, CredentialPurpose purpose = CredentialPurpose.NodePassword)
     {
         if (_activeKeyId is not { } keyId)
             throw new InvalidOperationException("No credential key is configured (LightningBackends:CredentialKeys).");
 
-        var plaintext = Encoding.UTF8.GetBytes(password);
+        var plaintext = Encoding.UTF8.GetBytes(secret);
         var payload = new byte[NonceSize + TagSize + plaintext.Length];
         var nonce = payload.AsSpan(0, NonceSize);
         RandomNumberGenerator.Fill(nonce);
 
         using var aes = new AesGcm(_keys[keyId], TagSize);
         aes.Encrypt(nonce, plaintext, payload.AsSpan(NonceSize + TagSize), payload.AsSpan(NonceSize, TagSize),
-            AssociatedData(merchantId));
+            AssociatedData(merchantId, purpose));
 
         return $"{Format}:{keyId}:{Convert.ToBase64String(payload)}";
     }
 
-    public string Unprotect(int merchantId, string protectedPassword)
+    public string Unprotect(int merchantId, string protectedSecret, CredentialPurpose purpose = CredentialPurpose.NodePassword)
     {
-        if (protectedPassword.Split(':') is not [Format, var keyId, var encoded])
-            throw new CryptographicException("Not a protected password.");
+        if (protectedSecret.Split(':') is not [Format, var keyId, var encoded])
+            throw new CryptographicException("Not a protected secret.");
 
         if (!_keys.TryGetValue(keyId, out var key))
             throw new CryptographicException($"Credential key '{keyId}' is not configured.");
 
         var payload = new byte[(encoded.Length * 3 + 3) / 4];
         if (!Convert.TryFromBase64String(encoded, payload, out var length) || length < NonceSize + TagSize)
-            throw new CryptographicException("Not a protected password.");
+            throw new CryptographicException("Not a protected secret.");
 
         var plaintext = new byte[length - NonceSize - TagSize];
         using var aes = new AesGcm(key, TagSize);
         aes.Decrypt(payload.AsSpan(0, NonceSize), payload.AsSpan(NonceSize + TagSize, plaintext.Length),
-            payload.AsSpan(NonceSize, TagSize), plaintext, AssociatedData(merchantId));
+            payload.AsSpan(NonceSize, TagSize), plaintext, AssociatedData(merchantId, purpose));
 
         return Encoding.UTF8.GetString(plaintext);
     }
@@ -111,8 +122,12 @@ public sealed partial class AesGcmCredentialProtector : ILightningCredentialProt
         : settings.CredentialKeys.Count == 1 ? settings.CredentialKeys.Keys.Single()
         : null;
 
-    private static byte[] AssociatedData(int merchantId) =>
-        Encoding.UTF8.GetBytes($"FreedomBlaze/LightningBackend/password/merchant:{merchantId}");
+    private static byte[] AssociatedData(int merchantId, CredentialPurpose purpose) => Encoding.UTF8.GetBytes(purpose switch
+    {
+        CredentialPurpose.NodePassword => $"FreedomBlaze/LightningBackend/password/merchant:{merchantId}",
+        CredentialPurpose.WebhookSecret => $"FreedomBlaze/WebhookEndpoint/secret/merchant:{merchantId}",
+        _ => throw new ArgumentOutOfRangeException(nameof(purpose)),
+    });
 
     [GeneratedRegex("^[A-Za-z0-9_-]{1,32}$")]
     private static partial Regex KeyIdPattern();

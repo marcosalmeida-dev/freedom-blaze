@@ -35,6 +35,9 @@ public class LightningInvoiceConfiguration : IEntityTypeConfiguration<LightningI
 
         builder.HasIndex(i => new { i.MerchantId, i.ExternalId });
 
+        // The background sweep's queue: only pending invoices carry a next check.
+        builder.HasIndex(i => i.NextCheckAtUtc).HasFilter("[NextCheckAtUtc] IS NOT NULL");
+
         builder.HasOne<Merchant>().WithMany().HasForeignKey(i => i.MerchantId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<ApiKey>().WithMany().HasForeignKey(i => i.ApiKeyId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<LightningBackend>().WithMany().HasForeignKey(i => i.BackendId).OnDelete(DeleteBehavior.Restrict);

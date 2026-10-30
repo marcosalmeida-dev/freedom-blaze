@@ -48,6 +48,19 @@ public sealed class MerchantMigrationTests
     }
 
     [Fact]
+    public void InvoicesAlreadyPendingAreCheckedFromTheFirstRound()
+    {
+        var operations = new AddWebhooksAndInvoiceChecks().UpOperations.ToList();
+
+        var column = Assert.Single(operations.OfType<AddColumnOperation>(), c => c is { Table: "LightningInvoices", Name: "NextCheckAtUtc" });
+        var backfill = Assert.Single(operations.OfType<SqlOperation>());
+
+        Assert.Equal("UPDATE [LightningInvoices] SET [NextCheckAtUtc] = SYSUTCDATETIME() WHERE [Status] = 1;", backfill.Sql);
+        Assert.Equal(1, (int)LightningInvoiceStatus.Pending);
+        Assert.True(operations.IndexOf(column) < operations.IndexOf(backfill));
+    }
+
+    [Fact]
     public void TheMigrationMatchesTheModelWithoutOpeningADatabase()
     {
         var options = new DbContextOptionsBuilder<FreedomBlazeDbContext>()
@@ -57,5 +70,6 @@ public sealed class MerchantMigrationTests
         Assert.False(db.Database.HasPendingModelChanges());
         Assert.Contains("20261014004338_AddMerchantsAndInvoices", db.Database.GetMigrations());
         Assert.Contains("20261014022116_AddLightningBackends", db.Database.GetMigrations());
+        Assert.Contains("20261014110824_AddWebhooksAndInvoiceChecks", db.Database.GetMigrations());
     }
 }
